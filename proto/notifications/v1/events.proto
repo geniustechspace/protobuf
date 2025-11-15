@@ -2,13 +2,13 @@ syntax = "proto3";
 
 package notifications.v1;
 
+import "google/protobuf/timestamp.proto";
+import "notifications/v1/notifications.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Notifications.V1";
 option go_package = "github.com/geniustechspace/protobuf/gen/go/notifications/v1;notificationsv1";
 option java_multiple_files = true;
 option java_package = "com.geniustechspace.protobuf.notifications.v1";
-option csharp_namespace = "GeniusTechSpace.Protobuf.Notifications.V1";
-
-import "google/protobuf/timestamp.proto";
-import "proto/notifications/v1/notifications.proto";
 
 // NotificationSentEvent is triggered when a notification is sent
 message NotificationSentEvent {

@@ -5,10 +5,14 @@ modules:
 lint:
   use:
     - STANDARD
-    - COMMENTS
     - UNARY_RPC
   except:
     - PACKAGE_VERSION_SUFFIX
+    - COMMENT_FIELD
+    - COMMENT_ENUM_VALUE
+    - COMMENT_MESSAGE
+    - COMMENT_SERVICE
+    - COMMENT_RPC
   enum_zero_value_suffix: _UNSPECIFIED
   rpc_allow_same_request_response: false
   rpc_allow_google_protobuf_empty_requests: false
@@ -20,5 +24,3 @@ breaking:
   ignore:
     - proto/core/v2
   ignore_unstable_packages: true
-deps:
-  - buf.build/googleapis/googleapis

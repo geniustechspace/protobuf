@@ -2,13 +2,12 @@ syntax = "proto3";
 
 package access_policy.v1;
 
+import "core/v1/common.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.AccessPolicy.V1";
 option go_package = "github.com/geniustechspace/protobuf/gen/go/access_policy/v1;accesspolicyv1";
 option java_multiple_files = true;
 option java_package = "com.geniustechspace.protobuf.accesspolicy.v1";
-option csharp_namespace = "GeniusTechSpace.Protobuf.AccessPolicy.V1";
-
-import "google/protobuf/timestamp.proto";
-import "proto/core/v1/common.proto";
 
 // Permission represents a specific action that can be performed
 message Permission {
@@ -175,25 +174,25 @@ message CheckPermissionResponse {
 service AccessPolicyService {
   // Create a new role
   rpc CreateRole(CreateRoleRequest) returns (CreateRoleResponse);
-  
+
   // Get a role by ID
   rpc GetRole(GetRoleRequest) returns (GetRoleResponse);
-  
+
   // Update a role
   rpc UpdateRole(UpdateRoleRequest) returns (UpdateRoleResponse);
-  
+
   // Delete a role
   rpc DeleteRole(DeleteRoleRequest) returns (DeleteRoleResponse);
-  
+
   // List roles
   rpc ListRoles(ListRolesRequest) returns (ListRolesResponse);
-  
+
   // Assign a role to a user
   rpc AssignRole(AssignRoleRequest) returns (AssignRoleResponse);
-  
+
   // Revoke a role from a user
   rpc RevokeRole(RevokeRoleRequest) returns (RevokeRoleResponse);
-  
+
   // Check if a user has permission
   rpc CheckPermission(CheckPermissionRequest) returns (CheckPermissionResponse);
 }

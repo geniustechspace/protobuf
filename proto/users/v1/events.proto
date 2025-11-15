@@ -2,13 +2,13 @@ syntax = "proto3";
 
 package users.v1;
 
+import "google/protobuf/timestamp.proto";
+import "users/v1/users.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Users.V1";
 option go_package = "github.com/geniustechspace/protobuf/gen/go/users/v1;usersv1";
 option java_multiple_files = true;
 option java_package = "com.geniustechspace.protobuf.users.v1";
-option csharp_namespace = "GeniusTechSpace.Protobuf.Users.V1";
-
-import "google/protobuf/timestamp.proto";
-import "proto/users/v1/users.proto";
 
 // UserCreatedEvent is triggered when a new user is created
 message UserCreatedEvent {

@@ -2,13 +2,13 @@ syntax = "proto3";
 
 package users.v1;
 
+import "core/v1/common.proto";
+import "google/protobuf/timestamp.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Users.V1";
 option go_package = "github.com/geniustechspace/protobuf/gen/go/users/v1;usersv1";
 option java_multiple_files = true;
 option java_package = "com.geniustechspace.protobuf.users.v1";
-option csharp_namespace = "GeniusTechSpace.Protobuf.Users.V1";
-
-import "google/protobuf/timestamp.proto";
-import "proto/core/v1/common.proto";
 
 // User represents a user in the system
 message User {
@@ -151,22 +151,22 @@ message UpdateUserStatusResponse {
 service UserService {
   // Create a new user
   rpc CreateUser(CreateUserRequest) returns (CreateUserResponse);
-  
+
   // Get a user by ID
   rpc GetUser(GetUserRequest) returns (GetUserResponse);
-  
+
   // Update a user
   rpc UpdateUser(UpdateUserRequest) returns (UpdateUserResponse);
-  
+
   // Delete a user
   rpc DeleteUser(DeleteUserRequest) returns (DeleteUserResponse);
-  
+
   // List users with filtering and pagination
   rpc ListUsers(ListUsersRequest) returns (ListUsersResponse);
-  
+
   // Change user password
   rpc ChangePassword(ChangePasswordRequest) returns (ChangePasswordResponse);
-  
+
   // Update user status
   rpc UpdateUserStatus(UpdateUserStatusRequest) returns (UpdateUserStatusResponse);
 }

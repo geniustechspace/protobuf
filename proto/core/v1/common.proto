@@ -2,24 +2,24 @@ syntax = "proto3";
 
 package core.v1;
 
+import "google/protobuf/timestamp.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Core.V1";
 option go_package = "github.com/geniustechspace/protobuf/gen/go/core/v1;corev1";
 option java_multiple_files = true;
 option java_package = "com.geniustechspace.protobuf.core.v1";
-option csharp_namespace = "GeniusTechSpace.Protobuf.Core.V1";
-
-import "google/protobuf/timestamp.proto";
 
 // TenantContext provides multi-tenant isolation for all requests
 message TenantContext {
   // Unique identifier for the tenant
   string tenant_id = 1;
-  
+
   // Tenant name for display purposes
   string tenant_name = 2;
-  
+
   // Tenant tier (free, pro, enterprise)
   string tier = 3;
-  
+
   // Tenant status (active, suspended, deleted)
   string status = 4;
 }
@@ -28,25 +28,25 @@ message TenantContext {
 message Metadata {
   // Unique identifier
   string id = 1;
-  
+
   // Creation timestamp
   google.protobuf.Timestamp created_at = 2;
-  
+
   // Last update timestamp
   google.protobuf.Timestamp updated_at = 3;
-  
+
   // ID of user who created the entity
   string created_by = 4;
-  
+
   // ID of user who last updated the entity
   string updated_by = 5;
-  
+
   // Version for optimistic locking
   int64 version = 6;
-  
+
   // Soft delete flag
   bool deleted = 7;
-  
+
   // Deletion timestamp
   google.protobuf.Timestamp deleted_at = 8;
 }
@@ -55,13 +55,13 @@ message Metadata {
 message PaginationRequest {
   // Page number (0-indexed)
   int32 page = 1;
-  
+
   // Number of items per page
   int32 page_size = 2;
-  
+
   // Sort field
   string sort_by = 3;
-  
+
   // Sort order (asc, desc)
   string sort_order = 4;
 }
@@ -70,19 +70,19 @@ message PaginationRequest {
 message PaginationResponse {
   // Current page number
   int32 page = 1;
-  
+
   // Number of items per page
   int32 page_size = 2;
-  
+
   // Total number of items
   int64 total_items = 3;
-  
+
   // Total number of pages
   int32 total_pages = 4;
-  
+
   // Has next page
   bool has_next = 5;
-  
+
   // Has previous page
   bool has_previous = 6;
 }
@@ -109,7 +109,7 @@ message ContactInfo {
 message Money {
   // Currency code (ISO 4217)
   string currency = 1;
-  
+
   // Amount in smallest currency unit (e.g., cents)
   int64 amount = 2;
 }
@@ -118,13 +118,13 @@ message Money {
 message ErrorDetail {
   // Error code
   string code = 1;
-  
+
   // Human-readable error message
   string message = 2;
-  
+
   // Field that caused the error
   string field = 3;
-  
+
   // Additional error metadata
   map<string, string> metadata = 4;
 }
@@ -133,16 +133,16 @@ message ErrorDetail {
 message ErrorResponse {
   // HTTP status code
   int32 status = 1;
-  
+
   // Error message
   string message = 2;
-  
+
   // Detailed error information
   repeated ErrorDetail details = 3;
-  
+
   // Request ID for tracking
   string request_id = 4;
-  
+
   // Timestamp of the error
   google.protobuf.Timestamp timestamp = 5;
 }

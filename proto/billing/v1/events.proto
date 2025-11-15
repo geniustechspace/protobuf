@@ -2,14 +2,14 @@ syntax = "proto3";
 
 package billing.v1;
 
+import "billing/v1/billing.proto";
+import "core/v1/common.proto";
+import "google/protobuf/timestamp.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Billing.V1";
 option go_package = "github.com/geniustechspace/protobuf/gen/go/billing/v1;billingv1";
 option java_multiple_files = true;
 option java_package = "com.geniustechspace.protobuf.billing.v1";
-option csharp_namespace = "GeniusTechSpace.Protobuf.Billing.V1";
-
-import "google/protobuf/timestamp.proto";
-import "proto/core/v1/common.proto";
-import "proto/billing/v1/billing.proto";
 
 // SubscriptionCreatedEvent is triggered when a new subscription is created
 message SubscriptionCreatedEvent {

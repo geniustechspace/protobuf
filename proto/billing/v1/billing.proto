@@ -2,13 +2,13 @@ syntax = "proto3";
 
 package billing.v1;
 
+import "core/v1/common.proto";
+import "google/protobuf/timestamp.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Billing.V1";
 option go_package = "github.com/geniustechspace/protobuf/gen/go/billing/v1;billingv1";
 option java_multiple_files = true;
 option java_package = "com.geniustechspace.protobuf.billing.v1";
-option csharp_namespace = "GeniusTechSpace.Protobuf.Billing.V1";
-
-import "google/protobuf/timestamp.proto";
-import "proto/core/v1/common.proto";
 
 // Subscription represents a tenant's subscription
 message Subscription {
@@ -231,28 +231,28 @@ message ListPaymentMethodsResponse {
 service BillingService {
   // Create a new subscription
   rpc CreateSubscription(CreateSubscriptionRequest) returns (CreateSubscriptionResponse);
-  
+
   // Get a subscription by ID
   rpc GetSubscription(GetSubscriptionRequest) returns (GetSubscriptionResponse);
-  
+
   // Update a subscription
   rpc UpdateSubscription(UpdateSubscriptionRequest) returns (UpdateSubscriptionResponse);
-  
+
   // Cancel a subscription
   rpc CancelSubscription(CancelSubscriptionRequest) returns (CancelSubscriptionResponse);
-  
+
   // List invoices
   rpc ListInvoices(ListInvoicesRequest) returns (ListInvoicesResponse);
-  
+
   // Get an invoice by ID
   rpc GetInvoice(GetInvoiceRequest) returns (GetInvoiceResponse);
-  
+
   // Pay an invoice
   rpc PayInvoice(PayInvoiceRequest) returns (PayInvoiceResponse);
-  
+
   // Add a payment method
   rpc AddPaymentMethod(AddPaymentMethodRequest) returns (AddPaymentMethodResponse);
-  
+
   // List payment methods
   rpc ListPaymentMethods(ListPaymentMethodsRequest) returns (ListPaymentMethodsResponse);
 }

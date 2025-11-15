@@ -2,13 +2,13 @@ syntax = "proto3";
 
 package tenants.v1;
 
+import "core/v1/common.proto";
+import "google/protobuf/timestamp.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Tenants.V1";
 option go_package = "github.com/geniustechspace/protobuf/gen/go/tenants/v1;tenantsv1";
 option java_multiple_files = true;
 option java_package = "com.geniustechspace.protobuf.tenants.v1";
-option csharp_namespace = "GeniusTechSpace.Protobuf.Tenants.V1";
-
-import "google/protobuf/timestamp.proto";
-import "proto/core/v1/common.proto";
 
 // Tenant represents a multi-tenant organization
 message Tenant {
@@ -168,25 +168,25 @@ message GetTenantUsageResponse {
 service TenantService {
   // Create a new tenant
   rpc CreateTenant(CreateTenantRequest) returns (CreateTenantResponse);
-  
+
   // Get a tenant by ID
   rpc GetTenant(GetTenantRequest) returns (GetTenantResponse);
-  
+
   // Update a tenant
   rpc UpdateTenant(UpdateTenantRequest) returns (UpdateTenantResponse);
-  
+
   // Delete a tenant
   rpc DeleteTenant(DeleteTenantRequest) returns (DeleteTenantResponse);
-  
+
   // List tenants with filtering and pagination
   rpc ListTenants(ListTenantsRequest) returns (ListTenantsResponse);
-  
+
   // Update tenant status
   rpc UpdateTenantStatus(UpdateTenantStatusRequest) returns (UpdateTenantStatusResponse);
-  
+
   // Update tenant tier
   rpc UpdateTenantTier(UpdateTenantTierRequest) returns (UpdateTenantTierResponse);
-  
+
   // Get tenant usage statistics
   rpc GetTenantUsage(GetTenantUsageRequest) returns (GetTenantUsageResponse);
 }

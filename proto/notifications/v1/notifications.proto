@@ -2,13 +2,13 @@ syntax = "proto3";
 
 package notifications.v1;
 
+import "core/v1/common.proto";
+import "google/protobuf/timestamp.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Notifications.V1";
 option go_package = "github.com/geniustechspace/protobuf/gen/go/notifications/v1;notificationsv1";
 option java_multiple_files = true;
 option java_package = "com.geniustechspace.protobuf.notifications.v1";
-option csharp_namespace = "GeniusTechSpace.Protobuf.Notifications.V1";
-
-import "google/protobuf/timestamp.proto";
-import "proto/core/v1/common.proto";
 
 // Notification represents a notification message
 message Notification {
@@ -186,25 +186,25 @@ message UpdateNotificationPreferencesResponse {
 service NotificationService {
   // Send a notification
   rpc SendNotification(SendNotificationRequest) returns (SendNotificationResponse);
-  
+
   // Get a notification by ID
   rpc GetNotification(GetNotificationRequest) returns (GetNotificationResponse);
-  
+
   // List notifications
   rpc ListNotifications(ListNotificationsRequest) returns (ListNotificationsResponse);
-  
+
   // Mark a notification as read
   rpc MarkNotificationRead(MarkNotificationReadRequest) returns (MarkNotificationReadResponse);
-  
+
   // Mark all notifications as read
   rpc MarkAllRead(MarkAllReadRequest) returns (MarkAllReadResponse);
-  
+
   // Delete a notification
   rpc DeleteNotification(DeleteNotificationRequest) returns (DeleteNotificationResponse);
-  
+
   // Get notification preferences
   rpc GetNotificationPreferences(GetNotificationPreferencesRequest) returns (GetNotificationPreferencesResponse);
-  
+
   // Update notification preferences
   rpc UpdateNotificationPreferences(UpdateNotificationPreferencesRequest) returns (UpdateNotificationPreferencesResponse);
 }

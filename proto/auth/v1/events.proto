@@ -2,12 +2,12 @@ syntax = "proto3";
 
 package auth.v1;
 
+import "google/protobuf/timestamp.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Auth.V1";
 option go_package = "github.com/geniustechspace/protobuf/gen/go/auth/v1;authv1";
 option java_multiple_files = true;
 option java_package = "com.geniustechspace.protobuf.auth.v1";
-option csharp_namespace = "GeniusTechSpace.Protobuf.Auth.V1";
-
-import "google/protobuf/timestamp.proto";
 
 // UserAuthenticatedEvent is triggered when a user successfully authenticates
 message UserAuthenticatedEvent {

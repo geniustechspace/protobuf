@@ -2,12 +2,12 @@ syntax = "proto3";
 
 package access_policy.v1;
 
+import "google/protobuf/timestamp.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.AccessPolicy.V1";
 option go_package = "github.com/geniustechspace/protobuf/gen/go/access_policy/v1;accesspolicyv1";
 option java_multiple_files = true;
 option java_package = "com.geniustechspace.protobuf.accesspolicy.v1";
-option csharp_namespace = "GeniusTechSpace.Protobuf.AccessPolicy.V1";
-
-import "google/protobuf/timestamp.proto";
 
 // RoleCreatedEvent is triggered when a new role is created
 message RoleCreatedEvent {

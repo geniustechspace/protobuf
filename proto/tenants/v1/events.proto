@@ -2,13 +2,13 @@ syntax = "proto3";
 
 package tenants.v1;
 
+import "google/protobuf/timestamp.proto";
+import "tenants/v1/tenants.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Tenants.V1";
 option go_package = "github.com/geniustechspace/protobuf/gen/go/tenants/v1;tenantsv1";
 option java_multiple_files = true;
 option java_package = "com.geniustechspace.protobuf.tenants.v1";
-option csharp_namespace = "GeniusTechSpace.Protobuf.Tenants.V1";
-
-import "google/protobuf/timestamp.proto";
-import "proto/tenants/v1/tenants.proto";
 
 // TenantCreatedEvent is triggered when a new tenant is created
 message TenantCreatedEvent {
