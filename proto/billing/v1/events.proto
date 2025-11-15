@@ -1,0 +1,114 @@
+// Billing Domain Events
+//
+// Subscription lifecycle, payment processing, and invoice events for
+// revenue recognition, dunning workflows, and financial reporting.
+//
+// COMPLIANCE: PCI DSS (Payment events), SOC 2 CC7.2 (Financial audit)
+//             Tax regulations (Invoice events)
+// USAGE: Wrap in core.v1.BaseEvent for event sourcing
+
+syntax = "proto3";
+
+package billing.v1;
+
+import "billing/v1/billing.proto";
+import "core/v1/common.proto";
+import "google/protobuf/timestamp.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Billing.V1";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/billing/v1;billingv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.billing.v1";
+
+// SubscriptionCreatedEvent published when subscription starts.
+// COMPLIANCE: SOC 2 CC6.1 (Access provisioning via subscription)
+message SubscriptionCreatedEvent {
+  string subscription_id = 1;
+  string tenant_id = 2;
+  string plan_id = 3;
+  core.v1.Money amount = 4;
+  google.protobuf.Timestamp created_at = 5;
+}
+
+// SubscriptionUpdatedEvent is triggered when a subscription is updated
+message SubscriptionUpdatedEvent {
+  string subscription_id = 1;
+  string tenant_id = 2;
+  string old_plan_id = 3;
+  string new_plan_id = 4;
+  google.protobuf.Timestamp updated_at = 5;
+}
+
+// SubscriptionCanceledEvent is triggered when a subscription is canceled
+message SubscriptionCanceledEvent {
+  string subscription_id = 1;
+  string tenant_id = 2;
+  google.protobuf.Timestamp canceled_at = 3;
+  google.protobuf.Timestamp effective_date = 4;
+}
+
+// SubscriptionRenewedEvent is triggered when a subscription is renewed
+message SubscriptionRenewedEvent {
+  string subscription_id = 1;
+  string tenant_id = 2;
+  google.protobuf.Timestamp renewed_at = 3;
+  google.protobuf.Timestamp next_billing_date = 4;
+}
+
+// InvoiceCreatedEvent is triggered when an invoice is created
+message InvoiceCreatedEvent {
+  string invoice_id = 1;
+  string tenant_id = 2;
+  string invoice_number = 3;
+  core.v1.Money total = 4;
+  google.protobuf.Timestamp created_at = 5;
+}
+
+// InvoicePaidEvent is triggered when an invoice is paid
+message InvoicePaidEvent {
+  string invoice_id = 1;
+  string tenant_id = 2;
+  string invoice_number = 3;
+  core.v1.Money amount_paid = 4;
+  google.protobuf.Timestamp paid_at = 5;
+}
+
+// PaymentFailedEvent is triggered when a payment fails
+message PaymentFailedEvent {
+  string invoice_id = 1;
+  string tenant_id = 2;
+  string reason = 3;
+  core.v1.Money amount = 4;
+  google.protobuf.Timestamp failed_at = 5;
+}
+
+// PaymentMethodAddedEvent is triggered when a payment method is added
+message PaymentMethodAddedEvent {
+  string payment_method_id = 1;
+  string tenant_id = 2;
+  PaymentMethodType type = 3;
+  google.protobuf.Timestamp added_at = 4;
+}
+
+// PaymentMethodRemovedEvent is triggered when a payment method is removed
+message PaymentMethodRemovedEvent {
+  string payment_method_id = 1;
+  string tenant_id = 2;
+  google.protobuf.Timestamp removed_at = 3;
+}
+
+// TrialStartedEvent is triggered when a trial period starts
+message TrialStartedEvent {
+  string subscription_id = 1;
+  string tenant_id = 2;
+  google.protobuf.Timestamp started_at = 3;
+  google.protobuf.Timestamp ends_at = 4;
+}
+
+// TrialEndedEvent is triggered when a trial period ends
+message TrialEndedEvent {
+  string subscription_id = 1;
+  string tenant_id = 2;
+  google.protobuf.Timestamp ended_at = 3;
+  bool converted_to_paid = 4;
+}

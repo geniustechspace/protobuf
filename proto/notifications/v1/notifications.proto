@@ -1,0 +1,277 @@
+// Notifications Domain - Multi-Channel Notification Delivery
+//
+// Manages notification lifecycle across multiple delivery channels (in-app, email,
+// SMS, push notifications) with user preferences and delivery tracking.
+//
+// COMPLIANCE: CAN-SPAM Act (Email marketing), TCPA (SMS/calling)
+//             GDPR Article 7 (Consent), GDPR Article 21 (Right to object)
+//             SOC 2 CC7.2 (System monitoring and notifications)
+// SECURITY: User consent verified before sending. Opt-out honored immediately.
+//           PII in notifications encrypted. Delivery logs retained per compliance.
+
+syntax = "proto3";
+
+package notifications.v1;
+
+import "core/v1/common.proto";
+import "google/protobuf/timestamp.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Notifications.V1";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/notifications/v1;notificationsv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.notifications.v1";
+
+// Notification represents a notification message sent to users.
+//
+// COMPLIANCE: GDPR Article 7 (Consent required), CAN-SPAM (Opt-out required)
+message Notification {
+  // Standard metadata (ID, timestamps, created_by, etc.)
+  core.v1.Metadata metadata = 1;
+
+  // Tenant ID. REQUIRED
+  string tenant_id = 2;
+
+  // Target user ID. REQUIRED. PII: User identifier
+  string user_id = 3;
+
+  // Notification title/subject
+  string title = 4;
+
+  // Notification message body
+  string message = 5;
+
+  // Notification type (info, success, warning, error, system)
+  NotificationType type = 6;
+
+  // Priority level affects delivery urgency
+  NotificationPriority priority = 7;
+
+  // Delivery and read status
+  NotificationStatus status = 8;
+
+  // Optional action URL (e.g., "View Invoice", "Confirm Email")
+  string action_url = 9;
+
+  // Additional metadata (template variables, tracking data)
+  map<string, string> metadata_fields = 10;
+
+  // Timestamp when notification was read by user
+  google.protobuf.Timestamp read_at = 11;
+}
+
+// NotificationType categorizes notification purpose and urgency.
+enum NotificationType {
+  NOTIFICATION_TYPE_UNSPECIFIED = 0;
+  NOTIFICATION_TYPE_INFO = 1; // Informational message
+  NOTIFICATION_TYPE_SUCCESS = 2; // Success confirmation
+  NOTIFICATION_TYPE_WARNING = 3; // Warning alert
+  NOTIFICATION_TYPE_ERROR = 4; // Error notification
+  NOTIFICATION_TYPE_SYSTEM = 5; // System announcement
+}
+
+// NotificationPriority determines delivery urgency and routing.
+enum NotificationPriority {
+  NOTIFICATION_PRIORITY_UNSPECIFIED = 0;
+  NOTIFICATION_PRIORITY_LOW = 1; // Delivered in batches, non-urgent
+  NOTIFICATION_PRIORITY_MEDIUM = 2; // Standard delivery
+  NOTIFICATION_PRIORITY_HIGH = 3; // Immediate delivery
+  NOTIFICATION_PRIORITY_URGENT = 4; // Critical, all channels
+}
+
+// NotificationStatus tracks notification lifecycle state.
+enum NotificationStatus {
+  NOTIFICATION_STATUS_UNSPECIFIED = 0;
+  NOTIFICATION_STATUS_PENDING = 1; // Queued for delivery
+  NOTIFICATION_STATUS_SENT = 2; // Sent to delivery channel
+  NOTIFICATION_STATUS_DELIVERED = 3; // Confirmed delivered
+  NOTIFICATION_STATUS_READ = 4; // Opened/read by user
+  NOTIFICATION_STATUS_FAILED = 5; // Delivery failed
+}
+
+// NotificationChannel defines supported delivery channels.
+//
+// COMPLIANCE: Each channel has specific regulations (CAN-SPAM, TCPA, GDPR)
+enum NotificationChannel {
+  NOTIFICATION_CHANNEL_UNSPECIFIED = 0;
+  NOTIFICATION_CHANNEL_IN_APP = 1; // In-app notification center
+  NOTIFICATION_CHANNEL_EMAIL = 2; // Email (CAN-SPAM compliance)
+  NOTIFICATION_CHANNEL_SMS = 3; // SMS text (TCPA compliance)
+  NOTIFICATION_CHANNEL_PUSH = 4; // Mobile/web push notifications
+  NOTIFICATION_CHANNEL_WEBHOOK = 5; // Webhook for integrations
+}
+
+// NotificationPreferences stores user consent and channel preferences.
+//
+// COMPLIANCE: GDPR Article 7 (Consent), GDPR Article 21 (Objection)
+//             CAN-SPAM Act (Opt-out), TCPA (Prior express consent)
+message NotificationPreferences {
+  // User ID. REQUIRED. PII: User identifier
+  string user_id = 1;
+
+  // Tenant ID. REQUIRED
+  string tenant_id = 2;
+
+  // Email notifications enabled. GDPR: Requires consent
+  bool email_enabled = 3;
+
+  // SMS notifications enabled. TCPA: Requires prior express consent
+  bool sms_enabled = 4;
+
+  // Push notifications enabled
+  bool push_enabled = 5;
+
+  // In-app notifications enabled
+  bool in_app_enabled = 6;
+
+  // Muted notification categories (user-defined)
+  repeated string muted_categories = 7;
+
+  // Per-channel preferences (granular control)
+  map<string, bool> channel_preferences = 8;
+}
+
+// SendNotificationRequest for sending a notification
+message SendNotificationRequest {
+  string tenant_id = 1;
+  repeated string user_ids = 2;
+  string title = 3;
+  string message = 4;
+  NotificationType type = 5;
+  NotificationPriority priority = 6;
+  repeated NotificationChannel channels = 7;
+  string action_url = 8;
+  map<string, string> metadata = 9;
+}
+
+// SendNotificationResponse confirms notification sending
+message SendNotificationResponse {
+  repeated string notification_ids = 1;
+  bool success = 2;
+}
+
+// GetNotificationRequest for retrieving a notification
+message GetNotificationRequest {
+  string tenant_id = 1;
+  string notification_id = 2;
+}
+
+// GetNotificationResponse returns the requested notification
+message GetNotificationResponse {
+  Notification notification = 1;
+}
+
+// ListNotificationsRequest for listing notifications
+message ListNotificationsRequest {
+  string tenant_id = 1;
+  string user_id = 2;
+  core.v1.PaginationRequest pagination = 3;
+  NotificationStatus status = 4;
+  NotificationType type = 5;
+  bool unread_only = 6;
+}
+
+// ListNotificationsResponse returns a list of notifications
+message ListNotificationsResponse {
+  repeated Notification notifications = 1;
+  core.v1.PaginationResponse pagination = 2;
+  int32 unread_count = 3;
+}
+
+// MarkNotificationReadRequest for marking a notification as read
+message MarkNotificationReadRequest {
+  string tenant_id = 1;
+  string user_id = 2;
+  string notification_id = 3;
+}
+
+// MarkNotificationReadResponse confirms marking as read
+message MarkNotificationReadResponse {
+  bool success = 1;
+}
+
+// MarkAllReadRequest for marking all notifications as read
+message MarkAllReadRequest {
+  string tenant_id = 1;
+  string user_id = 2;
+}
+
+// MarkAllReadResponse confirms marking all as read
+message MarkAllReadResponse {
+  bool success = 1;
+  int32 marked_count = 2;
+}
+
+// DeleteNotificationRequest for deleting a notification
+message DeleteNotificationRequest {
+  string tenant_id = 1;
+  string user_id = 2;
+  string notification_id = 3;
+}
+
+// DeleteNotificationResponse confirms deletion
+message DeleteNotificationResponse {
+  bool success = 1;
+}
+
+// GetNotificationPreferencesRequest for retrieving preferences
+message GetNotificationPreferencesRequest {
+  string tenant_id = 1;
+  string user_id = 2;
+}
+
+// GetNotificationPreferencesResponse returns preferences
+message GetNotificationPreferencesResponse {
+  NotificationPreferences preferences = 1;
+}
+
+// UpdateNotificationPreferencesRequest for updating preferences
+message UpdateNotificationPreferencesRequest {
+  string tenant_id = 1;
+  string user_id = 2;
+  NotificationPreferences preferences = 3;
+}
+
+// UpdateNotificationPreferencesResponse confirms update
+message UpdateNotificationPreferencesResponse {
+  NotificationPreferences preferences = 1;
+}
+
+// NotificationService manages multi-channel notification delivery and preferences.
+//
+// COMPLIANCE: CAN-SPAM Act, TCPA, GDPR Articles 7, 21 (Consent and objection)
+// AUTHENTICATION: All RPCs require valid authentication token
+// AUTHORIZATION: Users can manage own notifications. Admins can send to all users.
+// SECURITY: User consent verified before sending. Rate limits enforced.
+service NotificationService {
+  // SendNotification delivers notification to users via selected channels.
+  // Requires 'notifications:send' permission or admin role.
+  // COMPLIANCE: Verifies user consent per channel (GDPR Art. 7, CAN-SPAM, TCPA)
+  // SECURITY: Rate limit: 1000 notifications/hour per tenant
+  rpc SendNotification(SendNotificationRequest) returns (SendNotificationResponse);
+
+  // GetNotification retrieves notification details. Users can access own notifications.
+  rpc GetNotification(GetNotificationRequest) returns (GetNotificationResponse);
+
+  // ListNotifications retrieves user's notification history with filtering.
+  // PERFORMANCE: Paginated. Max 100 per request.
+  rpc ListNotifications(ListNotificationsRequest) returns (ListNotificationsResponse);
+
+  // MarkNotificationRead marks single notification as read. Updates read_at timestamp.
+  rpc MarkNotificationRead(MarkNotificationReadRequest) returns (MarkNotificationReadResponse);
+
+  // MarkAllRead marks all user notifications as read. Efficient bulk operation.
+  rpc MarkAllRead(MarkAllReadRequest) returns (MarkAllReadResponse);
+
+  // DeleteNotification soft-deletes notification from user's list.
+  // COMPLIANCE: GDPR Article 17 (Right to erasure)
+  rpc DeleteNotification(DeleteNotificationRequest) returns (DeleteNotificationResponse);
+
+  // GetNotificationPreferences retrieves user's channel preferences and consent.
+  // COMPLIANCE: GDPR Article 15 (Right of access to consent data)
+  rpc GetNotificationPreferences(GetNotificationPreferencesRequest) returns (GetNotificationPreferencesResponse);
+
+  // UpdateNotificationPreferences updates consent and channel preferences.
+  // COMPLIANCE: GDPR Article 7 (Withdrawal of consent), CAN-SPAM/TCPA opt-out
+  // SECURITY: Immediate effect. Opt-out honored within seconds.
+  rpc UpdateNotificationPreferences(UpdateNotificationPreferencesRequest) returns (UpdateNotificationPreferencesResponse);
+}

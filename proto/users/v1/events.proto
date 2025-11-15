@@ -1,0 +1,78 @@
+// User Domain Events
+//
+// Domain events published during user lifecycle operations for event-driven
+// architecture, audit logging, and downstream system integration.
+//
+// COMPLIANCE: SOC 2 CC7.2 (Audit logging), GDPR Article 5(2) (Accountability)
+// USAGE: Wrap in core.v1.BaseEvent for event sourcing and distributed tracing
+
+syntax = "proto3";
+
+package users.v1;
+
+import "google/protobuf/timestamp.proto";
+import "users/v1/users.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Users.V1";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/users/v1;usersv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.users.v1";
+
+// UserCreatedEvent published when new user is provisioned.
+// COMPLIANCE: SOC 2 CC6.1 (User provisioning audit)
+message UserCreatedEvent {
+  string user_id = 1;
+  string tenant_id = 2;
+  string email = 3;
+  string username = 4;
+  google.protobuf.Timestamp created_at = 5;
+  repeated string roles = 6;
+}
+
+// UserUpdatedEvent is triggered when a user is updated
+message UserUpdatedEvent {
+  string user_id = 1;
+  string tenant_id = 2;
+  google.protobuf.Timestamp updated_at = 3;
+  repeated string changed_fields = 4;
+}
+
+// UserDeletedEvent is triggered when a user is deleted
+message UserDeletedEvent {
+  string user_id = 1;
+  string tenant_id = 2;
+  google.protobuf.Timestamp deleted_at = 3;
+}
+
+// UserStatusChangedEvent is triggered when a user's status changes
+message UserStatusChangedEvent {
+  string user_id = 1;
+  string tenant_id = 2;
+  UserStatus old_status = 3;
+  UserStatus new_status = 4;
+  string reason = 5;
+  google.protobuf.Timestamp changed_at = 6;
+}
+
+// PasswordChangedEvent is triggered when a user's password is changed
+message PasswordChangedEvent {
+  string user_id = 1;
+  string tenant_id = 2;
+  google.protobuf.Timestamp changed_at = 3;
+}
+
+// UserEmailVerifiedEvent is triggered when a user verifies their email
+message UserEmailVerifiedEvent {
+  string user_id = 1;
+  string tenant_id = 2;
+  string email = 3;
+  google.protobuf.Timestamp verified_at = 4;
+}
+
+// UserPhoneVerifiedEvent is triggered when a user verifies their phone
+message UserPhoneVerifiedEvent {
+  string user_id = 1;
+  string tenant_id = 2;
+  string phone = 3;
+  google.protobuf.Timestamp verified_at = 4;
+}
