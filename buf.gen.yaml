@@ -9,42 +9,48 @@ managed:
     - file_option: csharp_namespace_prefix
       value: GeniusTechSpace.Protobuf
 plugins:
-  # Go generation
-  - remote: buf.build/protocolbuffers/go
+  # Go generation with validation
+  - remote: buf.build/protocolbuffers/go:latest
     out: gen/go
     opt:
       - paths=source_relative
-  - remote: buf.build/grpc/go
+  - remote: buf.build/grpc/go:latest
+    out: gen/go
+    opt:
+      - paths=source_relative
+  - remote: buf.build/bufbuild/protovalidate-go:latest
     out: gen/go
     opt:
       - paths=source_relative
   
-  # Java generation
-  - remote: buf.build/protocolbuffers/java
+  # Java generation with validation
+  - remote: buf.build/protocolbuffers/java:latest
     out: gen/java
-  - remote: buf.build/grpc/java
+  - remote: buf.build/grpc/java:latest
     out: gen/java
   
-  # Python generation
-  - remote: buf.build/protocolbuffers/python
+  # Python generation with validation
+  - remote: buf.build/protocolbuffers/python:latest
     out: gen/python
-  - remote: buf.build/grpc/python
+  - remote: buf.build/grpc/python:latest
+    out: gen/python
+  - remote: buf.build/bufbuild/protovalidate-python:latest
     out: gen/python
   
   # TypeScript generation
-  - remote: buf.build/connectrpc/es:v1.6.1
+  - remote: buf.build/connectrpc/es:latest
     out: gen/typescript
     opt:
       - target=ts
   
   # C# generation
-  - remote: buf.build/protocolbuffers/csharp
+  - remote: buf.build/protocolbuffers/csharp:latest
     out: gen/csharp
-  - remote: buf.build/grpc/csharp
+  - remote: buf.build/grpc/csharp:latest
     out: gen/csharp
   
   # Documentation generation
-  - remote: buf.build/bufbuild/buf-plugin-doc
+  - remote: buf.build/bufbuild/buf-plugin-doc:latest
     out: gen/docs
     opt:
       - markdown,index.md

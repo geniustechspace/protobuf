@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package users.v1;
 
+import "buf/validate/validate.proto";
 import "core/v1/common.proto";
 import "google/protobuf/timestamp.proto";
 
@@ -13,14 +14,24 @@ option java_package = "com.geniustechspace.protobuf.users.v1";
 // User represents a user in the system
 message User {
   core.v1.Metadata metadata = 1;
-  string tenant_id = 2;
-  string email = 3;
-  string username = 4;
-  string first_name = 5;
-  string last_name = 6;
+  string tenant_id = 2 [(buf.validate.field).string.min_len = 1];
+  string email = 3 [(buf.validate.field).string.email = true];
+  string username = 4 [(buf.validate.field).string = {
+    min_len: 3
+    max_len: 50
+    pattern: "^[a-zA-Z0-9_-]+$"
+  }];
+  string first_name = 5 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 100
+  }];
+  string last_name = 6 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 100
+  }];
   string phone = 7;
-  string avatar_url = 8;
-  UserStatus status = 9;
+  string avatar_url = 8 [(buf.validate.field).string.uri = true];
+  UserStatus status = 9 [(buf.validate.field).enum.defined_only = true];
   repeated string roles = 10;
   UserPreferences preferences = 11;
   google.protobuf.Timestamp last_login_at = 12;
@@ -51,12 +62,22 @@ message UserPreferences {
 
 // CreateUserRequest for creating a new user
 message CreateUserRequest {
-  string tenant_id = 1;
-  string email = 2;
-  string username = 3;
-  string password = 4;
-  string first_name = 5;
-  string last_name = 6;
+  string tenant_id = 1 [(buf.validate.field).string.min_len = 1];
+  string email = 2 [(buf.validate.field).string.email = true];
+  string username = 3 [(buf.validate.field).string = {
+    min_len: 3
+    max_len: 50
+    pattern: "^[a-zA-Z0-9_-]+$"
+  }];
+  string password = 4 [(buf.validate.field).string.min_len = 8];
+  string first_name = 5 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 100
+  }];
+  string last_name = 6 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 100
+  }];
   string phone = 7;
   repeated string roles = 8;
 }

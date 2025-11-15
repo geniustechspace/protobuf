@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package tenants.v1;
 
+import "buf/validate/validate.proto";
 import "core/v1/common.proto";
 import "google/protobuf/timestamp.proto";
 
@@ -66,10 +67,20 @@ message TenantBranding {
 
 // CreateTenantRequest for creating a new tenant
 message CreateTenantRequest {
-  string name = 1;
-  string slug = 2;
-  string domain = 3;
-  TenantTier tier = 4;
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 200
+  }];
+  string slug = 2 [(buf.validate.field).string = {
+    min_len: 3
+    max_len: 50
+    pattern: "^[a-z0-9-]+$"
+  }];
+  string domain = 3 [(buf.validate.field).string = {
+    min_len: 3
+    max_len: 253
+  }];
+  TenantTier tier = 4 [(buf.validate.field).enum.defined_only = true];
   core.v1.ContactInfo contact_info = 5;
   core.v1.Address billing_address = 6;
 }

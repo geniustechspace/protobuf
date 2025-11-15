@@ -31,7 +31,8 @@ Each domain contains versioned subdirectories (v1, v2, etc.) to support backward
 ✅ **Event-Driven**: Domain events for each aggregate  
 ✅ **gRPC Services**: Well-defined service interfaces  
 ✅ **Buf Integration**: Linting, breaking change detection, and code generation  
-✅ **CI/CD Pipeline**: Automated validation and client generation  
+✅ **Protovalidate**: Runtime validation with declarative rules  
+✅ **CI/CD Pipeline**: Automated validation and client generation with buf-action  
 ✅ **Multi-Language**: Generate clients for Go, Python, Java, TypeScript, C#  
 ✅ **Documentation**: Auto-generated API documentation
 
@@ -255,6 +256,27 @@ To push schemas to Buf Schema Registry:
 3. Generate a token
 4. Add `BUF_TOKEN` to GitHub secrets
 5. Uncomment the `buf push` step in `.github/workflows/buf.yml`
+
+## Validation
+
+This repository uses [protovalidate](https://github.com/bufbuild/protovalidate) for runtime validation:
+
+```protobuf
+import "buf/validate/validate.proto";
+
+message CreateUserRequest {
+  string tenant_id = 1 [(buf.validate.field).string.min_len = 1];
+  string email = 2 [(buf.validate.field).string.email = true];
+  string username = 3 [(buf.validate.field).string = {
+    min_len: 3
+    max_len: 50
+    pattern: "^[a-zA-Z0-9_-]+$"
+  }];
+  string password = 4 [(buf.validate.field).string.min_len = 8];
+}
+```
+
+See [VALIDATION.md](docs/VALIDATION.md) for comprehensive validation guide.
 
 ## License
 

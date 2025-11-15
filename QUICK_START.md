@@ -265,13 +265,26 @@ tree proto/
 
 ## 8. CI/CD
 
-The repository includes GitHub Actions workflow that:
-- ✅ Lints all changes
-- ✅ Checks for breaking changes
-- ✅ Generates code for all languages
-- ✅ Creates schema inventory
-- ✅ Publishes to Buf Schema Registry (when configured)
-- ✅ Generates per-domain clients
+The repository uses the **buf-action** GitHub Action for streamlined CI/CD:
+
+```yaml
+# .github/workflows/buf.yml
+- name: Buf Lint, Format, and Breaking
+  uses: bufbuild/buf-action@v1
+  with:
+    token: ${{ secrets.GITHUB_TOKEN }}
+    format: true
+    lint: true
+    breaking: true
+    pr_comment: true  # Automatic PR comments
+```
+
+Benefits:
+- ✅ **Consolidated Action**: Single action replaces multiple setup steps
+- ✅ **Built-in Best Practices**: Automatic configuration
+- ✅ **PR Comments**: Status comments on pull requests
+- ✅ **Git Integration**: Enhanced integration with Git data
+- ✅ **BSR Publishing**: Easy Buf Schema Registry publishing
 
 Workflow runs on:
 - Every push
@@ -284,6 +297,7 @@ Workflow runs on:
 - [ARCHITECTURE.md](docs/ARCHITECTURE.md) - Design patterns
 - [CLIENT_GENERATION.md](docs/CLIENT_GENERATION.md) - Generate clients
 - [DEPLOYMENT.md](docs/DEPLOYMENT.md) - Deploy services
+- [VALIDATION.md](docs/VALIDATION.md) - Protovalidate guide
 - [CONTRIBUTING.md](CONTRIBUTING.md) - Contribution guide
 
 ### Domain Documentation

@@ -10,62 +10,39 @@ on:
       - main
       - develop
 
-env:
-  BUF_VERSION: 1.47.2
-
 jobs:
-  lint:
-    name: Lint Proto Files
+  buf:
+    name: Buf Lint, Format, and Breaking Changes
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Setup Buf
-        uses: bufbuild/buf-setup-action@v1
+      
+      - name: Buf Lint, Format, and Breaking
+        uses: bufbuild/buf-action@v1
         with:
-          version: ${{ env.BUF_VERSION }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Lint proto files
-        run: buf lint
-
-      - name: Format check
-        run: buf format --diff --exit-code
-
-  breaking:
-    name: Breaking Change Detection
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Buf
-        uses: bufbuild/buf-setup-action@v1
-        with:
-          version: ${{ env.BUF_VERSION }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Check for breaking changes
-        uses: bufbuild/buf-breaking-action@v1
-        with:
-          against: 'https://github.com/${{ github.repository }}.git#branch=${{ github.base_ref }}'
+          token: ${{ secrets.GITHUB_TOKEN }}
+          format: true
+          lint: true
+          breaking: ${{ github.event_name == 'pull_request' }}
+          breaking_against: 'https://github.com/${{ github.repository }}.git#branch=${{ github.base_ref || 'main' }}'
+          setup_only: false
+          pr_comment: true
 
   build:
     name: Build and Generate
     runs-on: ubuntu-latest
-    needs: [lint]
+    needs: [buf]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Buf
-        uses: bufbuild/buf-setup-action@v1
+      - name: Setup Buf and Generate
+        uses: bufbuild/buf-action@v1
         with:
-          version: ${{ env.BUF_VERSION }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-
+          token: ${{ secrets.GITHUB_TOKEN }}
+          setup_only: false
+          
       - name: Generate code
         run: buf generate
 
@@ -93,16 +70,16 @@ jobs:
   schema-list:
     name: List Proto Schemas
     runs-on: ubuntu-latest
-    needs: [lint]
+    needs: [buf]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Setup Buf
-        uses: bufbuild/buf-setup-action@v1
+        uses: bufbuild/buf-action@v1
         with:
-          version: ${{ env.BUF_VERSION }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          setup_only: true
 
       - name: List all proto files by domain
         run: |
@@ -156,46 +133,38 @@ jobs:
   push-to-buf-registry:
     name: Push to Buf Schema Registry
     runs-on: ubuntu-latest
-    needs: [lint, build]
+    needs: [buf, build]
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Buf
-        uses: bufbuild/buf-setup-action@v1
-        with:
-          version: ${{ env.BUF_VERSION }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Push to Buf Schema Registry
-        # Uncomment when you have BUF_TOKEN configured
-        # run: buf push
-        run: |
-          echo "Buf push would run here with proper BUF_TOKEN"
-          echo "To enable: Set BUF_TOKEN in GitHub secrets"
-          echo "Then uncomment the 'buf push' command in this workflow"
-        # env:
-        #   BUF_TOKEN: ${{ secrets.BUF_TOKEN }}
+        uses: bufbuild/buf-action@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          push: true
+          # To enable BSR push, add BUF_TOKEN to GitHub secrets
+          # buf_token: ${{ secrets.BUF_TOKEN }}
 
   generate-clients:
     name: Generate Language-Specific Clients
     runs-on: ubuntu-latest
-    needs: [lint, build]
+    needs: [buf, build]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     strategy:
       matrix:
-        domain: [core, auth, users, access-policy, tenants, billing, notifications]
+        domain: [core, auth, users, access_policy, tenants, billing, notifications]
         language: [go, python, java, typescript]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Setup Buf
-        uses: bufbuild/buf-setup-action@v1
+        uses: bufbuild/buf-action@v1
         with:
-          version: ${{ env.BUF_VERSION }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          setup_only: true
 
       - name: Generate ${{ matrix.language }} client for ${{ matrix.domain }}
         run: |
@@ -238,16 +207,16 @@ jobs:
   documentation:
     name: Generate Documentation
     runs-on: ubuntu-latest
-    needs: [lint]
+    needs: [buf]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Setup Buf
-        uses: bufbuild/buf-setup-action@v1
+        uses: bufbuild/buf-action@v1
         with:
-          version: ${{ env.BUF_VERSION }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          setup_only: true
 
       - name: Generate documentation
         run: |
