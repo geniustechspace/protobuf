@@ -1,0 +1,258 @@
+syntax = "proto3";
+
+package billing.v1;
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/billing/v1;billingv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.billing.v1";
+option csharp_namespace = "GeniusTechSpace.Protobuf.Billing.V1";
+
+import "google/protobuf/timestamp.proto";
+import "proto/core/v1/common.proto";
+
+// Subscription represents a tenant's subscription
+message Subscription {
+  core.v1.Metadata metadata = 1;
+  string tenant_id = 2;
+  string plan_id = 3;
+  SubscriptionStatus status = 4;
+  google.protobuf.Timestamp current_period_start = 5;
+  google.protobuf.Timestamp current_period_end = 6;
+  google.protobuf.Timestamp trial_end = 7;
+  core.v1.Money amount = 8;
+  BillingInterval billing_interval = 9;
+  bool auto_renew = 10;
+  string payment_method_id = 11;
+}
+
+// SubscriptionStatus represents the status of a subscription
+enum SubscriptionStatus {
+  SUBSCRIPTION_STATUS_UNSPECIFIED = 0;
+  SUBSCRIPTION_STATUS_ACTIVE = 1;
+  SUBSCRIPTION_STATUS_TRIALING = 2;
+  SUBSCRIPTION_STATUS_PAST_DUE = 3;
+  SUBSCRIPTION_STATUS_CANCELED = 4;
+  SUBSCRIPTION_STATUS_UNPAID = 5;
+}
+
+// BillingInterval represents the billing frequency
+enum BillingInterval {
+  BILLING_INTERVAL_UNSPECIFIED = 0;
+  BILLING_INTERVAL_MONTHLY = 1;
+  BILLING_INTERVAL_QUARTERLY = 2;
+  BILLING_INTERVAL_YEARLY = 3;
+}
+
+// Plan represents a subscription plan
+message Plan {
+  core.v1.Metadata metadata = 1;
+  string name = 2;
+  string description = 3;
+  core.v1.Money price = 4;
+  BillingInterval billing_interval = 5;
+  int32 trial_days = 6;
+  PlanFeatures features = 7;
+  bool is_active = 8;
+}
+
+// PlanFeatures defines what's included in a plan
+message PlanFeatures {
+  int32 max_users = 1;
+  int32 max_storage_gb = 2;
+  bool api_access = 3;
+  bool priority_support = 4;
+  bool custom_branding = 5;
+  bool sso = 6;
+  map<string, string> additional_features = 7;
+}
+
+// Invoice represents a billing invoice
+message Invoice {
+  core.v1.Metadata metadata = 1;
+  string tenant_id = 2;
+  string subscription_id = 3;
+  string invoice_number = 4;
+  InvoiceStatus status = 5;
+  core.v1.Money subtotal = 6;
+  core.v1.Money tax = 7;
+  core.v1.Money total = 8;
+  google.protobuf.Timestamp due_date = 9;
+  google.protobuf.Timestamp paid_at = 10;
+  repeated InvoiceLineItem line_items = 11;
+}
+
+// InvoiceStatus represents the status of an invoice
+enum InvoiceStatus {
+  INVOICE_STATUS_UNSPECIFIED = 0;
+  INVOICE_STATUS_DRAFT = 1;
+  INVOICE_STATUS_OPEN = 2;
+  INVOICE_STATUS_PAID = 3;
+  INVOICE_STATUS_VOID = 4;
+  INVOICE_STATUS_UNCOLLECTIBLE = 5;
+}
+
+// InvoiceLineItem represents a line item on an invoice
+message InvoiceLineItem {
+  string description = 1;
+  int32 quantity = 2;
+  core.v1.Money unit_price = 3;
+  core.v1.Money amount = 4;
+}
+
+// PaymentMethod represents a payment method
+message PaymentMethod {
+  core.v1.Metadata metadata = 1;
+  string tenant_id = 2;
+  PaymentMethodType type = 3;
+  string last4 = 4;
+  string brand = 5;
+  int32 exp_month = 6;
+  int32 exp_year = 7;
+  bool is_default = 8;
+}
+
+// PaymentMethodType represents the type of payment method
+enum PaymentMethodType {
+  PAYMENT_METHOD_TYPE_UNSPECIFIED = 0;
+  PAYMENT_METHOD_TYPE_CARD = 1;
+  PAYMENT_METHOD_TYPE_BANK_ACCOUNT = 2;
+  PAYMENT_METHOD_TYPE_PAYPAL = 3;
+}
+
+// CreateSubscriptionRequest for creating a new subscription
+message CreateSubscriptionRequest {
+  string tenant_id = 1;
+  string plan_id = 2;
+  string payment_method_id = 3;
+  bool trial = 4;
+}
+
+// CreateSubscriptionResponse returns the created subscription
+message CreateSubscriptionResponse {
+  Subscription subscription = 1;
+}
+
+// GetSubscriptionRequest for retrieving a subscription
+message GetSubscriptionRequest {
+  string tenant_id = 1;
+  string subscription_id = 2;
+}
+
+// GetSubscriptionResponse returns the requested subscription
+message GetSubscriptionResponse {
+  Subscription subscription = 1;
+}
+
+// UpdateSubscriptionRequest for updating a subscription
+message UpdateSubscriptionRequest {
+  string tenant_id = 1;
+  string subscription_id = 2;
+  string plan_id = 3;
+}
+
+// UpdateSubscriptionResponse returns the updated subscription
+message UpdateSubscriptionResponse {
+  Subscription subscription = 1;
+}
+
+// CancelSubscriptionRequest for canceling a subscription
+message CancelSubscriptionRequest {
+  string tenant_id = 1;
+  string subscription_id = 2;
+  bool immediate = 3;
+}
+
+// CancelSubscriptionResponse confirms cancellation
+message CancelSubscriptionResponse {
+  bool success = 1;
+  google.protobuf.Timestamp cancellation_effective_date = 2;
+}
+
+// ListInvoicesRequest for listing invoices
+message ListInvoicesRequest {
+  string tenant_id = 1;
+  core.v1.PaginationRequest pagination = 2;
+  InvoiceStatus status = 3;
+}
+
+// ListInvoicesResponse returns a list of invoices
+message ListInvoicesResponse {
+  repeated Invoice invoices = 1;
+  core.v1.PaginationResponse pagination = 2;
+}
+
+// GetInvoiceRequest for retrieving an invoice
+message GetInvoiceRequest {
+  string tenant_id = 1;
+  string invoice_id = 2;
+}
+
+// GetInvoiceResponse returns the requested invoice
+message GetInvoiceResponse {
+  Invoice invoice = 1;
+}
+
+// PayInvoiceRequest for paying an invoice
+message PayInvoiceRequest {
+  string tenant_id = 1;
+  string invoice_id = 2;
+  string payment_method_id = 3;
+}
+
+// PayInvoiceResponse confirms payment
+message PayInvoiceResponse {
+  bool success = 1;
+  Invoice invoice = 2;
+}
+
+// AddPaymentMethodRequest for adding a payment method
+message AddPaymentMethodRequest {
+  string tenant_id = 1;
+  string token = 2;
+  bool set_as_default = 3;
+}
+
+// AddPaymentMethodResponse returns the added payment method
+message AddPaymentMethodResponse {
+  PaymentMethod payment_method = 1;
+}
+
+// ListPaymentMethodsRequest for listing payment methods
+message ListPaymentMethodsRequest {
+  string tenant_id = 1;
+}
+
+// ListPaymentMethodsResponse returns a list of payment methods
+message ListPaymentMethodsResponse {
+  repeated PaymentMethod payment_methods = 1;
+}
+
+// BillingService provides billing and subscription operations
+service BillingService {
+  // Create a new subscription
+  rpc CreateSubscription(CreateSubscriptionRequest) returns (CreateSubscriptionResponse);
+  
+  // Get a subscription by ID
+  rpc GetSubscription(GetSubscriptionRequest) returns (GetSubscriptionResponse);
+  
+  // Update a subscription
+  rpc UpdateSubscription(UpdateSubscriptionRequest) returns (UpdateSubscriptionResponse);
+  
+  // Cancel a subscription
+  rpc CancelSubscription(CancelSubscriptionRequest) returns (CancelSubscriptionResponse);
+  
+  // List invoices
+  rpc ListInvoices(ListInvoicesRequest) returns (ListInvoicesResponse);
+  
+  // Get an invoice by ID
+  rpc GetInvoice(GetInvoiceRequest) returns (GetInvoiceResponse);
+  
+  // Pay an invoice
+  rpc PayInvoice(PayInvoiceRequest) returns (PayInvoiceResponse);
+  
+  // Add a payment method
+  rpc AddPaymentMethod(AddPaymentMethodRequest) returns (AddPaymentMethodResponse);
+  
+  // List payment methods
+  rpc ListPaymentMethods(ListPaymentMethodsRequest) returns (ListPaymentMethodsResponse);
+}

@@ -1,0 +1,70 @@
+syntax = "proto3";
+
+package core.v1;
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/core/v1;corev1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.core.v1";
+option csharp_namespace = "GeniusTechSpace.Protobuf.Core.V1";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/any.proto";
+import "proto/core/v1/common.proto";
+
+// BaseEvent is the foundation for all domain events
+message BaseEvent {
+  // Unique event identifier
+  string event_id = 1;
+  
+  // Event type (e.g., user.created, tenant.updated)
+  string event_type = 2;
+  
+  // Aggregate ID (entity that triggered the event)
+  string aggregate_id = 3;
+  
+  // Aggregate type (e.g., user, tenant, billing)
+  string aggregate_type = 4;
+  
+  // Tenant context for multi-tenancy
+  TenantContext tenant_context = 5;
+  
+  // Event timestamp
+  google.protobuf.Timestamp occurred_at = 6;
+  
+  // User who triggered the event
+  string triggered_by = 7;
+  
+  // Event version for schema evolution
+  int32 event_version = 8;
+  
+  // Event payload (domain-specific data)
+  google.protobuf.Any payload = 9;
+  
+  // Event metadata
+  map<string, string> metadata = 10;
+  
+  // Correlation ID for tracing related events
+  string correlation_id = 11;
+  
+  // Causation ID (ID of the event that caused this event)
+  string causation_id = 12;
+}
+
+// EventEnvelope wraps events for transport
+message EventEnvelope {
+  // The event
+  BaseEvent event = 1;
+  
+  // Partition key for event streaming
+  string partition_key = 2;
+  
+  // Sequence number for ordering
+  int64 sequence = 3;
+}
+
+// EventBatch for batch processing
+message EventBatch {
+  repeated BaseEvent events = 1;
+  string batch_id = 2;
+  google.protobuf.Timestamp batch_timestamp = 3;
+}

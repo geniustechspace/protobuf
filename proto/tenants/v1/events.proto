@@ -1,0 +1,63 @@
+syntax = "proto3";
+
+package tenants.v1;
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/tenants/v1;tenantsv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.tenants.v1";
+option csharp_namespace = "GeniusTechSpace.Protobuf.Tenants.V1";
+
+import "google/protobuf/timestamp.proto";
+import "proto/tenants/v1/tenants.proto";
+
+// TenantCreatedEvent is triggered when a new tenant is created
+message TenantCreatedEvent {
+  string tenant_id = 1;
+  string name = 2;
+  string slug = 3;
+  TenantTier tier = 4;
+  google.protobuf.Timestamp created_at = 5;
+}
+
+// TenantUpdatedEvent is triggered when a tenant is updated
+message TenantUpdatedEvent {
+  string tenant_id = 1;
+  google.protobuf.Timestamp updated_at = 2;
+  repeated string changed_fields = 3;
+}
+
+// TenantDeletedEvent is triggered when a tenant is deleted
+message TenantDeletedEvent {
+  string tenant_id = 1;
+  google.protobuf.Timestamp deleted_at = 2;
+}
+
+// TenantStatusChangedEvent is triggered when a tenant's status changes
+message TenantStatusChangedEvent {
+  string tenant_id = 1;
+  TenantStatus old_status = 2;
+  TenantStatus new_status = 3;
+  string reason = 4;
+  google.protobuf.Timestamp changed_at = 5;
+}
+
+// TenantTierChangedEvent is triggered when a tenant's tier changes
+message TenantTierChangedEvent {
+  string tenant_id = 1;
+  TenantTier old_tier = 2;
+  TenantTier new_tier = 3;
+  google.protobuf.Timestamp changed_at = 4;
+}
+
+// TenantSuspendedEvent is triggered when a tenant is suspended
+message TenantSuspendedEvent {
+  string tenant_id = 1;
+  string reason = 2;
+  google.protobuf.Timestamp suspended_at = 3;
+}
+
+// TenantReactivatedEvent is triggered when a tenant is reactivated
+message TenantReactivatedEvent {
+  string tenant_id = 1;
+  google.protobuf.Timestamp reactivated_at = 2;
+}

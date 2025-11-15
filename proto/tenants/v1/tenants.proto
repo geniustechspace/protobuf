@@ -1,0 +1,192 @@
+syntax = "proto3";
+
+package tenants.v1;
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/tenants/v1;tenantsv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.tenants.v1";
+option csharp_namespace = "GeniusTechSpace.Protobuf.Tenants.V1";
+
+import "google/protobuf/timestamp.proto";
+import "proto/core/v1/common.proto";
+
+// Tenant represents a multi-tenant organization
+message Tenant {
+  core.v1.Metadata metadata = 1;
+  string name = 2;
+  string slug = 3;
+  string domain = 4;
+  TenantStatus status = 5;
+  TenantTier tier = 6;
+  TenantSettings settings = 7;
+  core.v1.ContactInfo contact_info = 8;
+  core.v1.Address billing_address = 9;
+  map<string, string> metadata_fields = 10;
+}
+
+// TenantStatus represents the status of a tenant
+enum TenantStatus {
+  TENANT_STATUS_UNSPECIFIED = 0;
+  TENANT_STATUS_ACTIVE = 1;
+  TENANT_STATUS_SUSPENDED = 2;
+  TENANT_STATUS_TRIAL = 3;
+  TENANT_STATUS_INACTIVE = 4;
+  TENANT_STATUS_DELETED = 5;
+}
+
+// TenantTier represents the subscription tier
+enum TenantTier {
+  TENANT_TIER_UNSPECIFIED = 0;
+  TENANT_TIER_FREE = 1;
+  TENANT_TIER_STARTER = 2;
+  TENANT_TIER_PROFESSIONAL = 3;
+  TENANT_TIER_ENTERPRISE = 4;
+}
+
+// TenantSettings contains tenant-specific configuration
+message TenantSettings {
+  int32 max_users = 1;
+  int32 max_storage_gb = 2;
+  bool custom_domain_enabled = 3;
+  bool sso_enabled = 4;
+  bool api_access_enabled = 5;
+  repeated string allowed_ip_ranges = 6;
+  map<string, string> feature_flags = 7;
+  TenantBranding branding = 8;
+}
+
+// TenantBranding contains branding configuration
+message TenantBranding {
+  string logo_url = 1;
+  string primary_color = 2;
+  string secondary_color = 3;
+  string favicon_url = 4;
+  string custom_css = 5;
+}
+
+// CreateTenantRequest for creating a new tenant
+message CreateTenantRequest {
+  string name = 1;
+  string slug = 2;
+  string domain = 3;
+  TenantTier tier = 4;
+  core.v1.ContactInfo contact_info = 5;
+  core.v1.Address billing_address = 6;
+}
+
+// CreateTenantResponse returns the created tenant
+message CreateTenantResponse {
+  Tenant tenant = 1;
+}
+
+// GetTenantRequest for retrieving a tenant
+message GetTenantRequest {
+  string tenant_id = 1;
+}
+
+// GetTenantResponse returns the requested tenant
+message GetTenantResponse {
+  Tenant tenant = 1;
+}
+
+// UpdateTenantRequest for updating a tenant
+message UpdateTenantRequest {
+  string tenant_id = 1;
+  string name = 2;
+  string domain = 3;
+  core.v1.ContactInfo contact_info = 4;
+  core.v1.Address billing_address = 5;
+  TenantSettings settings = 6;
+}
+
+// UpdateTenantResponse returns the updated tenant
+message UpdateTenantResponse {
+  Tenant tenant = 1;
+}
+
+// DeleteTenantRequest for deleting a tenant
+message DeleteTenantRequest {
+  string tenant_id = 1;
+}
+
+// DeleteTenantResponse confirms deletion
+message DeleteTenantResponse {
+  bool success = 1;
+}
+
+// ListTenantsRequest for listing tenants
+message ListTenantsRequest {
+  core.v1.PaginationRequest pagination = 1;
+  TenantStatus status = 2;
+  TenantTier tier = 3;
+  string search_query = 4;
+}
+
+// ListTenantsResponse returns a list of tenants
+message ListTenantsResponse {
+  repeated Tenant tenants = 1;
+  core.v1.PaginationResponse pagination = 2;
+}
+
+// UpdateTenantStatusRequest for updating tenant status
+message UpdateTenantStatusRequest {
+  string tenant_id = 1;
+  TenantStatus status = 2;
+  string reason = 3;
+}
+
+// UpdateTenantStatusResponse returns the updated tenant
+message UpdateTenantStatusResponse {
+  Tenant tenant = 1;
+}
+
+// UpdateTenantTierRequest for upgrading/downgrading tenant tier
+message UpdateTenantTierRequest {
+  string tenant_id = 1;
+  TenantTier tier = 2;
+}
+
+// UpdateTenantTierResponse returns the updated tenant
+message UpdateTenantTierResponse {
+  Tenant tenant = 1;
+}
+
+// GetTenantUsageRequest for retrieving tenant usage statistics
+message GetTenantUsageRequest {
+  string tenant_id = 1;
+}
+
+// GetTenantUsageResponse returns usage statistics
+message GetTenantUsageResponse {
+  int32 user_count = 1;
+  int64 storage_used_bytes = 2;
+  int64 api_calls_count = 3;
+  google.protobuf.Timestamp last_activity_at = 4;
+}
+
+// TenantService provides tenant management operations
+service TenantService {
+  // Create a new tenant
+  rpc CreateTenant(CreateTenantRequest) returns (CreateTenantResponse);
+  
+  // Get a tenant by ID
+  rpc GetTenant(GetTenantRequest) returns (GetTenantResponse);
+  
+  // Update a tenant
+  rpc UpdateTenant(UpdateTenantRequest) returns (UpdateTenantResponse);
+  
+  // Delete a tenant
+  rpc DeleteTenant(DeleteTenantRequest) returns (DeleteTenantResponse);
+  
+  // List tenants with filtering and pagination
+  rpc ListTenants(ListTenantsRequest) returns (ListTenantsResponse);
+  
+  // Update tenant status
+  rpc UpdateTenantStatus(UpdateTenantStatusRequest) returns (UpdateTenantStatusResponse);
+  
+  // Update tenant tier
+  rpc UpdateTenantTier(UpdateTenantTierRequest) returns (UpdateTenantTierResponse);
+  
+  // Get tenant usage statistics
+  rpc GetTenantUsage(GetTenantUsageRequest) returns (GetTenantUsageResponse);
+}

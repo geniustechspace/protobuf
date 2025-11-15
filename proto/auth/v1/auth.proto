@@ -1,0 +1,136 @@
+syntax = "proto3";
+
+package auth.v1;
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/auth/v1;authv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.auth.v1";
+option csharp_namespace = "GeniusTechSpace.Protobuf.Auth.V1";
+
+import "google/protobuf/timestamp.proto";
+import "proto/core/v1/common.proto";
+
+// Credentials for authentication
+message Credentials {
+  string email = 1;
+  string password = 2;
+  string tenant_id = 3;
+}
+
+// Token response after successful authentication
+message TokenResponse {
+  string access_token = 1;
+  string refresh_token = 2;
+  string token_type = 3;
+  int64 expires_in = 4;
+  google.protobuf.Timestamp expires_at = 5;
+  repeated string scopes = 6;
+}
+
+// User session information
+message Session {
+  string session_id = 1;
+  string user_id = 2;
+  string tenant_id = 3;
+  google.protobuf.Timestamp created_at = 4;
+  google.protobuf.Timestamp expires_at = 5;
+  string ip_address = 6;
+  string user_agent = 7;
+  map<string, string> metadata = 8;
+}
+
+// Authentication request
+message AuthenticateRequest {
+  Credentials credentials = 1;
+  string device_id = 2;
+  string ip_address = 3;
+  string user_agent = 4;
+}
+
+// Authentication response
+message AuthenticateResponse {
+  TokenResponse token = 1;
+  Session session = 2;
+  string user_id = 3;
+}
+
+// Refresh token request
+message RefreshTokenRequest {
+  string refresh_token = 1;
+  string tenant_id = 2;
+}
+
+// Refresh token response
+message RefreshTokenResponse {
+  TokenResponse token = 1;
+}
+
+// Validate token request
+message ValidateTokenRequest {
+  string access_token = 1;
+  string tenant_id = 2;
+}
+
+// Validate token response
+message ValidateTokenResponse {
+  bool valid = 1;
+  string user_id = 2;
+  string tenant_id = 3;
+  repeated string scopes = 4;
+  google.protobuf.Timestamp expires_at = 5;
+}
+
+// Logout request
+message LogoutRequest {
+  string session_id = 1;
+  string tenant_id = 2;
+}
+
+// Logout response
+message LogoutResponse {
+  bool success = 1;
+}
+
+// Password reset request
+message PasswordResetRequest {
+  string email = 1;
+  string tenant_id = 2;
+}
+
+// Password reset response
+message PasswordResetResponse {
+  bool success = 1;
+  string reset_token = 2;
+}
+
+// Confirm password reset request
+message ConfirmPasswordResetRequest {
+  string reset_token = 1;
+  string new_password = 2;
+}
+
+// Confirm password reset response
+message ConfirmPasswordResetResponse {
+  bool success = 1;
+}
+
+// AuthService provides authentication and authorization
+service AuthService {
+  // Authenticate user with credentials
+  rpc Authenticate(AuthenticateRequest) returns (AuthenticateResponse);
+  
+  // Refresh access token using refresh token
+  rpc RefreshToken(RefreshTokenRequest) returns (RefreshTokenResponse);
+  
+  // Validate access token
+  rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse);
+  
+  // Logout and invalidate session
+  rpc Logout(LogoutRequest) returns (LogoutResponse);
+  
+  // Request password reset
+  rpc RequestPasswordReset(PasswordResetRequest) returns (PasswordResetResponse);
+  
+  // Confirm password reset with token
+  rpc ConfirmPasswordReset(ConfirmPasswordResetRequest) returns (ConfirmPasswordResetResponse);
+}

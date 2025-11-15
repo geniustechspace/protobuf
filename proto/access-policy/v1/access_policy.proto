@@ -1,0 +1,199 @@
+syntax = "proto3";
+
+package access_policy.v1;
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/access_policy/v1;accesspolicyv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.accesspolicy.v1";
+option csharp_namespace = "GeniusTechSpace.Protobuf.AccessPolicy.V1";
+
+import "google/protobuf/timestamp.proto";
+import "proto/core/v1/common.proto";
+
+// Permission represents a specific action that can be performed
+message Permission {
+  string id = 1;
+  string name = 2;
+  string resource = 3;
+  string action = 4;
+  string description = 5;
+}
+
+// Role represents a collection of permissions
+message Role {
+  core.v1.Metadata metadata = 1;
+  string tenant_id = 2;
+  string name = 3;
+  string description = 4;
+  repeated Permission permissions = 5;
+  bool is_system_role = 6;
+}
+
+// Policy defines access rules
+message Policy {
+  core.v1.Metadata metadata = 1;
+  string tenant_id = 2;
+  string name = 3;
+  string description = 4;
+  repeated PolicyRule rules = 5;
+  PolicyEffect effect = 6;
+}
+
+// PolicyRule defines a specific access rule
+message PolicyRule {
+  string resource = 1;
+  repeated string actions = 2;
+  repeated Condition conditions = 3;
+}
+
+// Condition for policy evaluation
+message Condition {
+  string key = 1;
+  ConditionOperator operator = 2;
+  repeated string values = 3;
+}
+
+// ConditionOperator for condition evaluation
+enum ConditionOperator {
+  CONDITION_OPERATOR_UNSPECIFIED = 0;
+  CONDITION_OPERATOR_EQUALS = 1;
+  CONDITION_OPERATOR_NOT_EQUALS = 2;
+  CONDITION_OPERATOR_IN = 3;
+  CONDITION_OPERATOR_NOT_IN = 4;
+  CONDITION_OPERATOR_CONTAINS = 5;
+  CONDITION_OPERATOR_NOT_CONTAINS = 6;
+}
+
+// PolicyEffect determines whether to allow or deny
+enum PolicyEffect {
+  POLICY_EFFECT_UNSPECIFIED = 0;
+  POLICY_EFFECT_ALLOW = 1;
+  POLICY_EFFECT_DENY = 2;
+}
+
+// CreateRoleRequest for creating a new role
+message CreateRoleRequest {
+  string tenant_id = 1;
+  string name = 2;
+  string description = 3;
+  repeated Permission permissions = 4;
+}
+
+// CreateRoleResponse returns the created role
+message CreateRoleResponse {
+  Role role = 1;
+}
+
+// GetRoleRequest for retrieving a role
+message GetRoleRequest {
+  string tenant_id = 1;
+  string role_id = 2;
+}
+
+// GetRoleResponse returns the requested role
+message GetRoleResponse {
+  Role role = 1;
+}
+
+// UpdateRoleRequest for updating a role
+message UpdateRoleRequest {
+  string tenant_id = 1;
+  string role_id = 2;
+  string name = 3;
+  string description = 4;
+  repeated Permission permissions = 5;
+}
+
+// UpdateRoleResponse returns the updated role
+message UpdateRoleResponse {
+  Role role = 1;
+}
+
+// DeleteRoleRequest for deleting a role
+message DeleteRoleRequest {
+  string tenant_id = 1;
+  string role_id = 2;
+}
+
+// DeleteRoleResponse confirms deletion
+message DeleteRoleResponse {
+  bool success = 1;
+}
+
+// ListRolesRequest for listing roles
+message ListRolesRequest {
+  string tenant_id = 1;
+  core.v1.PaginationRequest pagination = 2;
+}
+
+// ListRolesResponse returns a list of roles
+message ListRolesResponse {
+  repeated Role roles = 1;
+  core.v1.PaginationResponse pagination = 2;
+}
+
+// AssignRoleRequest for assigning a role to a user
+message AssignRoleRequest {
+  string tenant_id = 1;
+  string user_id = 2;
+  string role_id = 3;
+}
+
+// AssignRoleResponse confirms role assignment
+message AssignRoleResponse {
+  bool success = 1;
+}
+
+// RevokeRoleRequest for revoking a role from a user
+message RevokeRoleRequest {
+  string tenant_id = 1;
+  string user_id = 2;
+  string role_id = 3;
+}
+
+// RevokeRoleResponse confirms role revocation
+message RevokeRoleResponse {
+  bool success = 1;
+}
+
+// CheckPermissionRequest for checking if a user has permission
+message CheckPermissionRequest {
+  string tenant_id = 1;
+  string user_id = 2;
+  string resource = 3;
+  string action = 4;
+  map<string, string> context = 5;
+}
+
+// CheckPermissionResponse returns the permission check result
+message CheckPermissionResponse {
+  bool allowed = 1;
+  string reason = 2;
+}
+
+// AccessPolicyService provides access control operations
+service AccessPolicyService {
+  // Create a new role
+  rpc CreateRole(CreateRoleRequest) returns (CreateRoleResponse);
+  
+  // Get a role by ID
+  rpc GetRole(GetRoleRequest) returns (GetRoleResponse);
+  
+  // Update a role
+  rpc UpdateRole(UpdateRoleRequest) returns (UpdateRoleResponse);
+  
+  // Delete a role
+  rpc DeleteRole(DeleteRoleRequest) returns (DeleteRoleResponse);
+  
+  // List roles
+  rpc ListRoles(ListRolesRequest) returns (ListRolesResponse);
+  
+  // Assign a role to a user
+  rpc AssignRole(AssignRoleRequest) returns (AssignRoleResponse);
+  
+  // Revoke a role from a user
+  rpc RevokeRole(RevokeRoleRequest) returns (RevokeRoleResponse);
+  
+  // Check if a user has permission
+  rpc CheckPermission(CheckPermissionRequest) returns (CheckPermissionResponse);
+}

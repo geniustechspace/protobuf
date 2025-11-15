@@ -1,0 +1,210 @@
+syntax = "proto3";
+
+package notifications.v1;
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/notifications/v1;notificationsv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.notifications.v1";
+option csharp_namespace = "GeniusTechSpace.Protobuf.Notifications.V1";
+
+import "google/protobuf/timestamp.proto";
+import "proto/core/v1/common.proto";
+
+// Notification represents a notification message
+message Notification {
+  core.v1.Metadata metadata = 1;
+  string tenant_id = 2;
+  string user_id = 3;
+  string title = 4;
+  string message = 5;
+  NotificationType type = 6;
+  NotificationPriority priority = 7;
+  NotificationStatus status = 8;
+  string action_url = 9;
+  map<string, string> metadata_fields = 10;
+  google.protobuf.Timestamp read_at = 11;
+}
+
+// NotificationType represents the type of notification
+enum NotificationType {
+  NOTIFICATION_TYPE_UNSPECIFIED = 0;
+  NOTIFICATION_TYPE_INFO = 1;
+  NOTIFICATION_TYPE_SUCCESS = 2;
+  NOTIFICATION_TYPE_WARNING = 3;
+  NOTIFICATION_TYPE_ERROR = 4;
+  NOTIFICATION_TYPE_SYSTEM = 5;
+}
+
+// NotificationPriority represents the priority level
+enum NotificationPriority {
+  NOTIFICATION_PRIORITY_UNSPECIFIED = 0;
+  NOTIFICATION_PRIORITY_LOW = 1;
+  NOTIFICATION_PRIORITY_MEDIUM = 2;
+  NOTIFICATION_PRIORITY_HIGH = 3;
+  NOTIFICATION_PRIORITY_URGENT = 4;
+}
+
+// NotificationStatus represents the status of a notification
+enum NotificationStatus {
+  NOTIFICATION_STATUS_UNSPECIFIED = 0;
+  NOTIFICATION_STATUS_PENDING = 1;
+  NOTIFICATION_STATUS_SENT = 2;
+  NOTIFICATION_STATUS_DELIVERED = 3;
+  NOTIFICATION_STATUS_READ = 4;
+  NOTIFICATION_STATUS_FAILED = 5;
+}
+
+// NotificationChannel represents delivery channels
+enum NotificationChannel {
+  NOTIFICATION_CHANNEL_UNSPECIFIED = 0;
+  NOTIFICATION_CHANNEL_IN_APP = 1;
+  NOTIFICATION_CHANNEL_EMAIL = 2;
+  NOTIFICATION_CHANNEL_SMS = 3;
+  NOTIFICATION_CHANNEL_PUSH = 4;
+  NOTIFICATION_CHANNEL_WEBHOOK = 5;
+}
+
+// NotificationPreferences stores user notification preferences
+message NotificationPreferences {
+  string user_id = 1;
+  string tenant_id = 2;
+  bool email_enabled = 3;
+  bool sms_enabled = 4;
+  bool push_enabled = 5;
+  bool in_app_enabled = 6;
+  repeated string muted_categories = 7;
+  map<string, bool> channel_preferences = 8;
+}
+
+// SendNotificationRequest for sending a notification
+message SendNotificationRequest {
+  string tenant_id = 1;
+  repeated string user_ids = 2;
+  string title = 3;
+  string message = 4;
+  NotificationType type = 5;
+  NotificationPriority priority = 6;
+  repeated NotificationChannel channels = 7;
+  string action_url = 8;
+  map<string, string> metadata = 9;
+}
+
+// SendNotificationResponse confirms notification sending
+message SendNotificationResponse {
+  repeated string notification_ids = 1;
+  bool success = 2;
+}
+
+// GetNotificationRequest for retrieving a notification
+message GetNotificationRequest {
+  string tenant_id = 1;
+  string notification_id = 2;
+}
+
+// GetNotificationResponse returns the requested notification
+message GetNotificationResponse {
+  Notification notification = 1;
+}
+
+// ListNotificationsRequest for listing notifications
+message ListNotificationsRequest {
+  string tenant_id = 1;
+  string user_id = 2;
+  core.v1.PaginationRequest pagination = 3;
+  NotificationStatus status = 4;
+  NotificationType type = 5;
+  bool unread_only = 6;
+}
+
+// ListNotificationsResponse returns a list of notifications
+message ListNotificationsResponse {
+  repeated Notification notifications = 1;
+  core.v1.PaginationResponse pagination = 2;
+  int32 unread_count = 3;
+}
+
+// MarkNotificationReadRequest for marking a notification as read
+message MarkNotificationReadRequest {
+  string tenant_id = 1;
+  string user_id = 2;
+  string notification_id = 3;
+}
+
+// MarkNotificationReadResponse confirms marking as read
+message MarkNotificationReadResponse {
+  bool success = 1;
+}
+
+// MarkAllReadRequest for marking all notifications as read
+message MarkAllReadRequest {
+  string tenant_id = 1;
+  string user_id = 2;
+}
+
+// MarkAllReadResponse confirms marking all as read
+message MarkAllReadResponse {
+  bool success = 1;
+  int32 marked_count = 2;
+}
+
+// DeleteNotificationRequest for deleting a notification
+message DeleteNotificationRequest {
+  string tenant_id = 1;
+  string user_id = 2;
+  string notification_id = 3;
+}
+
+// DeleteNotificationResponse confirms deletion
+message DeleteNotificationResponse {
+  bool success = 1;
+}
+
+// GetNotificationPreferencesRequest for retrieving preferences
+message GetNotificationPreferencesRequest {
+  string tenant_id = 1;
+  string user_id = 2;
+}
+
+// GetNotificationPreferencesResponse returns preferences
+message GetNotificationPreferencesResponse {
+  NotificationPreferences preferences = 1;
+}
+
+// UpdateNotificationPreferencesRequest for updating preferences
+message UpdateNotificationPreferencesRequest {
+  string tenant_id = 1;
+  string user_id = 2;
+  NotificationPreferences preferences = 3;
+}
+
+// UpdateNotificationPreferencesResponse confirms update
+message UpdateNotificationPreferencesResponse {
+  NotificationPreferences preferences = 1;
+}
+
+// NotificationService provides notification operations
+service NotificationService {
+  // Send a notification
+  rpc SendNotification(SendNotificationRequest) returns (SendNotificationResponse);
+  
+  // Get a notification by ID
+  rpc GetNotification(GetNotificationRequest) returns (GetNotificationResponse);
+  
+  // List notifications
+  rpc ListNotifications(ListNotificationsRequest) returns (ListNotificationsResponse);
+  
+  // Mark a notification as read
+  rpc MarkNotificationRead(MarkNotificationReadRequest) returns (MarkNotificationReadResponse);
+  
+  // Mark all notifications as read
+  rpc MarkAllRead(MarkAllReadRequest) returns (MarkAllReadResponse);
+  
+  // Delete a notification
+  rpc DeleteNotification(DeleteNotificationRequest) returns (DeleteNotificationResponse);
+  
+  // Get notification preferences
+  rpc GetNotificationPreferences(GetNotificationPreferencesRequest) returns (GetNotificationPreferencesResponse);
+  
+  // Update notification preferences
+  rpc UpdateNotificationPreferences(UpdateNotificationPreferencesRequest) returns (UpdateNotificationPreferencesResponse);
+}

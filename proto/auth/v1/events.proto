@@ -1,0 +1,60 @@
+syntax = "proto3";
+
+package auth.v1;
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/auth/v1;authv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.auth.v1";
+option csharp_namespace = "GeniusTechSpace.Protobuf.Auth.V1";
+
+import "google/protobuf/timestamp.proto";
+
+// UserAuthenticatedEvent is triggered when a user successfully authenticates
+message UserAuthenticatedEvent {
+  string user_id = 1;
+  string tenant_id = 2;
+  string session_id = 3;
+  google.protobuf.Timestamp authenticated_at = 4;
+  string ip_address = 5;
+  string user_agent = 6;
+}
+
+// UserLoggedOutEvent is triggered when a user logs out
+message UserLoggedOutEvent {
+  string user_id = 1;
+  string tenant_id = 2;
+  string session_id = 3;
+  google.protobuf.Timestamp logged_out_at = 4;
+}
+
+// PasswordResetRequestedEvent is triggered when a password reset is requested
+message PasswordResetRequestedEvent {
+  string user_id = 1;
+  string tenant_id = 2;
+  string email = 3;
+  google.protobuf.Timestamp requested_at = 4;
+}
+
+// PasswordResetCompletedEvent is triggered when a password reset is completed
+message PasswordResetCompletedEvent {
+  string user_id = 1;
+  string tenant_id = 2;
+  google.protobuf.Timestamp completed_at = 3;
+}
+
+// AuthenticationFailedEvent is triggered when authentication fails
+message AuthenticationFailedEvent {
+  string email = 1;
+  string tenant_id = 2;
+  string reason = 3;
+  google.protobuf.Timestamp failed_at = 4;
+  string ip_address = 5;
+}
+
+// TokenRefreshedEvent is triggered when a token is refreshed
+message TokenRefreshedEvent {
+  string user_id = 1;
+  string tenant_id = 2;
+  string session_id = 3;
+  google.protobuf.Timestamp refreshed_at = 4;
+}
