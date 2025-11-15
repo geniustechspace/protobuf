@@ -1,3 +1,11 @@
+// User Domain Events
+//
+// Domain events published during user lifecycle operations for event-driven
+// architecture, audit logging, and downstream system integration.
+//
+// COMPLIANCE: SOC 2 CC7.2 (Audit logging), GDPR Article 5(2) (Accountability)
+// USAGE: Wrap in core.v1.BaseEvent for event sourcing and distributed tracing
+
 syntax = "proto3";
 
 package users.v1;
@@ -10,7 +18,8 @@ option go_package = "github.com/geniustechspace/protobuf/gen/go/users/v1;usersv1
 option java_multiple_files = true;
 option java_package = "com.geniustechspace.protobuf.users.v1";
 
-// UserCreatedEvent is triggered when a new user is created
+// UserCreatedEvent published when new user is provisioned.
+// COMPLIANCE: SOC 2 CC6.1 (User provisioning audit)
 message UserCreatedEvent {
   string user_id = 1;
   string tenant_id = 2;

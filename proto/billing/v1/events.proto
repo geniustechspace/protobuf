@@ -1,3 +1,12 @@
+// Billing Domain Events
+//
+// Subscription lifecycle, payment processing, and invoice events for
+// revenue recognition, dunning workflows, and financial reporting.
+//
+// COMPLIANCE: PCI DSS (Payment events), SOC 2 CC7.2 (Financial audit)
+//             Tax regulations (Invoice events)
+// USAGE: Wrap in core.v1.BaseEvent for event sourcing
+
 syntax = "proto3";
 
 package billing.v1;
@@ -11,7 +20,8 @@ option go_package = "github.com/geniustechspace/protobuf/gen/go/billing/v1;billi
 option java_multiple_files = true;
 option java_package = "com.geniustechspace.protobuf.billing.v1";
 
-// SubscriptionCreatedEvent is triggered when a new subscription is created
+// SubscriptionCreatedEvent published when subscription starts.
+// COMPLIANCE: SOC 2 CC6.1 (Access provisioning via subscription)
 message SubscriptionCreatedEvent {
   string subscription_id = 1;
   string tenant_id = 2;

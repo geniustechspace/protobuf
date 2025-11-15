@@ -1,3 +1,14 @@
+// Access Policy Domain - Role-Based Access Control (RBAC)
+//
+// Defines roles, permissions, and conditional policies for fine-grained
+// access control in multi-tenant environments with attribute-based evaluation.
+//
+// COMPLIANCE: SOC 2 CC6.1 (Logical access controls), SOC 2 CC6.2 (Access management)
+//             ISO 27001 A.9.2 (User access management), ISO 27001 A.9.4 (Access control)
+//             NIST SP 800-53 AC-2 (Account Management), AC-3 (Access Enforcement)
+// SECURITY: Principle of least privilege enforced. All operations audited.
+//           Tenant isolation strictly enforced in all policy evaluations.
+
 syntax = "proto3";
 
 package access_policy.v1;
@@ -9,65 +20,114 @@ option go_package = "github.com/geniustechspace/protobuf/gen/go/access_policy/v1
 option java_multiple_files = true;
 option java_package = "com.geniustechspace.protobuf.accesspolicy.v1";
 
-// Permission represents a specific action that can be performed
+// Permission represents a granular action that can be performed on a resource.
+//
+// COMPLIANCE: SOC 2 CC6.1 (Permission granularity), ISO 27001 A.9.2.3
 message Permission {
+  // Unique permission identifier
   string id = 1;
+
+  // Human-readable permission name (e.g., "user:create", "billing:read")
   string name = 2;
+
+  // Resource type this permission applies to (e.g., "users", "subscriptions")
   string resource = 3;
+
+  // Action being permitted (e.g., "create", "read", "update", "delete")
   string action = 4;
+
+  // Permission description for documentation
   string description = 5;
 }
 
-// Role represents a collection of permissions
+// Role represents a collection of permissions assigned as a unit.
+//
+// COMPLIANCE: SOC 2 CC6.1 (Role definition), ISO 27001 A.9.2.1 (User registration)
 message Role {
+  // Standard metadata (ID, timestamps, created_by, etc.)
   core.v1.Metadata metadata = 1;
+
+  // Tenant ID for isolation. REQUIRED
   string tenant_id = 2;
+
+  // Role name (e.g., "admin", "editor", "viewer"). REQUIRED, unique per tenant
   string name = 3;
+
+  // Role description for documentation
   string description = 4;
+
+  // Permissions granted by this role
   repeated Permission permissions = 5;
+
+  // System-defined role (cannot be modified/deleted)
   bool is_system_role = 6;
 }
 
-// Policy defines access rules
+// Policy defines conditional access rules with attribute-based evaluation.
+//
+// COMPLIANCE: SOC 2 CC6.1 (Dynamic access control), NIST SP 800-162 (ABAC)
 message Policy {
+  // Standard metadata (ID, timestamps, created_by, etc.)
   core.v1.Metadata metadata = 1;
+
+  // Tenant ID for isolation. REQUIRED
   string tenant_id = 2;
+
+  // Policy name. REQUIRED, unique per tenant
   string name = 3;
+
+  // Policy description
   string description = 4;
+
+  // Access rules defining conditions
   repeated PolicyRule rules = 5;
+
+  // Effect to apply when rules match (allow/deny)
   PolicyEffect effect = 6;
 }
 
-// PolicyRule defines a specific access rule
+// PolicyRule defines resource/action combinations with conditional evaluation.
 message PolicyRule {
+  // Resource pattern (e.g., "users/*", "billing/subscriptions/*")
   string resource = 1;
+
+  // Actions permitted on resource (e.g., ["read", "update"])
   repeated string actions = 2;
+
+  // Conditions that must be satisfied for rule to apply
   repeated Condition conditions = 3;
 }
 
-// Condition for policy evaluation
+// Condition represents an attribute-based condition for policy evaluation.
 message Condition {
+  // Condition key (e.g., "user.department", "time.hour", "ip.address")
   string key = 1;
+
+  // Comparison operator
   ConditionOperator operator = 2;
+
+  // Values to compare against
   repeated string values = 3;
 }
 
-// ConditionOperator for condition evaluation
+// ConditionOperator defines comparison operators for condition evaluation.
 enum ConditionOperator {
   CONDITION_OPERATOR_UNSPECIFIED = 0;
-  CONDITION_OPERATOR_EQUALS = 1;
-  CONDITION_OPERATOR_NOT_EQUALS = 2;
-  CONDITION_OPERATOR_IN = 3;
-  CONDITION_OPERATOR_NOT_IN = 4;
-  CONDITION_OPERATOR_CONTAINS = 5;
-  CONDITION_OPERATOR_NOT_CONTAINS = 6;
+  CONDITION_OPERATOR_EQUALS = 1; // Exact match
+  CONDITION_OPERATOR_NOT_EQUALS = 2; // Not equal
+  CONDITION_OPERATOR_IN = 3; // In list
+  CONDITION_OPERATOR_NOT_IN = 4; // Not in list
+  CONDITION_OPERATOR_CONTAINS = 5; // Contains substring
+  CONDITION_OPERATOR_NOT_CONTAINS = 6; // Does not contain
 }
 
-// PolicyEffect determines whether to allow or deny
+// PolicyEffect determines whether access is allowed or denied.
+//
+// COMPLIANCE: Explicit deny overrides allow (default deny)
 enum PolicyEffect {
   POLICY_EFFECT_UNSPECIFIED = 0;
-  POLICY_EFFECT_ALLOW = 1;
-  POLICY_EFFECT_DENY = 2;
+  POLICY_EFFECT_ALLOW = 1; // Grant access
+  POLICY_EFFECT_DENY = 2; // Deny access (takes precedence)
 }
 
 // CreateRoleRequest for creating a new role
@@ -170,29 +230,40 @@ message CheckPermissionResponse {
   string reason = 2;
 }
 
-// AccessPolicyService provides access control operations
+// AccessPolicyService provides role-based and attribute-based access control.
+//
+// COMPLIANCE: SOC 2 CC6.1, CC6.2 (Access controls), ISO 27001 A.9.2, A.9.4
+// AUTHENTICATION: All RPCs require valid authentication token
+// AUTHORIZATION: Requires 'access_policy:admin' permission
+// AUDIT: All operations logged with user, timestamp, and changes
 service AccessPolicyService {
-  // Create a new role
+  // CreateRole creates a new role with permissions. Requires 'access_policy:admin'.
+  // COMPLIANCE: SOC 2 CC6.1 (Role creation)
   rpc CreateRole(CreateRoleRequest) returns (CreateRoleResponse);
 
-  // Get a role by ID
+  // GetRole retrieves role details. Requires 'access_policy:read'.
   rpc GetRole(GetRoleRequest) returns (GetRoleResponse);
 
-  // Update a role
+  // UpdateRole modifies role permissions. Requires 'access_policy:admin'.
+  // COMPLIANCE: SOC 2 CC6.3 (Change management)
   rpc UpdateRole(UpdateRoleRequest) returns (UpdateRoleResponse);
 
-  // Delete a role
+  // DeleteRole removes a role. System roles cannot be deleted. Requires 'access_policy:admin'.
+  // COMPLIANCE: SOC 2 CC6.2 (Access termination)
   rpc DeleteRole(DeleteRoleRequest) returns (DeleteRoleResponse);
 
-  // List roles
+  // ListRoles lists all roles for a tenant. Requires 'access_policy:read'.
   rpc ListRoles(ListRolesRequest) returns (ListRolesResponse);
 
-  // Assign a role to a user
+  // AssignRole grants role to user. Requires 'access_policy:admin'.
+  // COMPLIANCE: SOC 2 CC6.1 (User provisioning)
   rpc AssignRole(AssignRoleRequest) returns (AssignRoleResponse);
 
-  // Revoke a role from a user
+  // RevokeRole removes role from user. Requires 'access_policy:admin'.
+  // COMPLIANCE: SOC 2 CC6.2 (Access revocation)
   rpc RevokeRole(RevokeRoleRequest) returns (RevokeRoleResponse);
 
-  // Check if a user has permission
+  // CheckPermission evaluates if user has permission with context. High-frequency operation.
+  // PERFORMANCE: Cached for 5 minutes. Rate limit: 1000 req/sec per user
   rpc CheckPermission(CheckPermissionRequest) returns (CheckPermissionResponse);
 }

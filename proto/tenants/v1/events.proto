@@ -1,3 +1,11 @@
+// Tenant Domain Events
+//
+// Tenant lifecycle and configuration change events for multi-tenant
+// management, billing triggers, and access control updates.
+//
+// COMPLIANCE: SOC 2 CC6.1 (Tenant lifecycle audit), CC6.2 (Access termination)
+// USAGE: Wrap in core.v1.BaseEvent for event sourcing
+
 syntax = "proto3";
 
 package tenants.v1;
@@ -10,7 +18,8 @@ option go_package = "github.com/geniustechspace/protobuf/gen/go/tenants/v1;tenan
 option java_multiple_files = true;
 option java_package = "com.geniustechspace.protobuf.tenants.v1";
 
-// TenantCreatedEvent is triggered when a new tenant is created
+// TenantCreatedEvent published when new tenant is provisioned.
+// COMPLIANCE: SOC 2 CC6.1 (Tenant provisioning audit)
 message TenantCreatedEvent {
   string tenant_id = 1;
   string name = 2;

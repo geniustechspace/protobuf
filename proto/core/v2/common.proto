@@ -1,3 +1,14 @@
+// Core Common Types - Version 2
+//
+// Enhanced version of core types with additional fields for hierarchical tenancy,
+// cursor-based pagination, expanded audit trails, and regional data residency.
+//
+// BACKWARD COMPATIBLE: All v1 fields preserved. New fields use higher field numbers.
+//
+// COMPLIANCE: SOC 2 CC6.1 (Access Controls), ISO 27001 A.9.2 (User Access Management)
+// SECURITY: Multi-tenant isolation enforced through TenantContext
+// AUDIT: Enhanced audit trails with complete change history
+
 syntax = "proto3";
 
 package core.v2;
@@ -9,8 +20,12 @@ option go_package = "github.com/geniustechspace/protobuf/gen/go/core/v2;corev2";
 option java_multiple_files = true;
 option java_package = "com.geniustechspace.protobuf.core.v2";
 
-// TenantContext provides multi-tenant isolation for all requests
-// V2: Added additional fields for enhanced multi-tenancy support
+// TenantContext enforces multi-tenant data isolation across all operations.
+//
+// V2 ENHANCEMENTS: Hierarchical tenancy, regional data residency, feature flags
+//
+// COMPLIANCE: SOC 2 CC6.1 (Logical access controls), ISO 27001 A.9.4.1
+// SECURITY: Required in all requests to prevent cross-tenant data access
 message TenantContext {
   // Unique identifier for the tenant
   string tenant_id = 1;

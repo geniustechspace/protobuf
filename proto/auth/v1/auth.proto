@@ -1,8 +1,3 @@
-// Copyright 2024 GeniusTechSpace
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-//
 // Authentication Domain - Messages and Service
 //
 // Defines authentication and session management for multi-tenant applications

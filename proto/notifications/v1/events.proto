@@ -1,3 +1,12 @@
+// Notifications Domain Events
+//
+// Notification delivery lifecycle events for tracking delivery success,
+// engagement analytics, and compliance with communication regulations.
+//
+// COMPLIANCE: CAN-SPAM Act (Email delivery tracking), TCPA (SMS delivery)
+//             GDPR Article 7 (Consent management via preferences)
+// USAGE: Wrap in core.v1.BaseEvent for event sourcing
+
 syntax = "proto3";
 
 package notifications.v1;
@@ -10,7 +19,8 @@ option go_package = "github.com/geniustechspace/protobuf/gen/go/notifications/v1
 option java_multiple_files = true;
 option java_package = "com.geniustechspace.protobuf.notifications.v1";
 
-// NotificationSentEvent is triggered when a notification is sent
+// NotificationSentEvent published when notification is dispatched.
+// COMPLIANCE: CAN-SPAM/TCPA (Delivery audit trail)
 message NotificationSentEvent {
   string notification_id = 1;
   string tenant_id = 2;

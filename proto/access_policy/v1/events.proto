@@ -1,3 +1,12 @@
+// Access Policy Domain Events
+//
+// Events for role/permission changes, policy updates, and access control
+// decisions for security audit trails and compliance reporting.
+//
+// COMPLIANCE: SOC 2 CC6.1, CC6.2 (Access control audit), ISO 27001 A.9.2
+// SECURITY: Permission check events enable security monitoring and anomaly detection
+// USAGE: Wrap in core.v1.BaseEvent for event sourcing
+
 syntax = "proto3";
 
 package access_policy.v1;
@@ -9,7 +18,8 @@ option go_package = "github.com/geniustechspace/protobuf/gen/go/access_policy/v1
 option java_multiple_files = true;
 option java_package = "com.geniustechspace.protobuf.accesspolicy.v1";
 
-// RoleCreatedEvent is triggered when a new role is created
+// RoleCreatedEvent published when new role is defined.
+// COMPLIANCE: SOC 2 CC6.1 (Role creation audit)
 message RoleCreatedEvent {
   string role_id = 1;
   string tenant_id = 2;
