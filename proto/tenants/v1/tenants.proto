@@ -1,3 +1,16 @@
+// Copyright 2024 GeniusTechSpace
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+//
+// Tenant Domain - Multi-Tenant Organization Management
+//
+// Defines tenant entities, settings, and management operations for
+// multi-tenant SaaS applications with subscription tiers and branding.
+//
+// COMPLIANCE: SOC 2 CC6.1 (Tenant isolation), ISO 27001 A.9.4.1, GDPR Article 5
+// SECURITY: Tenant data strictly isolated. Cross-tenant access prevented.
+
 syntax = "proto3";
 
 package tenants.v1;
@@ -11,36 +24,60 @@ option go_package = "github.com/geniustechspace/protobuf/gen/go/tenants/v1;tenan
 option java_multiple_files = true;
 option java_package = "com.geniustechspace.protobuf.tenants.v1";
 
-// Tenant represents a multi-tenant organization
+// Tenant represents a multi-tenant organization with settings and branding.
+// COMPLIANCE: SOC 2 CC6.1 (Logical separation), ISO 27001 A.9.4.1
 message Tenant {
+  // Metadata with ID, timestamps, audit trail
   core.v1.Metadata metadata = 1;
+  // Tenant name. REQUIRED, 1-200 chars. Displayed in UI.
   string name = 2;
+  // URL-friendly identifier. REQUIRED, 3-50 chars, lowercase alphanumeric+hyphens
   string slug = 3;
+  // Custom domain. Optional. Example: "company.example.com"
   string domain = 4;
+  // Current status. COMPLIANCE: SOC 2 CC6.2 (Access controls)
   TenantStatus status = 5;
+  // Subscription tier. Determines features and limits.
   TenantTier tier = 6;
+  // Configuration and feature settings
   TenantSettings settings = 7;
+  // Primary contact information
   core.v1.ContactInfo contact_info = 8;
+  // Billing address. PII: Yes
   core.v1.Address billing_address = 9;
+  // Custom metadata fields
   map<string, string> metadata_fields = 10;
 }
 
-// TenantStatus represents the status of a tenant
+// TenantStatus defines lifecycle states for tenant accounts.
+// COMPLIANCE: SOC 2 CC6.2 (Access termination/suspension)
 enum TenantStatus {
+  // Invalid status
   TENANT_STATUS_UNSPECIFIED = 0;
+  // Active with full access
   TENANT_STATUS_ACTIVE = 1;
+  // Suspended due to payment/policy. API access blocked.
   TENANT_STATUS_SUSPENDED = 2;
+  // Trial period. Limited features/time.
   TENANT_STATUS_TRIAL = 3;
+  // Inactive after period of non-use
   TENANT_STATUS_INACTIVE = 4;
+  // Soft deleted. Data retained per retention policy.
   TENANT_STATUS_DELETED = 5;
 }
 
-// TenantTier represents the subscription tier
+// TenantTier defines subscription tiers with different feature sets.
+// Determines quotas, features, and pricing.
 enum TenantTier {
+  // Invalid tier
   TENANT_TIER_UNSPECIFIED = 0;
+  // Free tier. Limited users and features.
   TENANT_TIER_FREE = 1;
+  // Starter tier. Basic features.
   TENANT_TIER_STARTER = 2;
+  // Professional tier. Advanced features.
   TENANT_TIER_PROFESSIONAL = 3;
+  // Enterprise tier. All features, priority support, SLAs.
   TENANT_TIER_ENTERPRISE = 4;
 }
 

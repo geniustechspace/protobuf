@@ -1,3 +1,17 @@
+// Copyright 2024 GeniusTechSpace
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+//
+// Core Common Types - Version 1
+//
+// This module defines foundational types used across all domains including
+// tenant context, metadata, pagination, and common value objects.
+//
+// COMPLIANCE: SOC 2 CC6.1 (Access Controls), ISO 27001 A.9.2 (User Access Management)
+// SECURITY: Multi-tenant isolation enforced through TenantContext
+// AUDIT: All entities include Metadata for complete audit trails
+
 syntax = "proto3";
 
 package core.v1;
@@ -9,140 +23,163 @@ option go_package = "github.com/geniustechspace/protobuf/gen/go/core/v1;corev1";
 option java_multiple_files = true;
 option java_package = "com.geniustechspace.protobuf.core.v1";
 
-// TenantContext provides multi-tenant isolation for all requests
+// TenantContext enforces multi-tenant data isolation across all operations.
+//
+// COMPLIANCE: SOC 2 CC6.1 (Logical access controls), ISO 27001 A.9.4.1 (Access control policy)
+// SECURITY: Required in all requests to prevent cross-tenant data access
 message TenantContext {
-  // Unique identifier for the tenant
+  // Unique tenant identifier. REQUIRED for all operations.
+  // COMPLIANCE: Critical for SOC 2 tenant isolation requirements
   string tenant_id = 1;
 
-  // Tenant name for display purposes
+  // Display name of the tenant. Used for UI/reporting only.
   string tenant_name = 2;
 
-  // Tenant tier (free, pro, enterprise)
+  // Tenant subscription tier (free, pro, enterprise). Determines feature access.
   string tier = 3;
 
-  // Tenant status (active, suspended, deleted)
+  // Current tenant status (active, suspended, deleted). Affects API access.
+  // COMPLIANCE: SOC 2 CC6.2 (Access termination)
   string status = 4;
 }
 
-// Metadata contains common metadata for all entities
+// Metadata provides audit trail and version control for all entities.
+//
+// COMPLIANCE: SOC 2 CC6.3 (Change management), GDPR Article 5(2) (Accountability)
+// AUDIT: Complete history of who created/modified entities and when
 message Metadata {
-  // Unique identifier
+  // Unique entity identifier (UUID format).
   string id = 1;
 
-  // Creation timestamp
+  // Entity creation timestamp. COMPLIANCE: SOC 2 CC6.3 audit requirement
   google.protobuf.Timestamp created_at = 2;
 
-  // Last update timestamp
+  // Last modification timestamp. Updated on every change.
   google.protobuf.Timestamp updated_at = 3;
 
-  // ID of user who created the entity
+  // User ID who created this entity. COMPLIANCE: Audit trail requirement
   string created_by = 4;
 
-  // ID of user who last updated the entity
+  // User ID who last modified this entity. COMPLIANCE: Audit trail requirement
   string updated_by = 5;
 
-  // Version for optimistic locking
+  // Version number for optimistic locking. Prevents concurrent update conflicts.
   int64 version = 6;
 
-  // Soft delete flag
+  // Soft delete flag. COMPLIANCE: GDPR Article 17 (Right to erasure with retention)
   bool deleted = 7;
 
-  // Deletion timestamp
+  // Deletion timestamp. Set when deleted=true.
   google.protobuf.Timestamp deleted_at = 8;
 }
 
-// Pagination request parameters
+// PaginationRequest provides parameters for paginated list operations.
 message PaginationRequest {
-  // Page number (0-indexed)
+  // Page number (0-indexed). Default: 0
   int32 page = 1;
 
-  // Number of items per page
+  // Items per page. Default: 20, Max: 100
   int32 page_size = 2;
 
-  // Sort field
+  // Field name to sort by. Example: "created_at", "name"
   string sort_by = 3;
 
-  // Sort order (asc, desc)
+  // Sort direction: "asc" or "desc". Default: "desc"
   string sort_order = 4;
 }
 
-// Pagination response metadata
+// PaginationResponse provides metadata about paginated results.
 message PaginationResponse {
-  // Current page number
+  // Current page number (0-indexed)
   int32 page = 1;
 
-  // Number of items per page
+  // Number of items in current page
   int32 page_size = 2;
 
-  // Total number of items
+  // Total items across all pages
   int64 total_items = 3;
 
-  // Total number of pages
+  // Total number of pages available
   int32 total_pages = 4;
 
-  // Has next page
+  // True if more pages exist after current
   bool has_next = 5;
 
-  // Has previous page
+  // True if pages exist before current
   bool has_previous = 6;
 }
 
-// Address represents a physical or mailing address
+// Address represents a physical or mailing address.
+// PII: Yes - GDPR Article 4(1) personal data. ENCRYPTION: Recommended at rest
 message Address {
+  // Street address line 1
   string street_line1 = 1;
+  // Street address line 2 (optional)
   string street_line2 = 2;
+  // City name
   string city = 3;
+  // State/Province/Region
   string state = 4;
+  // Postal/ZIP code
   string postal_code = 5;
+  // Country name or ISO 3166-1 code
   string country = 6;
 }
 
-// Contact information
+// ContactInfo stores contact details for entities.
+// PII: Yes - Contains personally identifiable information
 message ContactInfo {
+  // Primary email address. PII: Yes, GDPR Article 4(1)
   string email = 1;
+  // Primary phone number. PII: Yes
   string phone = 2;
+  // Mobile phone number. PII: Yes
   string mobile = 3;
+  // Fax number
   string fax = 4;
 }
 
-// Money representation
+// Money represents monetary values with currency.
+// COMPLIANCE: PCI DSS (when handling payment amounts)
 message Money {
-  // Currency code (ISO 4217)
+  // Currency code (ISO 4217). Example: "USD", "EUR", "GBP"
   string currency = 1;
 
-  // Amount in smallest currency unit (e.g., cents)
+  // Amount in smallest currency unit (cents). Example: $10.50 = 1050
+  // VALIDATION: Must be non-negative for most use cases
   int64 amount = 2;
 }
 
-// Error details for error responses
+// ErrorDetail provides specific error information for validation/processing failures.
 message ErrorDetail {
-  // Error code
+  // Machine-readable error code. Example: "INVALID_EMAIL", "REQUIRED_FIELD"
   string code = 1;
 
-  // Human-readable error message
+  // Human-readable error message for developers/users
   string message = 2;
 
-  // Field that caused the error
+  // Field name that caused the error (for validation errors)
   string field = 3;
 
-  // Additional error metadata
+  // Additional context-specific error information
   map<string, string> metadata = 4;
 }
 
-// Standard error response
+// ErrorResponse provides standardized error information across all services.
+// COMPLIANCE: Errors should not leak sensitive information (SOC 2 CC6.1)
 message ErrorResponse {
-  // HTTP status code
+  // HTTP status code (400, 401, 403, 404, 500, etc.)
   int32 status = 1;
 
-  // Error message
+  // High-level error message
   string message = 2;
 
-  // Detailed error information
+  // Detailed error information for debugging
   repeated ErrorDetail details = 3;
 
-  // Request ID for tracking
+  // Unique request ID for tracing. COMPLIANCE: SOC 2 CC7.2 (System monitoring)
   string request_id = 4;
 
-  // Timestamp of the error
+  // Error occurrence timestamp
   google.protobuf.Timestamp timestamp = 5;
 }

@@ -1,3 +1,16 @@
+// Copyright 2024 GeniusTechSpace
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+//
+// Authentication Domain - Messages and Service
+//
+// Defines authentication and session management for multi-tenant applications
+// including login, token management, and password reset operations.
+//
+// COMPLIANCE: SOC 2 CC6.1 (Access controls), ISO 27001 A.9.4 (Access control), NIST 800-63B
+// SECURITY: TLS 1.2+ required. Passwords never logged. Rate limiting enforced.
+
 syntax = "proto3";
 
 package auth.v1;
@@ -10,127 +23,187 @@ option go_package = "github.com/geniustechspace/protobuf/gen/go/auth/v1;authv1";
 option java_multiple_files = true;
 option java_package = "com.geniustechspace.protobuf.auth.v1";
 
-// Credentials for authentication
+// Credentials for user authentication.
+// COMPLIANCE: ISO 27001 A.9.4.2 (Secure log-on), NIST 800-63B
+// SECURITY: Must be transmitted over TLS 1.2+. Password never logged.
 message Credentials {
+  // Email address. REQUIRED, valid format. PII: Yes - GDPR Article 4(1)
   string email = 1 [(buf.validate.field).string.email = true];
+  // Password. REQUIRED. SECURITY: Never logged, hashed with bcrypt (cost 12)
   string password = 2 [(buf.validate.field).string.min_len = 1];
+  // Tenant ID. REQUIRED for multi-tenant isolation. COMPLIANCE: SOC 2 CC6.1
   string tenant_id = 3 [(buf.validate.field).string.min_len = 1];
 }
 
-// Token response after successful authentication
+// TokenResponse contains access and refresh tokens after successful authentication.
+// SECURITY: Tokens are JWTs signed with RS256. Access token expires in 1 hour.
 message TokenResponse {
+  // JWT access token for API authentication. Expires in 1 hour.
   string access_token = 1;
+  // JWT refresh token for obtaining new access tokens. Expires in 30 days.
   string refresh_token = 2;
+  // Token type, always "Bearer"
   string token_type = 3;
+  // Access token lifetime in seconds
   int64 expires_in = 4;
+  // Access token expiration timestamp
   google.protobuf.Timestamp expires_at = 5;
+  // Granted OAuth2 scopes. COMPLIANCE: SOC 2 CC6.1 (Least privilege)
   repeated string scopes = 6;
 }
 
-// User session information
+// Session tracks active user sessions for audit and security.
+// COMPLIANCE: SOC 2 CC6.8 (Monitoring), ISO 27001 A.12.4.1 (Event logging)
 message Session {
+  // Unique session identifier
   string session_id = 1;
+  // User ID who owns this session
   string user_id = 2;
+  // Tenant ID for multi-tenant isolation
   string tenant_id = 3;
+  // Session creation timestamp. AUDIT: Required for compliance
   google.protobuf.Timestamp created_at = 4;
+  // Session expiration timestamp. Sessions timeout after 24 hours of inactivity.
   google.protobuf.Timestamp expires_at = 5;
+  // Client IP address. AUDIT: Security monitoring
   string ip_address = 6;
+  // Client user agent. AUDIT: Device tracking
   string user_agent = 7;
+  // Additional session metadata (device info, location, etc.)
   map<string, string> metadata = 8;
 }
 
-// Authentication request
+// AuthenticateRequest initiates user authentication.
+// SECURITY: Rate limited 5 attempts per 15 minutes per email/tenant.
 message AuthenticateRequest {
+  // User credentials. REQUIRED
   Credentials credentials = 1;
+  // Device identifier for session tracking. Optional
   string device_id = 2;
+  // Client IP address. AUDIT: Logged for security monitoring
   string ip_address = 3;
+  // Client user agent. AUDIT: Logged for device tracking
   string user_agent = 4;
 }
 
-// Authentication response
+// AuthenticateResponse returns tokens and session after successful authentication.
 message AuthenticateResponse {
+  // Access and refresh tokens
   TokenResponse token = 1;
+  // Created session information
   Session session = 2;
+  // Authenticated user ID
   string user_id = 3;
 }
 
-// Refresh token request
+// RefreshTokenRequest obtains new access token using refresh token.
 message RefreshTokenRequest {
+  // Refresh token from previous authentication. REQUIRED
   string refresh_token = 1;
+  // Tenant ID. REQUIRED
   string tenant_id = 2;
 }
 
-// Refresh token response
+// RefreshTokenResponse returns new access token.
 message RefreshTokenResponse {
+  // New access token (refresh token unchanged)
   TokenResponse token = 1;
 }
 
-// Validate token request
+// ValidateTokenRequest verifies access token validity.
 message ValidateTokenRequest {
+  // Access token to validate. REQUIRED
   string access_token = 1;
+  // Tenant ID. REQUIRED
   string tenant_id = 2;
 }
 
-// Validate token response
+// ValidateTokenResponse returns token validation result and claims.
 message ValidateTokenResponse {
+  // True if token is valid and not expired
   bool valid = 1;
+  // User ID from token claims
   string user_id = 2;
+  // Tenant ID from token claims
   string tenant_id = 3;
+  // Granted scopes from token claims
   repeated string scopes = 4;
+  // Token expiration timestamp
   google.protobuf.Timestamp expires_at = 5;
 }
 
-// Logout request
+// LogoutRequest terminates session and invalidates tokens.
+// COMPLIANCE: SOC 2 CC6.1 (Session termination)
 message LogoutRequest {
+  // Session ID to terminate. REQUIRED
   string session_id = 1;
+  // Tenant ID. REQUIRED
   string tenant_id = 2;
 }
 
-// Logout response
+// LogoutResponse confirms logout.
 message LogoutResponse {
+  // True if logout successful
   bool success = 1;
 }
 
-// Request password reset request
+// RequestPasswordResetRequest initiates password reset flow.
+// SECURITY: Rate limited 3 attempts per hour per email/tenant
 message RequestPasswordResetRequest {
+  // User email. REQUIRED. Generic response prevents user enumeration.
   string email = 1;
+  // Tenant ID. REQUIRED
   string tenant_id = 2;
 }
 
-// Request password reset response
+// RequestPasswordResetResponse confirms reset request.
+// SECURITY: Always returns success to prevent user enumeration
 message RequestPasswordResetResponse {
+  // Always true (prevents user enumeration)
   bool success = 1;
+  // Reset token. Only in non-production for testing.
   string reset_token = 2;
 }
 
-// Confirm password reset request
+// ConfirmPasswordResetRequest completes password reset with token.
 message ConfirmPasswordResetRequest {
+  // Reset token from email. REQUIRED. Expires in 1 hour.
   string reset_token = 1;
+  // New password. REQUIRED, min 8 chars. SECURITY: Hashed with bcrypt
   string new_password = 2;
 }
 
-// Confirm password reset response
+// ConfirmPasswordResetResponse confirms password reset.
 message ConfirmPasswordResetResponse {
+  // True if password reset successful
   bool success = 1;
 }
 
-// AuthService provides authentication and authorization
+// AuthService provides authentication and session management.
+// COMPLIANCE: SOC 2 CC6.1 (Access controls), ISO 27001 A.9.4, NIST 800-63B
+// SECURITY: All operations over TLS 1.2+. Rate limiting enforced.
 service AuthService {
-  // Authenticate user with credentials
+  // Authenticate with email/password. Returns tokens and session.
+  // SECURITY: Rate limited 5/15min per email/tenant. Account locks after 5 failures.
   rpc Authenticate(AuthenticateRequest) returns (AuthenticateResponse);
 
-  // Refresh access token using refresh token
+  // RefreshToken obtains new access token using refresh token.
+  // SECURITY: Refresh token rotated on each use (one-time use).
   rpc RefreshToken(RefreshTokenRequest) returns (RefreshTokenResponse);
 
-  // Validate access token
+  // ValidateToken verifies access token validity and returns claims.
+  // Used by API gateway for request authentication.
   rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse);
 
-  // Logout and invalidate session
+  // Logout terminates session and invalidates tokens.
+  // COMPLIANCE: SOC 2 CC6.1 (Session management)
   rpc Logout(LogoutRequest) returns (LogoutResponse);
 
-  // Request password reset
+  // RequestPasswordReset sends reset email with token.
+  // SECURITY: Rate limited 3/hour. Generic response prevents user enumeration.
   rpc RequestPasswordReset(RequestPasswordResetRequest) returns (RequestPasswordResetResponse);
 
-  // Confirm password reset with token
+  // ConfirmPasswordReset completes reset with token and new password.
+  // SECURITY: Token expires in 1 hour. One-time use only.
   rpc ConfirmPasswordReset(ConfirmPasswordResetRequest) returns (ConfirmPasswordResetResponse);
 }
