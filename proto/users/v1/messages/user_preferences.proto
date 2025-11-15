@@ -1,0 +1,132 @@
+// Copyright 2024 GeniusTechSpace
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// UserPreferences Message Definition
+//
+// This file defines user-specific preferences and settings that customize
+// the user experience. Preferences are optional and have sensible defaults.
+//
+// COMPLIANCE:
+// - GDPR Article 7: Consent management (notification preferences)
+// - GDPR Article 21: Right to object (notification opt-out)
+// - CAN-SPAM Act: Email notification preferences
+// - TCPA: SMS notification preferences
+//
+// SECURITY:
+// - Preferences stored per-user, isolated by tenant
+// - Changes logged for audit purposes
+// - No sensitive data stored in preferences
+//
+// PRIVACY:
+// - Users have full control over notification settings
+// - Opt-out respected immediately
+// - Preferences not shared across tenants
+
+syntax = "proto3";
+
+package users.v1;
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Users.V1";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/users/v1;usersv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.users.v1";
+
+// UserPreferences stores user-specific settings and preferences.
+//
+// This message contains all user-customizable settings including
+// localization, notifications, and custom application preferences.
+// All fields are optional with sensible system defaults.
+//
+// GDPR COMPLIANCE:
+// - Preferences are user-controlled (GDPR Article 5)
+// - Notification consent tracked (GDPR Article 7)
+// - Right to object supported (GDPR Article 21)
+//
+// DEFAULT VALUES:
+// - language: "en" (English)
+// - timezone: System timezone
+// - date_format: ISO 8601
+// - time_format: 24-hour
+// - notifications_enabled: true
+// - email_notifications: true
+// - sms_notifications: false
+//
+// EXAMPLE USAGE:
+//   UserPreferences prefs = UserPreferences.newBuilder()
+//       .setLanguage("en")
+//       .setTimezone("America/New_York")
+//       .setNotificationsEnabled(true)
+//       .setEmailNotifications(true)
+//       .setSmsNotifications(false)
+//       .build();
+message UserPreferences {
+  // User's preferred language code (ISO 639-1).
+  // OPTIONAL: Defaults to "en" (English)
+  // FORMAT: Two-letter language code (e.g., "en", "es", "fr")
+  // COMPLIANCE: GDPR Article 12 - Information in accessible format
+  // EXAMPLES: "en", "es", "fr", "de", "ja", "zh"
+  string language = 1;
+
+  // User's preferred timezone (IANA Time Zone Database).
+  // OPTIONAL: Defaults to system/tenant timezone
+  // FORMAT: IANA timezone name (e.g., "America/New_York")
+  // PURPOSE: Localize timestamps in UI
+  // EXAMPLES: "America/New_York", "Europe/London", "Asia/Tokyo"
+  string timezone = 2;
+
+  // User's preferred date format.
+  // OPTIONAL: Defaults to ISO 8601 (YYYY-MM-DD)
+  // PURPOSE: Format dates in UI according to user preference
+  // EXAMPLES: "MM/DD/YYYY", "DD/MM/YYYY", "YYYY-MM-DD"
+  string date_format = 3;
+
+  // User's preferred time format.
+  // OPTIONAL: Defaults to 24-hour format
+  // PURPOSE: Format times in UI (12-hour vs 24-hour)
+  // EXAMPLES: "12h", "24h", "12-hour", "24-hour"
+  string time_format = 4;
+
+  // Master switch for all notifications.
+  // OPTIONAL: Defaults to true
+  // COMPLIANCE: GDPR Article 21 - Right to object
+  // SECURITY: Overrides all other notification settings when false
+  // PURPOSE: Allow users to disable all notifications
+  bool notifications_enabled = 5;
+
+  // Enable/disable email notifications.
+  // OPTIONAL: Defaults to true
+  // COMPLIANCE: CAN-SPAM Act - Opt-out requirement
+  // GDPR Article 7 - Consent for email marketing
+  // PURPOSE: Control email notification delivery
+  bool email_notifications = 6;
+
+  // Enable/disable SMS notifications.
+  // OPTIONAL: Defaults to false
+  // COMPLIANCE: TCPA - Prior express consent required
+  // GDPR Article 7 - Consent for SMS communications
+  // SECURITY: Requires phone verification before enabling
+  // PURPOSE: Control SMS notification delivery
+  bool sms_notifications = 7;
+
+  // Custom application-specific preferences.
+  // OPTIONAL: Empty map by default
+  // PURPOSE: Extensibility for application-specific settings
+  // SECURITY: Values should not contain sensitive data
+  // VALIDATION: Keys should be namespaced (e.g., "app.feature.setting")
+  // EXAMPLES:
+  //   "ui.theme" -> "dark"
+  //   "ui.sidebar.collapsed" -> "true"
+  //   "dashboard.default_view" -> "analytics"
+  map<string, string> custom_preferences = 8;
+}
