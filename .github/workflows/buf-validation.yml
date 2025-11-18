@@ -1,0 +1,147 @@
+name: Buf Schema Validation and Linting
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  lint:
+    name: Lint Proto Files
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Buf
+        uses: bufbuild/buf-setup-action@v1
+        with:
+          github_token: ${{ github.token }}
+
+      - name: Lint proto files
+        uses: bufbuild/buf-lint-action@v1
+        with:
+          input: proto
+
+      - name: Comment PR with lint results
+        if: failure() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.name,
+              body: '⚠️ Buf linting failed. Please fix the linting errors before merging.'
+            })
+
+  breaking:
+    name: Check Breaking Changes
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Buf
+        uses: bufbuild/buf-setup-action@v1
+        with:
+          github_token: ${{ github.token }}
+
+      - name: Checkout main branch
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: main
+
+      - name: Check for breaking changes
+        uses: bufbuild/buf-breaking-action@v1
+        with:
+          input: proto
+          against: main/proto
+
+      - name: Comment PR with breaking change results
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.name,
+              body: '🚨 **Breaking changes detected!**\n\nThis PR introduces breaking changes to the protobuf schema. Please review the changes carefully and consider:\n\n1. Incrementing the version (v1 → v2)\n2. Deprecating old fields instead of removing them\n3. Adding new fields with higher field numbers\n\nSee the workflow logs for details.'
+            })
+
+  format:
+    name: Check Formatting
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Buf
+        uses: bufbuild/buf-setup-action@v1
+        with:
+          github_token: ${{ github.token }}
+
+      - name: Check format
+        run: |
+          buf format -d --exit-code proto
+
+      - name: Comment PR with format results
+        if: failure() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.name,
+              body: '📝 Proto files need formatting. Run `buf format -w proto` locally and commit the changes.'
+            })
+
+  build:
+    name: Build and Generate Code
+    runs-on: ubuntu-latest
+    needs: [lint]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Buf
+        uses: bufbuild/buf-setup-action@v1
+        with:
+          github_token: ${{ github.token }}
+
+      - name: Build proto files
+        run: buf build proto
+
+      - name: Generate code
+        run: buf generate proto
+
+      - name: Upload generated code
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-code
+          path: gen/
+          retention-days: 7
+
+  summary:
+    name: Validation Summary
+    runs-on: ubuntu-latest
+    needs: [lint, format, build]
+    if: always()
+    steps:
+      - name: Check validation status
+        run: |
+          if [ "${{ needs.lint.result }}" = "failure" ] || [ "${{ needs.format.result }}" = "failure" ] || [ "${{ needs.build.result }}" = "failure" ]; then
+            echo "❌ Schema validation failed"
+            exit 1
+          else
+            echo "✅ All validations passed"
+          fi

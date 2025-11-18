@@ -1,0 +1,91 @@
+// Access Policy Domain - Enumerations
+//
+// Defines enum types for access control, policy effects, and condition operators
+// used in role-based and attribute-based access control systems.
+//
+// PURPOSE: Type-safe enumerations for access control decision making
+// COMPLIANCE: SOC 2 CC6.1 (Logical access controls), ISO 27001 A.9.2 (Access control)
+// SECURITY: Explicit deny semantics enforced - deny overrides allow
+
+syntax = "proto3";
+
+package access_policy.v1;
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.AccessPolicy.V1";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/access_policy/v1;accesspolicyv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.accesspolicy.v1";
+
+// ConditionOperator defines comparison operators for attribute-based policy evaluation.
+//
+// PURPOSE: Enable fine-grained attribute-based access control (ABAC)
+// COMPLIANCE: NIST SP 800-162 (Attribute Based Access Control)
+// USAGE: Used in Condition messages for policy rule evaluation
+//
+// EVALUATION EXAMPLES:
+//   EQUALS: user.department == "Engineering"
+//   IN: user.role IN ["admin", "manager"]
+//   CONTAINS: user.permissions CONTAINS "billing:read"
+enum ConditionOperator {
+  // Unspecified/invalid operator. Should not be used in policies.
+  CONDITION_OPERATOR_UNSPECIFIED = 0;
+
+  // Exact equality match. Case-sensitive string comparison.
+  // Example: user.department EQUALS "Engineering"
+  // Use case: Strict field matching
+  CONDITION_OPERATOR_EQUALS = 1;
+
+  // Not equal comparison. Negation of EQUALS.
+  // Example: user.status NOT_EQUALS "suspended"
+  // Use case: Exclusion rules
+  CONDITION_OPERATOR_NOT_EQUALS = 2;
+
+  // Value exists in provided list. Any match succeeds.
+  // Example: user.role IN ["admin", "owner", "manager"]
+  // Use case: Multiple allowed values
+  CONDITION_OPERATOR_IN = 3;
+
+  // Value does not exist in provided list. All must fail to succeed.
+  // Example: user.department NOT_IN ["Suspended", "Terminated"]
+  // Use case: Exclusion lists
+  CONDITION_OPERATOR_NOT_IN = 4;
+
+  // String contains substring. Case-sensitive.
+  // Example: user.email CONTAINS "@example.com"
+  // Use case: Domain matching, partial string matching
+  CONDITION_OPERATOR_CONTAINS = 5;
+
+  // String does not contain substring. Negation of CONTAINS.
+  // Example: request.path NOT_CONTAINS "/internal/"
+  // Use case: Exclude internal paths, block patterns
+  CONDITION_OPERATOR_NOT_CONTAINS = 6;
+}
+
+// PolicyEffect determines whether a policy grants or denies access.
+//
+// PURPOSE: Explicit access control decisions for security policies
+// COMPLIANCE: Default deny principle - no policy = no access
+// SECURITY: DENY always overrides ALLOW (explicit deny > explicit allow > implicit deny)
+//
+// PRECEDENCE RULES:
+//   1. If any policy with DENY effect matches → Access DENIED
+//   2. If any policy with ALLOW effect matches → Access ALLOWED
+//   3. If no policies match → Access DENIED (default deny)
+enum PolicyEffect {
+  // Unspecified/invalid effect. Treated as implicit deny.
+  // Should not be used in production policies.
+  POLICY_EFFECT_UNSPECIFIED = 0;
+
+  // Grant access when policy conditions are met.
+  // BEHAVIOR: Access allowed if all conditions evaluate to true
+  // USAGE: Default for most policies granting permissions
+  // Example: Allow "billing:read" for Finance department users
+  POLICY_EFFECT_ALLOW = 1;
+
+  // Deny access when policy conditions are met. TAKES PRECEDENCE over ALLOW.
+  // BEHAVIOR: Access denied if any deny conditions evaluate to true
+  // SECURITY: Deny policies evaluated first, block access regardless of allow policies
+  // USAGE: Explicit access restrictions, compliance controls
+  // Example: Deny all access from non-corporate IP ranges
+  POLICY_EFFECT_DENY = 2;
+}

@@ -4,17 +4,15 @@ modules:
     name: buf.build/geniustechspace/protobuf
 deps:
   - buf.build/bufbuild/protovalidate
+  - buf.build/googleapis/googleapis
 lint:
   use:
     - STANDARD
     - UNARY_RPC
   except:
+    # Allow packages without version suffix for core types
     - PACKAGE_VERSION_SUFFIX
-    - COMMENT_FIELD
-    - COMMENT_ENUM_VALUE
-    - COMMENT_MESSAGE
-    - COMMENT_SERVICE
-    - COMMENT_RPC
+  # Enforce comprehensive documentation
   enum_zero_value_suffix: _UNSPECIFIED
   rpc_allow_same_request_response: false
   rpc_allow_google_protobuf_empty_requests: false
@@ -24,5 +22,7 @@ breaking:
   use:
     - FILE
   ignore:
+    # Ignore breaking changes in v2 (under development)
     - proto/core/v2
-  ignore_unstable_packages: true
+  # Don't ignore breaking changes in stable packages (v1)
+  ignore_unstable_packages: false

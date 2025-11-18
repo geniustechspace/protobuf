@@ -1,0 +1,121 @@
+// Core Request Enumerations - Production v1
+//
+// Standardized request-related enumerations for HTTP/gRPC handling.
+// SECURITY: Server-side validation required for auth/priority fields.
+// COMPLIANCE: SOC 2 CC6.1, CC7.2
+
+syntax = "proto3";
+
+package geniustechspace.datastructure.v1.request;
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/datastructure/v1/request;requestv1";
+option java_multiple_files = true;
+option java_package = "space.geniustech.datastructure.v1.request";
+option csharp_namespace = "GeniusTechSpace.Datastructure.V1.Request";
+
+// HTTPRequestMethod: HTTP request methods.
+// STANDARD: RFC 7231 (HTTP/1.1 Semantics)
+enum HTTPRequestMethod {
+  REQUEST_METHOD_UNSPECIFIED = 0;
+  GET = 1;
+  POST = 2;
+  PUT = 3;
+  PATCH = 4;
+  DELETE = 5;
+  HEAD = 6;
+  OPTIONS = 7;
+  TRACE = 8;
+  CONNECT = 9;
+  reserved 10 to 99;
+  reserved 100 to 199;
+}
+
+// RequestPriority: Request processing priority.
+// SECURITY: Must be validated server-side.
+enum RequestPriority {
+  REQUEST_PRIORITY_UNSPECIFIED = 0;
+  LOW = 1;
+  NORMAL = 2;
+  HIGH = 3;
+  CRITICAL = 4;
+  URGENT = 5;
+  reserved 6 to 99;
+  reserved 100 to 199;
+}
+
+// RequestSource: Origin of the request.
+enum RequestSource {
+  REQUEST_SOURCE_UNSPECIFIED = 0;
+  WEB_BROWSER = 1;
+  MOBILE_APP = 2;
+  DESKTOP_APP = 3;
+  API_CLIENT = 4;
+  INTERNAL_SERVICE = 5;
+  CLI = 6;
+  THIRD_PARTY = 7;
+  WEBHOOK = 8;
+  SCHEDULED_JOB = 9;
+  ADMIN_PANEL = 10;
+  TEST = 11;
+  DEVELOPMENT = 12;
+  reserved 13 to 99;
+  reserved 100 to 199;
+}
+
+// RequestProtocol: Communication protocol.
+enum RequestProtocol {
+  REQUEST_PROTOCOL_UNSPECIFIED = 0;
+  HTTP_1_0 = 1;
+  HTTP_1_1 = 2;
+  HTTP_2 = 3;
+  HTTP_3 = 4;
+  GRPC = 5;
+  WEBSOCKET = 6;
+  GRAPHQL = 7;
+  MQTT = 8;
+  AMQP = 9;
+  TCP = 10;
+  UDP = 11;
+  reserved 12 to 99;
+  reserved 100 to 199;
+}
+
+// CacheControl: Caching directives.
+// STANDARD: RFC 7234
+enum CacheControl {
+  CACHE_CONTROL_UNSPECIFIED = 0;
+  NO_CACHE = 1;
+  NO_STORE = 2;
+  PUBLIC = 3;
+  PRIVATE = 4;
+  MUST_REVALIDATE = 5;
+  PROXY_REVALIDATE = 6;
+  STALE_IF_ERROR = 7;
+  STALE_WHILE_REVALIDATE = 8;
+  reserved 9 to 99;
+  reserved 100 to 199;
+}
+
+// IdempotencyMode: Idempotent request handling.
+// COMPLIANCE: PCI DSS for payment retries
+enum IdempotencyMode {
+  IDEMPOTENCY_MODE_UNSPECIFIED = 0;
+  ENFORCE = 1;
+  ALLOW_DUPLICATES = 2;
+  RETURN_CACHED = 3;
+  WARN_DUPLICATE = 4;
+  reserved 5 to 99;
+  reserved 100 to 199;
+}
+
+// ValidationMode: Request validation strictness.
+enum ValidationMode {
+  VALIDATION_MODE_UNSPECIFIED = 0;
+  STRICT = 1;
+  LENIENT = 2;
+  DRY_RUN = 3;
+  SKIP = 4;
+  reserved 5 to 99;
+  reserved 100 to 199;
+}
+

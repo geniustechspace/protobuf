@@ -1,0 +1,27 @@
+// Session Enums - Production v1
+//
+// Enumerations for session management, multitenant aware.
+
+syntax = "proto3";
+
+package geniustechspace.datastructure.v1.session;
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/datastructure/v1/session;sessionv1";
+option java_multiple_files = true;
+option java_package = "space.geniustech.datastructure.v1.session";
+option csharp_namespace = "GeniusTechSpace.Datastructure.V1.Session";
+
+
+// SessionStatus: Lifecycle status of a session
+enum SessionStatus {
+	SESSION_STATUS_UNSPECIFIED = 0;
+	ACTIVE = 1;
+	INACTIVE = 2;
+	EXPIRED = 3;
+	TERMINATED = 4;
+
+  // Security states
+  SUSPENDED = 5;
+  LOCKED = 6;
+  REVOKED = 7;
+}

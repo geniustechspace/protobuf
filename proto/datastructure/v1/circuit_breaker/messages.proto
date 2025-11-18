@@ -1,0 +1,138 @@
+// Core Circuit Breaker Messages - Production v1
+//
+// Enterprise circuit breaker configuration for cascading failure prevention.
+// Matches Envoy, Hystrix, and Resilience4j patterns.
+//
+// SECURITY: Never include hostnames, stack traces, infrastructure IDs, PII, or secrets.
+// COMPLIANCE: SOC 2 CC9.1 (Risk Management)
+// COMPATIBILITY: Fields never change type. Numbers never reused. See reserved ranges.
+
+syntax = "proto3";
+
+package geniustechspace.datastructure.v1.circuit_breaker;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
+import "proto/datastructure/v1/circuit_breaker/enums.proto";
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/datastructure/v1/circuit_breaker;circuit_breakerv1";
+option java_multiple_files = true;
+option java_package = "space.geniustech.datastructure.v1.circuit_breaker";
+option csharp_namespace = "GeniusTechSpace.Datastructure.V1.CircuitBreaker";
+
+// CircuitBreakerConfig: Threshold configuration.
+// Prevents cascading failures by stopping requests to failing services.
+message CircuitBreakerConfig {
+  reserved 11 to 30;
+
+  // Failure rate threshold (0-100) to open. REQUIRED.
+  int32 failure_threshold_percentage = 1 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 100
+  }];
+
+  // Min requests before evaluation. REQUIRED.
+  int32 minimum_request_threshold = 2 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 100
+  }];
+
+  // Rolling window for failure rate (ms). REQUIRED.
+  int64 rolling_window_ms = 3 [(buf.validate.field).int64 = {
+    gte: 1000
+    lte: 300000
+  }];
+
+  // Open state cooldown before half-open. REQUIRED.
+  google.protobuf.Duration open_timeout = 4 [(buf.validate.field).required = true];
+
+  // Test requests in half-open state.
+  int32 half_open_request_count = 5 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 10
+    ignore_empty: true
+  }];
+
+  // Success threshold to close from half-open.
+  int32 success_threshold = 6 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 10
+    ignore_empty: true
+  }];
+
+  // Max half-open duration.
+  google.protobuf.Duration half_open_timeout = 7;
+
+  // Slow call threshold (ms). Treat slow as failure.
+  int64 slow_call_threshold_ms = 8 [(buf.validate.field).int64 = {
+    gte: 100
+    lte: 60000
+    ignore_empty: true
+  }];
+
+  // Slow call percentage to open circuit.
+  int32 slow_call_percentage = 9 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 100
+    ignore_empty: true
+  }];
+
+  // Custom metadata (alert config, etc.).
+  map<string, string> metadata = 10;
+}
+
+// CircuitBreaker: Current breaker state and metrics.
+// Real-time status for monitoring and health checks.
+message CircuitBreaker {
+  reserved 13 to 30;
+
+  // Breaker identifier (service/path/route). REQUIRED.
+  string id = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 64
+  }];
+
+  // Configuration used. REQUIRED.
+  CircuitBreakerConfig config = 2 [(buf.validate.field).required = true];
+
+  // Current state. REQUIRED.
+  CircuitBreakerState state = 3 [(buf.validate.field).required = true];
+
+  // Total requests in rolling window.
+  int64 total_requests = 4 [(buf.validate.field).int64.gte = 0];
+
+  // Failed requests in rolling window.
+  int64 failed_requests = 5 [(buf.validate.field).int64.gte = 0];
+
+  // Failure rate (0.0-100.0).
+  double failure_rate = 6 [(buf.validate.field).double = {
+    gte: 0.0
+    lte: 100.0
+  }];
+
+  // Successes in half-open state.
+  int32 half_open_successes = 7 [(buf.validate.field).int32.gte = 0];
+
+  // Last state change timestamp.
+  google.protobuf.Timestamp last_state_changed_at = 8;
+
+  // Next half-open attempt time.
+  google.protobuf.Timestamp next_half_open_attempt_at = 9;
+
+  // Times circuit has opened.
+  int64 open_count = 10 [(buf.validate.field).int64.gte = 0];
+
+  // Trace ID for correlation.
+  string trace_id = 11 [(buf.validate.field).string.max_len = 128];
+
+  // Additional metrics (no PII/infrastructure IDs).
+  map<string, string> metrics = 12;
+
+  // Tenant ID (optional, empty=shared).
+  string tenant_id = 31 [(buf.validate.field).string = {
+    pattern: "^[a-z0-9-]*$"
+    max_len: 64
+    ignore_empty: true
+  }];
+}

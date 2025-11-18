@@ -1,27 +1,97 @@
 # GeniusTechSpace Protobuf Schema Repository
 
-Production-ready, domain-driven, tenant-aware Protocol Buffer definitions for microservices architecture.
+**Production-ready, domain-driven, enterprise-grade Protocol Buffer definitions for multi-tenant microservices**
 
-## Overview
+[![Buf](https://img.shields.io/badge/Buf-Schema%20Registry-blue)](https://buf.build)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![CI](https://github.com/geniustechspace/protobuf/workflows/Buf%20Schema%20Validation/badge.svg)](https://github.com/geniustechspace/protobuf/actions)
 
-This repository contains Protocol Buffer (protobuf) schemas organized by domain with support for versioning, multi-tenancy, and event-driven architectures. It uses [Buf](https://buf.build) for linting, breaking change detection, code generation, and schema registry integration.
+## 🚀 Overview
 
-## Domain Structure
+This repository contains Protocol Buffer (protobuf) schemas organized by domain with comprehensive documentation, strict versioning, and enterprise compliance standards. Built with [Buf](https://buf.build) for schema validation, linting, breaking change detection, and multi-language code generation.
 
-The repository is organized into the following top-level domains:
+### Key Features
+
+- 📦 **Modular Architecture**: Separate files for enums, messages, requests, and services
+- 🏢 **Enterprise Documentation**: Comprehensive inline docs with compliance notes
+- 🔒 **Multi-Tenancy**: Built-in tenant isolation and context enforcement
+- 📊 **RBAC & ABAC**: Role-based and attribute-based access control
+- 🔄 **Versioning**: Semantic versioning with backward compatibility
+- 🎯 **Event-Driven**: Domain events for all aggregates
+- ✅ **Validation**: Declarative runtime validation with protovalidate
+- 🤖 **CI/CD**: Automated linting, breaking change detection, and publishing
+- 🌐 **Multi-Language**: Generated clients for Go, Python, Java, TypeScript, C#
+- 📚 **Compliance**: SOC 2, GDPR, ISO 27001, PCI DSS annotations
+
+## 📁 Repository Structure
+
+### Flattened Domain Organization
 
 ```
 proto/
-├── core/              # Common types, tenant context, base events
-├── auth/              # Authentication and session management
-├── users/             # User management and profiles
-├── access-policy/     # Role-based access control (RBAC)
-├── tenants/           # Multi-tenant organization management
-├── billing/           # Subscription, invoicing, and payments
-└── notifications/     # Multi-channel notification system
+├── core/                    # Foundation types
+│   └── v1/
+│       ├── metadata.proto   # Metadata, TenantContext, Pagination
+│       ├── types.proto      # Address, Money, ContactInfo, Errors
+│       └── common.proto     # Convenience re-export
+│
+├── auth/                    # Authentication & Sessions
+│   └── v1/
+│       ├── enums.proto      # Status enums
+│       ├── messages.proto   # Credentials, Session, Token
+│       ├── requests.proto   # Request/Response pairs
+│       ├── service.proto    # AuthService definition
+│       ├── events.proto     # UserAuthenticated, etc.
+│       └── auth.proto       # Convenience re-export
+│
+├── users/                   # User Management
+│   └── v1/
+│       ├── enums.proto      # UserStatus enum
+│       ├── messages.proto   # User, UserPreferences
+│       ├── requests.proto   # CreateUserRequest, etc.
+│       ├── service.proto    # UserService
+│       ├── events.proto     # UserCreated, etc.
+│       └── users.proto      # Convenience re-export
+│
+├── access_policy/           # RBAC & ABAC
+│   └── v1/
+│       ├── enums.proto      # PolicyEffect, ConditionOperator
+│       ├── messages.proto   # Role, Permission, Policy
+│       ├── requests.proto   # CreateRoleRequest, etc.
+│       ├── service.proto    # AccessPolicyService
+│       └── events.proto     # RoleCreated, etc.
+│
+├── tenants/                 # Multi-Tenant Management
+│   └── v1/
+│       ├── enums.proto      # TenantStatus, TenantTier
+│       ├── messages.proto   # Tenant, TenantSettings
+│       ├── requests.proto   # CreateTenantRequest, etc.
+│       ├── service.proto    # TenantService
+│       └── events.proto     # TenantCreated, etc.
+│
+├── billing/                 # Subscriptions & Payments
+│   └── v1/
+│       ├── enums.proto      # SubscriptionStatus, InvoiceStatus
+│       ├── messages.proto   # Subscription, Invoice, Plan
+│       ├── requests.proto   # CreateSubscriptionRequest, etc.
+│       ├── service.proto    # BillingService
+│       └── events.proto     # SubscriptionCreated, etc.
+│
+└── notifications/           # Multi-Channel Notifications
+    └── v1/
+        ├── enums.proto      # NotificationType, Priority, Channel
+        ├── messages.proto   # Notification, Preferences
+        ├── requests.proto   # SendNotificationRequest, etc.
+        ├── service.proto    # NotificationService
+        └── events.proto     # NotificationSent, etc.
 ```
 
-Each domain contains versioned subdirectories (v1, v2, etc.) to support backward-compatible schema evolution.
+### Modular File Structure Benefits
+
+- ⚡ **Faster Compilation**: Import only what you need
+- 🎯 **Clear Dependencies**: Explicit import relationships
+- 📝 **Easier Reviews**: Smaller, focused file changes
+- 🔧 **Better Maintenance**: Logical separation of concerns
 
 ## Features
 

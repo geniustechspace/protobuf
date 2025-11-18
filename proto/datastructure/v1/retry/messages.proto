@@ -1,0 +1,210 @@
+// Core Retry Messages - Production v1
+//
+// Enterprise retry configuration for distributed systems.
+// Matches Google Cloud, AWS SDK, and Envoy patterns.
+//
+// SECURITY: Never include hostnames, stack traces, infrastructure IDs, PII, or secrets.
+// COMPLIANCE: SOC 2 CC7.2, CC9.1 | PCI DSS 6.5.10 | ISO 27001 A.12.6.1
+// COMPATIBILITY: Fields never change type. Numbers never reused. See reserved ranges.
+
+syntax = "proto3";
+
+package geniustechspace.datastructure.v1.retry;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/timestamp.proto";
+import "proto/datastructure/v1/retry/enums.proto";
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/datastructure/v1/retry;retryv1";
+option java_multiple_files = true;
+option java_package = "space.geniustech.datastructure.v1.retry";
+option csharp_namespace = "GeniusTechSpace.Datastructure.V1.Retry";
+
+
+
+// RetryInfo: Per-request server guidance.
+// Server controls retriability, not client. Overrides RetryPolicy.
+message RetryInfo {
+  reserved 11 to 20, 25 to 30;
+
+  // Is retry safe? Server decision. REQUIRED.
+  bool retriable = 1 [(buf.validate.field).required = true];
+
+  // Why retry failed. REQUIRED.
+  RetryCode retry_code = 2 [(buf.validate.field).required = true];
+
+  // Server-specified delay (ms). Overrides policy.
+  int64 retry_after_ms = 3 [(buf.validate.field).int64.gte = 0];
+
+  // Current attempt number (0=initial, 1=first retry).
+  int32 current_attempt = 4 [(buf.validate.field).int32.gte = 0];
+
+  // Hard deadline (UTC). Stop retrying after this.
+  google.protobuf.Timestamp retry_deadline = 5;
+
+  // Policy name used.
+  string retry_policy = 6 [(buf.validate.field).string.max_len = 64];
+
+  // Region serving request (for fallback routing).
+  string region = 21 [(buf.validate.field).string = {
+    pattern: "^[a-z]{2,4}-[a-z]+-[0-9]+$"
+    ignore_empty: true
+  }];
+
+  // Fallback regions (ordered by preference).
+  repeated string fallback_regions = 22;
+
+  // Trace ID (W3C traceparent).
+  string trace_id = 31 [(buf.validate.field).string.max_len = 128];
+}
+
+// RetryStrategy: Backoff timing configuration.
+// Embedded in RetryPolicy.
+message RetryStrategy {
+  reserved 7 to 30;
+
+  // Backoff algorithm. REQUIRED.
+  BackoffStrategy backoff_strategy = 1 [(buf.validate.field).required = true];
+
+  // Initial delay (ms). REQUIRED.
+  int64 initial_delay_ms = 2 [(buf.validate.field).int64 = {
+    gte: 100
+    lte: 60000
+  }];
+
+  // Max delay cap (ms). REQUIRED.
+  int64 max_delay_ms = 3 [(buf.validate.field).int64 = {
+    gte: 1000
+    lte: 300000
+  }];
+
+  // Backoff multiplier. Default: 2.0.
+  double backoff_multiplier = 4 [(buf.validate.field).double = {
+    gte: 1.0
+    lte: 10.0
+    ignore_empty: true
+  }];
+
+  // Jitter factor (0.0-1.0). Default: 0.1.
+  double jitter_factor = 5 [(buf.validate.field).double = {
+    gte: 0.0
+    lte: 1.0
+    ignore_empty: true
+  }];
+}
+
+// RetryPolicy: Complete retry configuration.
+// Reusable across services/routes. Quota enforcement via separate service.
+message RetryPolicy {
+  reserved 6 to 10, 15 to 20, 22 to 30;
+
+  // Unique identifier. REQUIRED.
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 64
+    pattern: "^[a-z0-9-]+$"
+  }];
+
+  // Policy classification. REQUIRED.
+  RetryPolicyType policy_type = 2 [(buf.validate.field).required = true];
+
+  // Backoff configuration. REQUIRED.
+  RetryStrategy retry_strategy = 3 [(buf.validate.field).required = true];
+
+  // Max retry attempts (0=no retry). REQUIRED.
+  int32 max_attempts = 4 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 10
+  }];
+
+  // Total timeout including retries (ms). REQUIRED.
+  int64 total_timeout_ms = 5 [(buf.validate.field).int64 = {
+    gte: 1000
+    lte: 600000
+  }];
+
+  // Retryable retry codes. REQUIRED.
+  repeated RetryCode retryable_retry_codes = 11 [(buf.validate.field).required = true];
+
+  // Retriable HTTP status codes (e.g., 429, 503, 504).
+  repeated int32 retriable_status_codes = 12;
+
+  // Retriable gRPC codes (e.g., "UNAVAILABLE", "DEADLINE_EXCEEDED").
+  repeated string retriable_grpc_codes = 13;
+
+  // Retriable WebSocket codes (e.g., 1006, 1011).
+  repeated int32 retriable_websocket_codes = 14;
+
+  // Requires idempotency key?
+  bool require_idempotency_key = 21;
+
+  // Policy version (semver). Track changes.
+  string version = 31 [(buf.validate.field).string = {
+    pattern: "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    ignore_empty: true
+  }];
+
+  // Tenant ID (optional, empty=shared).
+  string tenant_id = 32 [(buf.validate.field).string = {
+    pattern: "^[a-z0-9-]*$"
+    max_len: 64
+    ignore_empty: true
+  }];
+
+  // Custom metadata (owner, SLO, etc.).
+  map<string, string> metadata = 33;
+}
+
+// RetryMetrics: Performance stats for observability.
+// Export to Prometheus/SIEM.
+message RetryMetrics {
+  reserved 15 to 30;
+
+  // Total attempts. REQUIRED.
+  int64 total_attempts = 1 [(buf.validate.field).int64.gte = 0];
+
+  // Successful retries. REQUIRED.
+  int64 successful_retries = 2 [(buf.validate.field).int64.gte = 0];
+
+  // Failed retries. REQUIRED.
+  int64 failed_retries = 3 [(buf.validate.field).int64.gte = 0];
+
+  // Exhausted retries (max attempts). REQUIRED.
+  int64 exhausted_retries = 4 [(buf.validate.field).int64.gte = 0];
+
+  // Success rate (0.0-1.0).
+  double success_rate = 5 [(buf.validate.field).double = {
+    gte: 0.0
+    lte: 1.0
+  }];
+
+  // SLA compliance rate (0.0-1.0).
+  double sla_compliance_rate = 6 [(buf.validate.field).double = {
+    gte: 0.0
+    lte: 1.0
+  }];
+
+  // SLA violations count.
+  int64 sla_violations = 7 [(buf.validate.field).int64.gte = 0];
+
+  // Avg retry delay (ms).
+  double average_retry_delay_ms = 8 [(buf.validate.field).double.gte = 0.0];
+
+  // P95 delay (ms).
+  double p95_delay_ms = 9 [(buf.validate.field).double.gte = 0.0];
+
+  // P99 delay (ms).
+  double p99_delay_ms = 10 [(buf.validate.field).double.gte = 0.0];
+
+  // Breakdown by retry code.
+  map<string, int64> retry_code_counts = 11;
+
+  // Breakdown by outcome.
+  map<string, int64> retry_outcome_counts = 12;
+
+  // Policy name.
+  string policy_name = 13 [(buf.validate.field).string.max_len = 64];
+
+  // Service name.
+  string service_name = 14 [(buf.validate.field).string.max_len = 128];
+}

@@ -1,0 +1,232 @@
+// Access Policy Domain - Request/Response Messages
+//
+// Defines all request and response message pairs for access policy operations
+// including role management, permission checks, and policy administration.
+//
+// PURPOSE: API contract for access control service operations
+// COMPLIANCE: SOC 2 CC6.1, CC6.2 (Access control management)
+
+syntax = "proto3";
+
+package access_policy.v1;
+
+import "core/v1/metadata.proto";
+import "access_policy/v1/messages.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.AccessPolicy.V1";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/access_policy/v1;accesspolicyv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.accesspolicy.v1";
+
+// CreateRoleRequest for creating a new role with permissions.
+//
+// AUTHORIZATION: Requires 'access_policy:admin' permission
+// COMPLIANCE: SOC 2 CC6.1 (Role creation audit)
+message CreateRoleRequest {
+  // Tenant ID. REQUIRED.
+  // VALIDATION: Must match authenticated user's tenant
+  string tenant_id = 1;
+
+  // Role name. REQUIRED, must be unique within tenant.
+  // VALIDATION: 1-100 characters, no leading/trailing spaces
+  string name = 2;
+
+  // Role description. RECOMMENDED for documentation.
+  string description = 3;
+
+  // Initial permissions for this role. REQUIRED, at least one.
+  // VALIDATION: All permission IDs must exist and belong to same tenant
+  repeated Permission permissions = 4;
+}
+
+// CreateRoleResponse returns the newly created role.
+message CreateRoleResponse {
+  // Created role with server-assigned ID and metadata
+  Role role = 1;
+}
+
+// GetRoleRequest for retrieving a role by ID.
+//
+// AUTHORIZATION: Requires 'access_policy:read' permission
+message GetRoleRequest {
+  // Tenant ID. REQUIRED.
+  string tenant_id = 1;
+
+  // Role ID to retrieve. REQUIRED.
+  // VALIDATION: Must be valid role ID within specified tenant
+  string role_id = 2;
+}
+
+// GetRoleResponse returns the requested role.
+message GetRoleResponse {
+  // Retrieved role. Null if not found (returns NOT_FOUND error instead)
+  Role role = 1;
+}
+
+// UpdateRoleRequest for modifying role properties and permissions.
+//
+// AUTHORIZATION: Requires 'access_policy:admin' permission
+// COMPLIANCE: SOC 2 CC6.3 (Change management)
+// SECURITY: System roles cannot be updated
+message UpdateRoleRequest {
+  // Tenant ID. REQUIRED.
+  string tenant_id = 1;
+
+  // Role ID to update. REQUIRED.
+  // VALIDATION: Cannot be system role
+  string role_id = 2;
+
+  // New role name. Optional, updates name if provided.
+  // VALIDATION: Must be unique within tenant if provided
+  string name = 3;
+
+  // New description. Optional, updates description if provided.
+  string description = 4;
+
+  // New permission set. Optional, replaces all permissions if provided.
+  // BEHAVIOR: Complete replacement, not additive
+  // VALIDATION: All permission IDs must exist
+  repeated Permission permissions = 5;
+}
+
+// UpdateRoleResponse returns the updated role.
+message UpdateRoleResponse {
+  // Updated role with new values and incremented version
+  Role role = 1;
+}
+
+// DeleteRoleRequest for removing a role.
+//
+// AUTHORIZATION: Requires 'access_policy:admin' permission
+// COMPLIANCE: SOC 2 CC6.2 (Access termination)
+// SECURITY: System roles cannot be deleted
+// BEHAVIOR: Soft delete - role marked as deleted but retained for audit
+message DeleteRoleRequest {
+  // Tenant ID. REQUIRED.
+  string tenant_id = 1;
+
+  // Role ID to delete. REQUIRED.
+  // VALIDATION: Cannot be system role, cannot be assigned to active users
+  string role_id = 2;
+}
+
+// DeleteRoleResponse confirms deletion.
+message DeleteRoleResponse {
+  // True if deleted successfully
+  // NOTE: May be false if role is assigned to users (conflict)
+  bool success = 1;
+}
+
+// ListRolesRequest for retrieving paginated list of roles.
+//
+// AUTHORIZATION: Requires 'access_policy:read' permission
+message ListRolesRequest {
+  // Tenant ID. REQUIRED.
+  string tenant_id = 1;
+
+  // Pagination parameters. Optional, defaults to page 0, size 20.
+  core.v1.PaginationRequest pagination = 2;
+}
+
+// ListRolesResponse returns paginated role list.
+message ListRolesResponse {
+  // List of roles for the tenant
+  repeated Role roles = 1;
+
+  // Pagination metadata
+  core.v1.PaginationResponse pagination = 2;
+}
+
+// AssignRoleRequest for granting a role to a user.
+//
+// AUTHORIZATION: Requires 'access_policy:admin' permission
+// COMPLIANCE: SOC 2 CC6.1 (User provisioning)
+// AUDIT: User, role, tenant, and timestamp logged
+message AssignRoleRequest {
+  // Tenant ID. REQUIRED.
+  string tenant_id = 1;
+
+  // User ID to assign role to. REQUIRED.
+  // VALIDATION: User must exist and belong to tenant
+  string user_id = 2;
+
+  // Role ID to assign. REQUIRED.
+  // VALIDATION: Role must exist and belong to tenant
+  string role_id = 3;
+}
+
+// AssignRoleResponse confirms role assignment.
+message AssignRoleResponse {
+  // True if assignment successful
+  // NOTE: May be false if already assigned (idempotent operation)
+  bool success = 1;
+}
+
+// RevokeRoleRequest for removing a role from a user.
+//
+// AUTHORIZATION: Requires 'access_policy:admin' permission
+// COMPLIANCE: SOC 2 CC6.2 (Access revocation)
+// AUDIT: User, role, tenant, and timestamp logged
+message RevokeRoleRequest {
+  // Tenant ID. REQUIRED.
+  string tenant_id = 1;
+
+  // User ID to revoke role from. REQUIRED.
+  string user_id = 2;
+
+  // Role ID to revoke. REQUIRED.
+  string role_id = 3;
+}
+
+// RevokeRoleResponse confirms role revocation.
+message RevokeRoleResponse {
+  // True if revocation successful
+  // NOTE: May be false if not assigned (idempotent operation)
+  bool success = 1;
+}
+
+// CheckPermissionRequest for evaluating if user has permission with context.
+//
+// PERFORMANCE: High-frequency operation, typically cached for 5 minutes
+// AUTHORIZATION: Any authenticated user can check permissions
+// SECURITY: Rate limit: 1000 req/sec per user
+message CheckPermissionRequest {
+  // Tenant ID. REQUIRED.
+  string tenant_id = 1;
+
+  // User ID to check permissions for. REQUIRED.
+  string user_id = 2;
+
+  // Resource being accessed. REQUIRED.
+  // FORMAT: Resource path, may include wildcards
+  // Examples: "users/user_123", "billing/invoices/*"
+  string resource = 3;
+
+  // Action being performed. REQUIRED.
+  // Examples: "read", "create", "update", "delete"
+  string action = 4;
+
+  // Additional context for attribute-based policy evaluation. Optional.
+  // PURPOSE: Provide runtime attributes for ABAC policy conditions
+  // COMMON KEYS: "ip_address", "time", "user_agent", "request_path"
+  // Example: {"ip_address": "10.0.1.50", "time.hour": "14"}
+  map<string, string> context = 5;
+}
+
+// CheckPermissionResponse returns permission evaluation result.
+message CheckPermissionResponse {
+  // True if user has permission, false otherwise.
+  // BEHAVIOR: 
+  //   - Any DENY policy match → false
+  //   - Any ALLOW policy match (no DENY) → true
+  //   - No policy match → false (default deny)
+  bool allowed = 1;
+
+  // Human-readable reason for decision. RECOMMENDED for debugging.
+  // PURPOSE: Help developers understand authorization failures
+  // Examples:
+  //   "Permission granted via Admin role"
+  //   "Access denied - outside business hours"
+  //   "Access denied - missing required permission: billing:read"
+  string reason = 2;
+}
