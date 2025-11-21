@@ -1,0 +1,179 @@
+// Account Messages - Production v1
+//
+// Enterprise-grade account management data structures.
+// Multitenant aware. Follows GeniusTechSpace design patterns.
+// COMPLIANCE: SOC 2 CC6.1, CC7.2 | GDPR Article 32
+// SECURITY: Never expose sensitive financial data, credentials, or internal IDs
+
+syntax = "proto3";
+
+package geniustechspace.datastructure.v1.account;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/timestamp.proto";
+import "proto/datastructure/v1/account/enums.proto";
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/datastructure/v1/account;accountv1";
+option java_multiple_files = true;
+option java_package = "space.geniustech.datastructure.v1.account";
+option csharp_namespace = "GeniusTechSpace.Datastructure.V1.Account";
+
+// Account: Core account data structure for multitenant environments
+message Account {
+  reserved 9 to 10, 17 to 20, 27 to 30, 37 to 40;
+
+  // Unique account identifier
+  string account_id = 1 [(buf.validate.field).string = { min_len: 8, max_len: 128 }];
+
+  // Account owner identifier (user ID or organization ID)
+  string owner_id = 2 [(buf.validate.field).string = { min_len: 3, max_len: 128 }];
+
+  // Account display name
+  string display_name = 3 [(buf.validate.field).string = { min_len: 1, max_len: 255 }];
+
+  // Account type
+  AccountType account_type = 4;
+
+  // Account status
+  AccountStatus status = 5;
+
+  // Account tier/subscription level
+  AccountTier tier = 6;
+
+  // Account verification status
+  AccountVerificationStatus verification_status = 7;
+
+  // Tenant context (multitenant isolation)
+  string tenant_id = 8 [(buf.validate.field).string = { min_len: 3, max_len: 64 }];
+
+  // Account lifecycle timestamps
+  google.protobuf.Timestamp created_at = 11;
+  google.protobuf.Timestamp updated_at = 12;
+  google.protobuf.Timestamp activated_at = 13;
+  google.protobuf.Timestamp suspended_at = 14;
+  google.protobuf.Timestamp closed_at = 15;
+  google.protobuf.Timestamp last_activity_at = 16;
+
+  // Account settings
+  AccountSettings settings = 21;
+
+  // Account contact information
+  string email = 22 [(buf.validate.field).string = { email: true, max_len: 254, ignore_empty: true }];
+  string phone = 23 [(buf.validate.field).string = { max_len: 20, ignore_empty: true }];
+
+  // Account billing information (non-sensitive)
+  string billing_email = 24 [(buf.validate.field).string = { email: true, max_len: 254, ignore_empty: true }];
+  string billing_address = 25 [(buf.validate.field).string = { max_len: 500, ignore_empty: true }];
+  string currency = 26 [(buf.validate.field).string = { 
+    pattern: "^[A-Z]{3}$"
+    ignore_empty: true 
+  }];
+
+  // Account features and limits
+  AccountLimits limits = 31;
+
+  // Tags for categorization
+  repeated string tags = 32 [(buf.validate.field).repeated.max_items = 20];
+
+  // Custom metadata for extensibility (no PII/secrets)
+  map<string, string> metadata = 33;
+
+  // Account notes (internal use)
+  string notes = 34 [(buf.validate.field).string = { max_len: 2000, ignore_empty: true }];
+
+  // Referral information
+  string referral_code = 35 [(buf.validate.field).string = { max_len: 64, ignore_empty: true }];
+  string referred_by = 36 [(buf.validate.field).string = { max_len: 128, ignore_empty: true }];
+}
+
+// AccountSettings: Account preferences and configuration
+message AccountSettings {
+  reserved 11 to 20, 26 to 30;
+
+  // Notification preferences
+  bool email_notifications = 1;
+  bool sms_notifications = 2;
+  bool push_notifications = 3;
+  bool marketing_emails = 4;
+
+  // Privacy and security settings
+  bool two_factor_enabled = 5;
+  bool biometric_enabled = 6;
+  bool public_profile = 7;
+  bool data_sharing_consent = 8;
+
+  // Localization settings
+  string language = 9 [(buf.validate.field).string = { 
+    pattern: "^[a-z]{2}(-[A-Z]{2})?$"
+    ignore_empty: true 
+  }];
+  string timezone = 10 [(buf.validate.field).string = { max_len: 64, ignore_empty: true }];
+
+  // Communication preferences
+  repeated string notification_channels = 21 [(buf.validate.field).repeated.max_items = 10];
+  string preferred_contact_method = 22 [(buf.validate.field).string = { max_len: 32, ignore_empty: true }];
+
+  // Display preferences
+  string theme = 23 [(buf.validate.field).string = { max_len: 32, ignore_empty: true }];
+  string date_format = 24 [(buf.validate.field).string = { max_len: 32, ignore_empty: true }];
+  string time_format = 25 [(buf.validate.field).string = { max_len: 32, ignore_empty: true }];
+
+  // Additional custom settings
+  map<string, string> custom = 31;
+}
+
+// AccountLimits: Resource limits and quotas for an account
+message AccountLimits {
+  reserved 11 to 20;
+
+  // Storage limits (bytes)
+  int64 max_storage_bytes = 1 [(buf.validate.field).int64 = { gte: 0 }];
+  int64 used_storage_bytes = 2 [(buf.validate.field).int64 = { gte: 0 }];
+
+  // User/member limits
+  int32 max_users = 3 [(buf.validate.field).int32 = { gte: 0 }];
+  int32 current_users = 4 [(buf.validate.field).int32 = { gte: 0 }];
+
+  // API rate limits
+  int32 max_api_calls_per_hour = 5 [(buf.validate.field).int32 = { gte: 0 }];
+  int32 max_api_calls_per_day = 6 [(buf.validate.field).int32 = { gte: 0 }];
+
+  // Feature limits
+  int32 max_projects = 7 [(buf.validate.field).int32 = { gte: 0 }];
+  int32 current_projects = 8 [(buf.validate.field).int32 = { gte: 0 }];
+
+  // Transfer limits (bytes per month)
+  int64 max_transfer_bytes = 9 [(buf.validate.field).int64 = { gte: 0 }];
+  int64 used_transfer_bytes = 10 [(buf.validate.field).int64 = { gte: 0 }];
+
+  // Custom limits
+  map<string, string> custom_limits = 21;
+}
+
+// AccountProfile: Public account profile information
+// SECURITY: Never include sensitive or private account data
+message AccountProfile {
+  reserved 11 to 20;
+
+  // Account identifier
+  string account_id = 1 [(buf.validate.field).string = { min_len: 8, max_len: 128 }];
+
+  // Public display information
+  string display_name = 2 [(buf.validate.field).string = { min_len: 1, max_len: 255 }];
+  string bio = 3 [(buf.validate.field).string = { max_len: 500, ignore_empty: true }];
+  string avatar_url = 4 [(buf.validate.field).string = { uri: true, max_len: 2048, ignore_empty: true }];
+  string website = 5 [(buf.validate.field).string = { uri: true, max_len: 2048, ignore_empty: true }];
+
+  // Social links
+  map<string, string> social_links = 6;
+
+  // Public metadata
+  repeated string tags = 7 [(buf.validate.field).repeated.max_items = 20];
+  string location = 8 [(buf.validate.field).string = { max_len: 255, ignore_empty: true }];
+
+  // Account creation timestamp (public)
+  google.protobuf.Timestamp created_at = 9;
+
+  // Account verification badge
+  bool verified = 10;
+}

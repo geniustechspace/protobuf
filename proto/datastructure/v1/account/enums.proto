@@ -1,0 +1,71 @@
+// Account Enums - Production v1
+//
+// Enumerations for account management, multitenant aware.
+// COMPLIANCE: SOC 2 CC6.1, CC7.2 | GDPR Article 32
+
+syntax = "proto3";
+
+package geniustechspace.datastructure.v1.account;
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/datastructure/v1/account;accountv1";
+option java_multiple_files = true;
+option java_package = "space.geniustech.datastructure.v1.account";
+option csharp_namespace = "GeniusTechSpace.Datastructure.V1.Account";
+
+
+// AccountStatus: Lifecycle status of an account
+enum AccountStatus {
+  ACCOUNT_STATUS_UNSPECIFIED = 0;
+  ACTIVE = 1;
+  INACTIVE = 2;
+  SUSPENDED = 3;
+  CLOSED = 4;
+  PENDING_ACTIVATION = 5;
+  PENDING_VERIFICATION = 6;
+  LOCKED = 7;
+  FROZEN = 8;
+  DEACTIVATED = 9;
+  reserved 10 to 99;
+  reserved 100 to 199;
+}
+
+// AccountType: Type of account
+enum AccountType {
+  ACCOUNT_TYPE_UNSPECIFIED = 0;
+  PERSONAL = 1;
+  BUSINESS = 2;
+  ENTERPRISE = 3;
+  TRIAL = 4;
+  FREE = 5;
+  PREMIUM = 6;
+  ORGANIZATION = 7;
+  TEAM = 8;
+  DEVELOPER = 9;
+  reserved 10 to 99;
+  reserved 100 to 199;
+}
+
+// AccountTier: Account tier or subscription level
+enum AccountTier {
+  ACCOUNT_TIER_UNSPECIFIED = 0;
+  BASIC = 1;
+  STANDARD = 2;
+  PROFESSIONAL = 3;
+  ENTERPRISE = 4;
+  CUSTOM = 5;
+  reserved 6 to 99;
+  reserved 100 to 199;
+}
+
+// AccountVerificationStatus: Account verification state
+enum AccountVerificationStatus {
+  ACCOUNT_VERIFICATION_STATUS_UNSPECIFIED = 0;
+  UNVERIFIED = 1;
+  PENDING = 2;
+  VERIFIED = 3;
+  PARTIALLY_VERIFIED = 4;
+  REJECTED = 5;
+  EXPIRED = 6;
+  reserved 7 to 99;
+  reserved 100 to 199;
+}
