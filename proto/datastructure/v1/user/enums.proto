@@ -1,0 +1,81 @@
+// User Enums - Production v1
+//
+// Enumerations for user profile and preferences management.
+// COMPLIANCE: SOC 2 CC6.1, CC7.2 | GDPR Article 32
+
+syntax = "proto3";
+
+package geniustechspace.datastructure.v1.user;
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/datastructure/v1/user;userv1";
+option java_multiple_files = true;
+option java_package = "space.geniustech.datastructure.v1.user";
+option csharp_namespace = "GeniusTechSpace.Datastructure.V1.User";
+
+
+// UserStatus: User account status
+enum UserStatus {
+  USER_STATUS_UNSPECIFIED = 0;
+  ACTIVE = 1;
+  INACTIVE = 2;
+  SUSPENDED = 3;
+  DELETED = 4;
+  PENDING = 5;
+  BLOCKED = 6;
+  ARCHIVED = 7;
+  reserved 8 to 99;
+  reserved 100 to 199;
+}
+
+// UserRole: Common user role types
+enum UserRole {
+  USER_ROLE_UNSPECIFIED = 0;
+  ADMIN = 1;
+  MODERATOR = 2;
+  USER = 3;
+  GUEST = 4;
+  OWNER = 5;
+  MEMBER = 6;
+  VIEWER = 7;
+  EDITOR = 8;
+  CONTRIBUTOR = 9;
+  reserved 10 to 99;
+  reserved 100 to 199;
+}
+
+// NotificationPreference: Notification delivery preferences
+enum NotificationPreference {
+  NOTIFICATION_PREFERENCE_UNSPECIFIED = 0;
+  ALL = 1;
+  IMPORTANT_ONLY = 2;
+  NONE = 3;
+  DIGEST = 4;
+  REALTIME = 5;
+  reserved 6 to 99;
+  reserved 100 to 199;
+}
+
+// PrivacyLevel: Privacy setting levels
+enum PrivacyLevel {
+  PRIVACY_LEVEL_UNSPECIFIED = 0;
+  PUBLIC = 1;
+  PRIVATE = 2;
+  FRIENDS = 3;
+  CUSTOM = 4;
+  ORGANIZATION = 5;
+  reserved 6 to 99;
+  reserved 100 to 199;
+}
+
+// OnlineStatus: User online/presence status
+enum OnlineStatus {
+  ONLINE_STATUS_UNSPECIFIED = 0;
+  ONLINE = 1;
+  OFFLINE = 2;
+  AWAY = 3;
+  BUSY = 4;
+  DO_NOT_DISTURB = 5;
+  INVISIBLE = 6;
+  reserved 7 to 99;
+  reserved 100 to 199;
+}

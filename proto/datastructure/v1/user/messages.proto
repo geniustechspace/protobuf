@@ -1,0 +1,229 @@
+// User Messages - Production v1
+//
+// Enterprise-grade user profile and preferences data structures.
+// Multitenant aware. Follows GeniusTechSpace design patterns.
+// COMPLIANCE: SOC 2 CC6.1, CC7.2 | GDPR Article 6, 7, 32
+// SECURITY: Never expose passwords, tokens, or sensitive personal data
+
+syntax = "proto3";
+
+package geniustechspace.datastructure.v1.user;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/timestamp.proto";
+import "proto/datastructure/v1/user/enums.proto";
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/datastructure/v1/user;userv1";
+option java_multiple_files = true;
+option java_package = "space.geniustech.datastructure.v1.user";
+option csharp_namespace = "GeniusTechSpace.Datastructure.V1.User";
+
+// UserProfile: Comprehensive user profile information
+// SECURITY: Exclude sensitive fields (passwords, tokens) from this message
+message UserProfile {
+  reserved 11 to 15, 23 to 30, 37 to 40;
+
+  // Unique user identifier
+  string user_id = 1 [(buf.validate.field).string = { min_len: 8, max_len: 128 }];
+
+  // Username (unique within tenant)
+  string username = 2 [(buf.validate.field).string = {
+    min_len: 3
+    max_len: 64
+    pattern: "^[a-zA-Z0-9_-]+$"
+  }];
+
+  // User email
+  string email = 3 [(buf.validate.field).string = { email: true, max_len: 254 }];
+
+  // User status
+  UserStatus status = 4;
+
+  // Tenant context (multitenant isolation)
+  string tenant_id = 5 [(buf.validate.field).string = { min_len: 3, max_len: 64 }];
+
+  // Personal information
+  string first_name = 6 [(buf.validate.field).string = { max_len: 100, ignore_empty: true }];
+  string last_name = 7 [(buf.validate.field).string = { max_len: 100, ignore_empty: true }];
+  string display_name = 8 [(buf.validate.field).string = { max_len: 255, ignore_empty: true }];
+  string avatar_url = 9 [(buf.validate.field).string = { uri: true, max_len: 2048, ignore_empty: true }];
+  string bio = 10 [(buf.validate.field).string = { max_len: 500, ignore_empty: true }];
+
+  // Contact information
+  string phone = 16 [(buf.validate.field).string = { max_len: 20, ignore_empty: true }];
+  string location = 17 [(buf.validate.field).string = { max_len: 255, ignore_empty: true }];
+  string website = 18 [(buf.validate.field).string = { uri: true, max_len: 2048, ignore_empty: true }];
+
+  // Lifecycle timestamps
+  google.protobuf.Timestamp created_at = 19;
+  google.protobuf.Timestamp updated_at = 20;
+  google.protobuf.Timestamp last_login_at = 21;
+  google.protobuf.Timestamp email_verified_at = 22;
+
+  // User roles and permissions
+  repeated UserRole roles = 31 [(buf.validate.field).repeated.max_items = 20];
+  repeated string custom_roles = 32 [(buf.validate.field).repeated.max_items = 20];
+
+  // User preferences
+  UserPreferences preferences = 33;
+
+  // Profile verification
+  bool email_verified = 34;
+  bool phone_verified = 35;
+  bool identity_verified = 36;
+
+  // Custom metadata (no PII/secrets)
+  map<string, string> metadata = 41;
+}
+
+// UserPreferences: User preferences and settings
+// COMPLIANCE: GDPR Article 7 (user consent preferences)
+message UserPreferences {
+  reserved 16 to 20, 26 to 30;
+
+  // Notification preferences
+  NotificationPreference email_notifications = 1;
+  NotificationPreference sms_notifications = 2;
+  NotificationPreference push_notifications = 3;
+  bool marketing_emails = 4;
+  bool product_updates = 5;
+  bool newsletter = 6;
+
+  // Privacy settings
+  PrivacyLevel profile_privacy = 7;
+  PrivacyLevel activity_privacy = 8;
+  bool show_online_status = 9;
+  bool allow_search_indexing = 10;
+
+  // Communication preferences
+  repeated string blocked_users = 11 [(buf.validate.field).repeated.max_items = 1000];
+  repeated string muted_users = 12 [(buf.validate.field).repeated.max_items = 1000];
+  repeated string favorite_users = 13 [(buf.validate.field).repeated.max_items = 500];
+
+  // Appearance preferences
+  string theme = 14 [(buf.validate.field).string = { max_len: 32, ignore_empty: true }];
+  string language = 15 [(buf.validate.field).string = { 
+    pattern: "^[a-z]{2}(-[A-Z]{2})?$"
+    ignore_empty: true 
+  }];
+
+  // Localization
+  string timezone = 21 [(buf.validate.field).string = { max_len: 64, ignore_empty: true }];
+  string date_format = 22 [(buf.validate.field).string = { max_len: 32, ignore_empty: true }];
+  string time_format = 23 [(buf.validate.field).string = { max_len: 32, ignore_empty: true }];
+  string currency = 24 [(buf.validate.field).string = { 
+    pattern: "^[A-Z]{3}$"
+    ignore_empty: true 
+  }];
+  string measurement_system = 25 [(buf.validate.field).string = { max_len: 32, ignore_empty: true }];
+
+  // Accessibility preferences
+  bool high_contrast = 31;
+  bool reduce_motion = 32;
+  bool screen_reader_optimized = 33;
+  int32 font_size_percentage = 34 [(buf.validate.field).int32 = { gte: 50, lte: 200 }];
+
+  // Custom preferences
+  map<string, string> custom = 35;
+}
+
+// UserSettings: System-level user settings
+// SECURITY: Administrative and security settings
+message UserSettings {
+  reserved 11 to 20;
+
+  // Security settings
+  bool two_factor_enabled = 1;
+  bool biometric_enabled = 2;
+  repeated string trusted_devices = 3 [(buf.validate.field).repeated.max_items = 20];
+  bool session_timeout_enabled = 4;
+  int32 session_timeout_minutes = 5 [(buf.validate.field).int32 = { gte: 1, lte: 10080 }];
+
+  // Account management
+  bool allow_password_reset = 6;
+  bool allow_email_change = 7;
+  bool allow_account_deletion = 8;
+
+  // API and integration settings
+  bool api_access_enabled = 9;
+  repeated string api_keys = 10 [(buf.validate.field).repeated.max_items = 10];
+
+  // Activity tracking
+  bool track_activity = 21;
+  bool track_location = 22;
+  bool track_device_info = 23;
+
+  // Data retention settings
+  int32 data_retention_days = 24 [(buf.validate.field).int32 = { gte: 0, lte: 3650 }];
+  bool auto_delete_inactive = 25;
+
+  // Custom settings
+  map<string, string> custom = 26;
+}
+
+// UserActivity: User activity tracking information
+// COMPLIANCE: GDPR Article 32 (monitoring and logging)
+message UserActivity {
+  reserved 11 to 20;
+
+  // User identifier
+  string user_id = 1 [(buf.validate.field).string = { min_len: 8, max_len: 128 }];
+
+  // Online status
+  OnlineStatus online_status = 2;
+
+  // Last activity timestamp
+  google.protobuf.Timestamp last_activity_at = 3;
+
+  // Last seen location (anonymized)
+  string last_seen_location = 4 [(buf.validate.field).string = { max_len: 255, ignore_empty: true }];
+
+  // Device information
+  string last_device_id = 5 [(buf.validate.field).string = { max_len: 128, ignore_empty: true }];
+  string last_user_agent = 6 [(buf.validate.field).string = { max_len: 512, ignore_empty: true }];
+  string last_ip_address = 7 [(buf.validate.field).string = { ip: true, max_len: 45, ignore_empty: true }];
+
+  // Activity statistics
+  int64 total_logins = 8 [(buf.validate.field).int64 = { gte: 0 }];
+  int64 total_actions = 9 [(buf.validate.field).int64 = { gte: 0 }];
+  google.protobuf.Timestamp first_login_at = 10;
+
+  // Activity metadata
+  map<string, string> metadata = 21;
+}
+
+// UserContact: User contact information
+// COMPLIANCE: GDPR Article 6 (lawful processing of contact data)
+message UserContact {
+  reserved 11 to 20;
+
+  // User identifier
+  string user_id = 1 [(buf.validate.field).string = { min_len: 8, max_len: 128 }];
+
+  // Primary contact
+  string email = 2 [(buf.validate.field).string = { email: true, max_len: 254, ignore_empty: true }];
+  string phone = 3 [(buf.validate.field).string = { max_len: 20, ignore_empty: true }];
+
+  // Alternative contacts
+  string secondary_email = 4 [(buf.validate.field).string = { email: true, max_len: 254, ignore_empty: true }];
+  string secondary_phone = 5 [(buf.validate.field).string = { max_len: 20, ignore_empty: true }];
+
+  // Physical address
+  string address_line1 = 6 [(buf.validate.field).string = { max_len: 255, ignore_empty: true }];
+  string address_line2 = 7 [(buf.validate.field).string = { max_len: 255, ignore_empty: true }];
+  string city = 8 [(buf.validate.field).string = { max_len: 100, ignore_empty: true }];
+  string state = 9 [(buf.validate.field).string = { max_len: 100, ignore_empty: true }];
+  string postal_code = 10 [(buf.validate.field).string = { max_len: 20, ignore_empty: true }];
+  string country = 21 [(buf.validate.field).string = { 
+    pattern: "^[A-Z]{2}$"
+    ignore_empty: true 
+  }];
+
+  // Social media contacts
+  map<string, string> social_profiles = 22;
+
+  // Emergency contact
+  string emergency_contact_name = 23 [(buf.validate.field).string = { max_len: 255, ignore_empty: true }];
+  string emergency_contact_phone = 24 [(buf.validate.field).string = { max_len: 20, ignore_empty: true }];
+  string emergency_contact_relation = 25 [(buf.validate.field).string = { max_len: 100, ignore_empty: true }];
+}
