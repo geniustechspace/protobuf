@@ -1,0 +1,252 @@
+// DOMAIN: Identity Provider - User Profile Management
+// COMPLIANCE: SOC 2 CC6.1, GDPR Article 5, ISO 27001 A.9.2
+// SECURITY: Authentication required, tenant isolation enforced
+// PII: Contains user personal data
+
+syntax = "proto3";
+
+package geniustechspace.idp.identity.v1;
+
+import "buf/validate/validate.proto";
+import "core/common/v1/common.proto";
+import "core/metadata/v1/metadata.proto";
+import "google/protobuf/timestamp.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Idp.Identity.V1";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/idp/identity/v1;idpidentityv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.idp.identity.v1";
+
+// UserProfile represents user profile information.
+// PII: Yes - contains personal data
+// COMPLIANCE: GDPR Article 5 (data minimization)
+message UserProfile {
+  // User ID. REQUIRED.
+  // PII: Yes - GDPR Article 4(1) personal identifier
+  string user_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Tenant ID. REQUIRED.
+  string tenant_id = 2 [(buf.validate.field).string.min_len = 1];
+
+  // Given name. OPTIONAL.
+  // PII: Yes - GDPR Article 4(1) personal data
+  string given_name = 3;
+
+  // Family name. OPTIONAL.
+  // PII: Yes - GDPR Article 4(1) personal data
+  string family_name = 4;
+
+  // Middle name. OPTIONAL.
+  // PII: Yes - GDPR Article 4(1) personal data
+  string middle_name = 5;
+
+  // Display name. OPTIONAL.
+  // PII: Possibly - if contains real name
+  string display_name = 6;
+
+  // Nickname. OPTIONAL.
+  string nickname = 7;
+
+  // Preferred username. OPTIONAL.
+  string preferred_username = 8;
+
+  // Profile URL. OPTIONAL.
+  // Link to user's public profile.
+  string profile_url = 9;
+
+  // Picture URL. OPTIONAL.
+  // PII: Possibly - biometric data under GDPR Article 9
+  string picture_url = 10;
+
+  // Website. OPTIONAL.
+  string website = 11;
+
+  // Gender. OPTIONAL.
+  // PII: Possibly - sensitive personal data
+  string gender = 12;
+
+  // Birth date. OPTIONAL.
+  // PII: Yes - GDPR Article 4(1) personal data
+  // Format: YYYY-MM-DD
+  string birth_date = 13 [(buf.validate.field).string.pattern = "^\\d{4}-\\d{2}-\\d{2}$"];
+
+  // Locale. OPTIONAL.
+  // ISO 639-1 language code with optional ISO 3166-1 country code
+  // E.g., "en-US", "fr-FR"
+  string locale = 14;
+
+  // Timezone. OPTIONAL.
+  // IANA timezone (e.g., "America/New_York")
+  string timezone = 15;
+
+  // Address. OPTIONAL.
+  // PII: Yes - GDPR Article 4(1) personal data
+  core.common.v1.Address address = 16;
+
+  // Phone numbers. OPTIONAL.
+  // PII: Yes - GDPR Article 4(1) personal identifier
+  repeated PhoneNumber phone_numbers = 17;
+
+  // Social profiles. OPTIONAL.
+  repeated SocialProfile social_profiles = 18;
+
+  // Company. OPTIONAL.
+  string company = 19;
+
+  // Job title. OPTIONAL.
+  string job_title = 20;
+
+  // Department. OPTIONAL.
+  string department = 21;
+
+  // Bio. OPTIONAL.
+  // Short biography or description.
+  string bio = 22;
+
+  // Custom attributes. OPTIONAL.
+  // Tenant-specific custom fields.
+  map<string, string> custom_attributes = 23;
+
+  // Metadata. OPTIONAL.
+  core.metadata.v1.Metadata metadata = 24;
+}
+
+// PhoneNumber represents a phone number with type.
+message PhoneNumber {
+  // Value. REQUIRED.
+  // PII: Yes - GDPR Article 4(1) personal identifier
+  // VALIDATION: E.164 format
+  string value = 1 [(buf.validate.field).string.pattern = "^\\+[1-9]\\d{1,14}$"];
+
+  // Type. OPTIONAL.
+  // E.g., "mobile", "work", "home"
+  string type = 2;
+
+  // Primary. OPTIONAL.
+  bool primary = 3;
+
+  // Verified. OPTIONAL.
+  bool verified = 4;
+}
+
+// SocialProfile represents external social profile link.
+message SocialProfile {
+  // Provider. REQUIRED.
+  // E.g., "linkedin", "twitter", "github"
+  string provider = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Profile URL. REQUIRED.
+  string profile_url = 2 [(buf.validate.field).string.min_len = 1];
+
+  // Username. OPTIONAL.
+  // Username on that platform.
+  string username = 3;
+
+  // Verified. OPTIONAL.
+  // Whether profile ownership is verified.
+  bool verified = 4;
+}
+
+// GetUserProfileRequest retrieves user profile.
+// AUTHENTICATION: Required
+// AUTHORIZATION: Self or 'users:read' permission
+message GetUserProfileRequest {
+  // Tenant ID. REQUIRED.
+  string tenant_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // User ID. REQUIRED.
+  // PII: Yes - GDPR Article 4(1) personal identifier
+  string user_id = 2 [(buf.validate.field).string.min_len = 1];
+}
+
+// GetUserProfileResponse returns user profile.
+message GetUserProfileResponse {
+  // Profile. REQUIRED.
+  UserProfile profile = 1;
+}
+
+// UpdateUserProfileRequest updates user profile.
+// AUTHENTICATION: Required
+// AUTHORIZATION: Self or 'users:update' permission
+message UpdateUserProfileRequest {
+  // Tenant ID. REQUIRED.
+  string tenant_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // User ID. REQUIRED.
+  // PII: Yes - GDPR Article 4(1) personal identifier
+  string user_id = 2 [(buf.validate.field).string.min_len = 1];
+
+  // Given name. OPTIONAL.
+  // PII: Yes - GDPR Article 4(1) personal data
+  string given_name = 3;
+
+  // Family name. OPTIONAL.
+  // PII: Yes - GDPR Article 4(1) personal data
+  string family_name = 4;
+
+  // Middle name. OPTIONAL.
+  // PII: Yes - GDPR Article 4(1) personal data
+  string middle_name = 5;
+
+  // Display name. OPTIONAL.
+  string display_name = 6;
+
+  // Nickname. OPTIONAL.
+  string nickname = 7;
+
+  // Picture URL. OPTIONAL.
+  string picture_url = 8;
+
+  // Website. OPTIONAL.
+  string website = 9;
+
+  // Gender. OPTIONAL.
+  string gender = 10;
+
+  // Birth date. OPTIONAL.
+  // Format: YYYY-MM-DD
+  string birth_date = 11 [(buf.validate.field).string.pattern = "^\\d{4}-\\d{2}-\\d{2}$"];
+
+  // Locale. OPTIONAL.
+  string locale = 12;
+
+  // Timezone. OPTIONAL.
+  string timezone = 13;
+
+  // Address. OPTIONAL.
+  core.common.v1.Address address = 14;
+
+  // Phone numbers. OPTIONAL.
+  repeated PhoneNumber phone_numbers = 15;
+
+  // Social profiles. OPTIONAL.
+  repeated SocialProfile social_profiles = 16;
+
+  // Company. OPTIONAL.
+  string company = 17;
+
+  // Job title. OPTIONAL.
+  string job_title = 18;
+
+  // Department. OPTIONAL.
+  string department = 19;
+
+  // Bio. OPTIONAL.
+  string bio = 20;
+
+  // Custom attributes. OPTIONAL.
+  map<string, string> custom_attributes = 21;
+}
+
+// UpdateUserProfileResponse confirms profile update.
+message UpdateUserProfileResponse {
+  // Success. REQUIRED.
+  bool success = 1;
+
+  // Profile. OPTIONAL.
+  // Updated profile.
+  UserProfile profile = 2;
+
+  // Message. OPTIONAL.
+  string message = 3;
+}

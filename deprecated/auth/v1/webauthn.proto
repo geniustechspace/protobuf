@@ -1,0 +1,416 @@
+// WebAuthn/FIDO2 Messages - Version 1
+//
+// Complete WebAuthn implementation per W3C Web Authentication API.
+// Supports registration, authentication, and credential management.
+//
+// COMPLIANCE: W3C WebAuthn Level 2, FIDO2, CTAP2
+// SECURITY: Implements strong hardware-backed authentication
+// USAGE: Passwordless and MFA authentication flows
+
+syntax = "proto3";
+
+package auth.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Auth.V1";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/auth/v1;authv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.auth.v1";
+
+// ============================================================================
+// WEBAUTHN CREDENTIAL
+// ============================================================================
+
+// WebAuthnCredential contains WebAuthn authentication assertion
+message WebAuthnCredential {
+  reserved 9 to 30;
+
+  // Credential ID (raw bytes)
+  bytes credential_id = 1;
+
+  // Client data JSON
+  bytes client_data_json = 2;
+
+  // Authenticator data
+  bytes authenticator_data = 3;
+
+  // Signature
+  bytes signature = 4;
+
+  // User handle (optional)
+  bytes user_handle = 5;
+
+  // Attestation format (during registration)
+  string attestation_format = 6;
+
+  // Attestation object (during registration)
+  bytes attestation_object = 7;
+
+  // Transport methods (usb, nfc, ble, internal)
+  repeated string transports = 8;
+}
+
+// ============================================================================
+// WEBAUTHN REGISTRATION (ATTESTATION)
+// ============================================================================
+
+// WebAuthnRegistrationOptionsRequest requests registration options
+message WebAuthnRegistrationOptionsRequest {
+  reserved 5 to 10;
+
+  // User ID
+  string user_id = 1;
+
+  // Username
+  string username = 2;
+
+  // Display name
+  string display_name = 3;
+
+  // Authenticator attachment (platform, cross-platform)
+  string authenticator_attachment = 4;
+
+  // Tenant ID
+  string tenant_id = 11;
+
+  // Require resident key
+  bool require_resident_key = 12;
+
+  // User verification requirement (required, preferred, discouraged)
+  string user_verification = 13;
+
+  // Attestation preference (none, indirect, direct, enterprise)
+  string attestation = 14;
+}
+
+// WebAuthnRegistrationOptionsResponse returns registration challenge
+message WebAuthnRegistrationOptionsResponse {
+  reserved 9 to 30;
+
+  // Challenge (base64url encoded)
+  bytes challenge = 1;
+
+  // Relying Party ID
+  string rp_id = 2;
+
+  // Relying Party name
+  string rp_name = 3;
+
+  // User ID (base64url encoded)
+  bytes user_id = 4;
+
+  // Username
+  string username = 5;
+
+  // Display name
+  string display_name = 6;
+
+  // Credential parameters (supported algorithms)
+  repeated CredentialParameter credential_params = 7;
+
+  // Timeout (milliseconds)
+  int64 timeout = 8;
+
+  // Exclude credentials (already registered)
+  repeated CredentialDescriptor exclude_credentials = 31;
+
+  // Authenticator selection criteria
+  AuthenticatorSelection authenticator_selection = 32;
+
+  // Attestation preference
+  string attestation = 33;
+
+  // Challenge expiration
+  google.protobuf.Timestamp expires_at = 34;
+}
+
+// WebAuthnRegistrationRequest submits registration credential
+message WebAuthnRegistrationRequest {
+  reserved 4 to 10;
+
+  // User ID
+  string user_id = 1;
+
+  // Credential name/label
+  string credential_name = 2;
+
+  // WebAuthn credential
+  WebAuthnCredential credential = 3;
+
+  // Tenant ID
+  string tenant_id = 11;
+}
+
+// WebAuthnRegistrationResponse confirms registration
+message WebAuthnRegistrationResponse {
+  reserved 4 to 10;
+
+  // Success flag
+  bool success = 1;
+
+  // Credential ID
+  string credential_id = 2;
+
+  // Registered credential info
+  WebAuthnCredentialInfo credential_info = 3;
+
+  // User-facing message
+  string message = 11;
+}
+
+// ============================================================================
+// WEBAUTHN AUTHENTICATION (ASSERTION)
+// ============================================================================
+
+// WebAuthnAuthenticationOptionsRequest requests authentication options
+message WebAuthnAuthenticationOptionsRequest {
+  reserved 3 to 10;
+
+  // User ID (optional for usernameless flows)
+  string user_id = 1;
+
+  // Username (optional)
+  string username = 2;
+
+  // Tenant ID
+  string tenant_id = 11;
+
+  // User verification requirement
+  string user_verification = 12;
+}
+
+// WebAuthnAuthenticationOptionsResponse returns authentication challenge
+message WebAuthnAuthenticationOptionsResponse {
+  reserved 5 to 30;
+
+  // Challenge (base64url encoded)
+  bytes challenge = 1;
+
+  // Relying Party ID
+  string rp_id = 2;
+
+  // Timeout (milliseconds)
+  int64 timeout = 3;
+
+  // Allowed credentials
+  repeated CredentialDescriptor allow_credentials = 4;
+
+  // User verification requirement
+  string user_verification = 31;
+
+  // Challenge expiration
+  google.protobuf.Timestamp expires_at = 32;
+}
+
+// WebAuthnAuthenticationRequest submits authentication assertion
+message WebAuthnAuthenticationRequest {
+  reserved 3 to 10;
+
+  // User ID (optional)
+  string user_id = 1;
+
+  // WebAuthn credential
+  WebAuthnCredential credential = 2;
+
+  // Tenant ID
+  string tenant_id = 11;
+}
+
+// WebAuthnAuthenticationResponse returns authentication result
+message WebAuthnAuthenticationResponse {
+  reserved 5 to 10;
+
+  // Success flag
+  bool success = 1;
+
+  // User ID
+  string user_id = 2;
+
+  // Credential ID used
+  string credential_id = 3;
+
+  // Authentication counter
+  int64 sign_count = 4;
+
+  // User-facing message
+  string message = 11;
+}
+
+// ============================================================================
+// CREDENTIAL MANAGEMENT
+// ============================================================================
+
+// WebAuthnCredentialInfo contains registered credential metadata
+message WebAuthnCredentialInfo {
+  reserved 10 to 30;
+
+  // Credential ID
+  string credential_id = 1;
+
+  // Credential name/label
+  string name = 2;
+
+  // Public key (base64url encoded)
+  bytes public_key = 3;
+
+  // Algorithm (COSE)
+  int32 algorithm = 4;
+
+  // Sign count (for clone detection)
+  int64 sign_count = 5;
+
+  // Transports (usb, nfc, ble, internal)
+  repeated string transports = 6;
+
+  // Created timestamp
+  google.protobuf.Timestamp created_at = 7;
+
+  // Last used timestamp
+  google.protobuf.Timestamp last_used_at = 8;
+
+  // Active status
+  bool active = 9;
+
+  // Authenticator AAGUID
+  string aaguid = 31;
+
+  // Attestation format
+  string attestation_format = 32;
+
+  // Device name (if known)
+  string device_name = 33;
+
+  // Backup eligible flag
+  bool backup_eligible = 34;
+
+  // Backup state flag
+  bool backup_state = 35;
+}
+
+// WebAuthnCredentialListRequest requests user's credentials
+message WebAuthnCredentialListRequest {
+  reserved 3 to 10;
+
+  // User ID (defaults to authenticated user)
+  string user_id = 1;
+
+  // Include inactive credentials
+  bool include_inactive = 2;
+
+  // Tenant ID
+  string tenant_id = 11;
+}
+
+// WebAuthnCredentialListResponse returns credential list
+message WebAuthnCredentialListResponse {
+  reserved 2 to 10;
+
+  // List of credentials
+  repeated WebAuthnCredentialInfo credentials = 1;
+
+  // Total count
+  int32 total_count = 11;
+}
+
+// WebAuthnCredentialUpdateRequest updates credential metadata
+message WebAuthnCredentialUpdateRequest {
+  reserved 4 to 10;
+
+  // Credential ID
+  string credential_id = 1;
+
+  // New name
+  string name = 2;
+
+  // User ID (defaults to authenticated user)
+  string user_id = 3;
+
+  // Tenant ID
+  string tenant_id = 11;
+}
+
+// WebAuthnCredentialUpdateResponse confirms update
+message WebAuthnCredentialUpdateResponse {
+  reserved 3 to 10;
+
+  // Success flag
+  bool success = 1;
+
+  // Updated credential info
+  WebAuthnCredentialInfo credential_info = 2;
+
+  // User-facing message
+  string message = 11;
+}
+
+// WebAuthnCredentialDeleteRequest deletes a credential
+message WebAuthnCredentialDeleteRequest {
+  reserved 3 to 10;
+
+  // Credential ID
+  string credential_id = 1;
+
+  // User ID (defaults to authenticated user)
+  string user_id = 2;
+
+  // Tenant ID
+  string tenant_id = 11;
+}
+
+// WebAuthnCredentialDeleteResponse confirms deletion
+message WebAuthnCredentialDeleteResponse {
+  reserved 2 to 10;
+
+  // Success flag
+  bool success = 1;
+
+  // User-facing message
+  string message = 11;
+}
+
+// ============================================================================
+// SUPPORTING MESSAGES
+// ============================================================================
+
+// CredentialParameter defines supported public key algorithms
+message CredentialParameter {
+  reserved 3 to 10;
+
+  // Type (always "public-key")
+  string type = 1;
+
+  // Algorithm (COSE identifier: -7 = ES256, -257 = RS256)
+  int32 alg = 2;
+}
+
+// CredentialDescriptor identifies a credential
+message CredentialDescriptor {
+  reserved 4 to 10;
+
+  // Type (always "public-key")
+  string type = 1;
+
+  // Credential ID
+  bytes id = 2;
+
+  // Transports (usb, nfc, ble, internal)
+  repeated string transports = 3;
+}
+
+// AuthenticatorSelection specifies authenticator requirements
+message AuthenticatorSelection {
+  reserved 5 to 10;
+
+  // Authenticator attachment (platform, cross-platform)
+  string authenticator_attachment = 1;
+
+  // Require resident key
+  bool require_resident_key = 2;
+
+  // Resident key requirement (discouraged, preferred, required)
+  string resident_key = 3;
+
+  // User verification requirement (required, preferred, discouraged)
+  string user_verification = 4;
+}

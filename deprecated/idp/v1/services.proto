@@ -1,0 +1,229 @@
+// IDP Services - Version 1
+// Enterprise-standard, simplified service definitions
+//
+// COMPLIANCE:
+//   - OAuth 2.0 (RFC 6749): Authorization Framework
+//   - OpenID Connect Core 1.0: Identity layer on OAuth 2.0
+//   - RFC 7662 (Token Introspection): Token validation
+//   - RFC 6749 Section 3.1.2: Redirect URI validation
+//   - W3C WebAuthn Level 2: Passwordless authentication
+//   - FIDO2 CTAP2: External authenticator protocol
+//   - NIST 800-63B: Digital Identity Guidelines (AAL1-3)
+//   - OWASP Top 10: Security controls implementation
+//   - PCI DSS 3.2.1: If processing payment data
+//   - GDPR Article 32: Security of processing
+//   - SOC 2 Type II: Access control and audit logging
+//   - HIPAA 164.312(a): If handling health data
+//   - ISO 27001: Information security management
+//
+// SECURITY:
+//   - All RPCs require authentication (except StartAuthentication/Authentication)
+//   - TLS 1.3+ required for all transport (no exceptions)
+//   - Rate limiting enforced on all endpoints (exponential backoff)
+//   - Audit logging mandatory for all operations
+//   - Input validation using buf/validate constraints
+//   - No sensitive data in logs (passwords, tokens, PII masked)
+//   - Session binding (device/client/network/geo verification)
+//   - CSRF protection via state parameter (OAuth/OIDC flows)
+//
+// PRIVACY:
+//   - PII fields marked and encrypted at rest
+//   - GDPR Article 25: Data protection by design
+//   - Right to erasure: User deletion cascades
+//   - Data minimization: Only essential fields processed
+//   - Retention policies: Configurable per tenant
+//
+// RATE LIMITS (recommended defaults):
+//   - Authentication: 5 attempts/min per IP, 10/min per user
+//   - MFA verification: 3 attempts/5min per session
+//   - Password reset: 3 attempts/hour per email
+//   - Token refresh: 10/min per refresh token
+//   - Token introspection: 100/min per client
+
+syntax = "proto3";
+
+package geniustechspace.idp.v1;
+
+import "proto/idp/v1/authentication.proto";
+import "proto/idp/v1/password.proto";
+import "proto/idp/v1/session.proto";
+import "proto/idp/v1/tokens.proto";
+import "proto/idp/v1/webauthn.proto";
+import "proto/idp/v1/mfa.proto";
+import "proto/idp/v1/security.proto";
+import "proto/idp/v1/audit.proto";
+import "proto/datastructure/v1/session/enums.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Idp.V1";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/idp/v1;idpv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.idp.v1";
+
+// IdentityService - Enterprise-grade Identity Provider
+//
+// Provides comprehensive authentication, authorization, and session management
+// for multi-tenant SaaS platforms. Supports 15+ authentication methods including
+// passwordless flows, social login, enterprise SSO, and hardware security keys.
+//
+// ARCHITECTURE:
+//   - Flat message design (no nested wrappers)
+//   - Context references by ID (device_id, client_id, network_id, geo_location_id)
+//   - Separation of concerns (auth vs session lifecycle)
+//   - Idempotent operations where possible
+//
+// ERROR HANDLING:
+//   - Use gRPC status codes (UNAUTHENTICATED, PERMISSION_DENIED, etc.)
+//   - Include user-friendly message + message_key for localization
+//   - Rate limit errors: RESOURCE_EXHAUSTED with retry-after
+//   - Validation errors: INVALID_ARGUMENT with field details
+service IdentityService {
+  // ==== Core Authentication ====
+  
+  // StartAuthentication: Initiates passwordless authentication flows
+  // Use for: Magic links, WebAuthn, user existence checks
+  // Rate limit: 10/min per IP
+  // Auth required: No
+  rpc StartAuthentication(StartAuthenticationRequest) returns (AuthenticationResponse);
+  
+  // Authentication: Primary authentication with credentials
+  // Use for: Password, OTP, TOTP, social, SAML, WebAuthn, biometric, mTLS
+  // Rate limit: 5/min per IP, 10/min per user
+  // Auth required: No
+  // Returns: MFA_REQUIRED if additional factors needed, SUCCESS if complete
+  rpc Authentication(AuthenticationRequest) returns (AuthenticationResponse);
+  
+  // VerifyMFA: Second-factor verification for MFA flows
+  // Use for: Completing MFA after MFA_REQUIRED response
+  // Rate limit: 3 attempts per 5min per session
+  // Auth required: Temporary MFA session (from Authentication response)
+  // Returns: Same as Authentication (SUCCESS with tokens or FAILED)
+  rpc VerifyMFA(VerifyMFARequest) returns (AuthenticationResponse);
+  
+  // Logout: Terminates session and revokes all associated tokens
+  // Use for: User-initiated logout, admin logout, security logout
+  // Rate limit: 10/min per session
+  // Auth required: Yes (session token)
+  rpc Logout(LogoutRequest) returns (LogoutResponse);
+
+  // ==== Token Management ====
+  rpc RefreshToken(RefreshTokenRequest) returns (RefreshTokenResponse);
+  rpc RevokeToken(RevokeTokenRequest) returns (RevokeTokenResponse);
+  rpc RevokeAllTokens(RevokeAllTokensRequest) returns (RevokeAllTokensResponse);
+  rpc ListTokens(ListTokensRequest) returns (ListTokensResponse);
+  rpc IntrospectToken(IntrospectTokenRequest) returns (IntrospectTokenResponse);
+
+  // ==== Password Management ====
+  rpc ResetPassword(ResetPasswordRequest) returns (ResetPasswordResponse);
+  rpc ConfirmPasswordReset(ConfirmPasswordResetRequest) returns (ConfirmPasswordResetResponse);
+  rpc ChangePassword(ChangePasswordRequest) returns (ChangePasswordResponse);
+
+  // ==== Session Management ====
+  rpc ListSessions(ListSessionsRequest) returns (ListSessionsResponse);
+  rpc RevokeSession(RevokeSessionRequest) returns (RevokeSessionResponse);
+  rpc RevokeAllSessions(RevokeAllSessionsRequest) returns (RevokeAllSessionsResponse);
+  
+  // ==== WebAuthn/FIDO2 ====
+  rpc BeginWebAuthnRegistration(BeginWebAuthnRegistrationRequest) returns (BeginWebAuthnRegistrationResponse);
+  rpc CompleteWebAuthnRegistration(CompleteWebAuthnRegistrationRequest) returns (CompleteWebAuthnRegistrationResponse);
+  rpc BeginWebAuthnAuthentication(BeginWebAuthnAuthenticationRequest) returns (BeginWebAuthnAuthenticationResponse);
+  rpc CompleteWebAuthnAuthentication(CompleteWebAuthnAuthenticationRequest) returns (CompleteWebAuthnAuthenticationResponse);
+  rpc ListWebAuthnCredentials(ListWebAuthnCredentialsRequest) returns (ListWebAuthnCredentialsResponse);
+  rpc DeleteWebAuthnCredential(DeleteWebAuthnCredentialRequest) returns (DeleteWebAuthnCredentialResponse);
+  rpc UpdateWebAuthnCredential(UpdateWebAuthnCredentialRequest) returns (UpdateWebAuthnCredentialResponse);
+  
+  // ==== MFA Enrollment ====
+  rpc BeginTOTPEnrollment(BeginTOTPEnrollmentRequest) returns (BeginTOTPEnrollmentResponse);
+  rpc ConfirmTOTPEnrollment(ConfirmTOTPEnrollmentRequest) returns (ConfirmTOTPEnrollmentResponse);
+  rpc BeginSMSEnrollment(BeginSMSEnrollmentRequest) returns (BeginSMSEnrollmentResponse);
+  rpc ConfirmSMSEnrollment(ConfirmSMSEnrollmentRequest) returns (ConfirmSMSEnrollmentResponse);
+  rpc BeginEmailEnrollment(BeginEmailEnrollmentRequest) returns (BeginEmailEnrollmentResponse);
+  rpc ConfirmEmailEnrollment(ConfirmEmailEnrollmentRequest) returns (ConfirmEmailEnrollmentResponse);
+  
+  // ==== MFA Management ====
+  rpc ListMFAFactors(ListMFAFactorsRequest) returns (ListMFAFactorsResponse);
+  rpc RemoveMFAFactor(RemoveMFAFactorRequest) returns (RemoveMFAFactorResponse);
+  rpc SetPrimaryMFAFactor(SetPrimaryMFAFactorRequest) returns (SetPrimaryMFAFactorResponse);
+  rpc GenerateBackupCodes(GenerateBackupCodesRequest) returns (GenerateBackupCodesResponse);
+
+  // ==== Security Policy Management ====
+  // Password policies
+  rpc GetPasswordPolicy(GetPasswordPolicyRequest) returns (PasswordPolicy);
+  rpc UpdatePasswordPolicy(UpdatePasswordPolicyRequest) returns (PasswordPolicy);
+  rpc CheckPasswordStrength(CheckPasswordStrengthRequest) returns (PasswordStrength);
+
+  // Rate limiting
+  rpc GetRateLimitStatus(GetRateLimitStatusRequest) returns (RateLimitStatus);
+  
+  // Account lockout
+  rpc GetAccountLockoutStatus(GetAccountLockoutStatusRequest) returns (AccountLockoutStatus);
+  rpc UnlockAccount(UnlockAccountRequest) returns (UnlockAccountResponse);
+
+  // Risk assessment
+  rpc AssessRisk(AssessRiskRequest) returns (RiskScore);
+
+  // ==== Audit & Compliance ====
+  rpc LogAuditEvent(AuditEvent) returns (LogAuditEventResponse);
+  rpc QueryAuditEvents(AuditEventQuery) returns (AuditEventQueryResponse);
+  rpc GetAuditEvent(GetAuditEventRequest) returns (AuditEvent);
+}
+
+// ========== Security Policy Requests/Responses ==========
+
+message GetPasswordPolicyRequest {
+  string tenant_id = 1;
+}
+
+message UpdatePasswordPolicyRequest {
+  PasswordPolicy policy = 1;
+}
+
+message CheckPasswordStrengthRequest {
+  string tenant_id = 1;
+  string password = 2;  // Never logged
+  string username = 3;  // For username-in-password check
+}
+
+message GetRateLimitStatusRequest {
+  string tenant_id = 1;
+  string subject_id = 2;  // user_id, ip_address, device_id
+  string operation = 3;   // "login", "password_reset", etc.
+}
+
+message GetAccountLockoutStatusRequest {
+  string tenant_id = 1;
+  string account_id = 2;  // user_id, ip_address, device_id
+}
+
+message UnlockAccountRequest {
+  string tenant_id = 1;
+  string account_id = 2;
+  string reason = 3;
+  string unlocked_by = 4;  // Admin user ID
+}
+
+message UnlockAccountResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message AssessRiskRequest {
+  string tenant_id = 1;
+  string user_id = 2;
+  string session_id = 3;
+  string device_id = 4;
+  string ip_address = 5;
+  string geo_location_id = 6;
+  geniustechspace.datastructure.v1.session.AuthenticationMethod auth_method = 7;
+}
+
+// ========== Audit Requests/Responses ==========
+
+message LogAuditEventResponse {
+  bool success = 1;
+  string event_id = 2;
+}
+
+message GetAuditEventRequest {
+  string tenant_id = 1;
+  string event_id = 2;
+}

@@ -1,0 +1,167 @@
+// IDP Security Service - Version 1
+// Security policy management and risk assessment service
+//
+// COMPLIANCE:
+//   - NIST 800-63B: Password and authentication policies
+//   - OWASP: Security controls and rate limiting
+//   - PCI DSS: Account lockout and security monitoring
+//   - SOC 2: Security policy enforcement
+//
+// SECURITY:
+//   - Centralized policy management
+//   - Real-time risk assessment
+//   - Adaptive authentication triggers
+//   - Account lockout protection
+//   - Rate limit monitoring
+//
+// RATE LIMITS:
+//   - GetPolicy: 100/min per tenant
+//   - UpdatePolicy: 10/hour per admin (admin only)
+//   - Check/Assess: 100/min per user
+//   - UnlockAccount: 10/hour per admin (admin only)
+
+syntax = "proto3";
+
+package geniustechspace.idp.v1.security;
+
+import "proto/idp/v1/security/messages.proto";
+import "proto/datastructure/v1/session/enums.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Idp.V1.Security";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/idp/v1/security;security";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.idp.v1.security";
+
+// SecurityService handles security policy and risk management
+//
+// RESPONSIBILITY: Policy CRUD, password strength, risk assessment, account lockout
+//
+// ARCHITECTURE:
+//   - Tenant-specific policies (multi-tenant aware)
+//   - Real-time evaluation (no async delays)
+//   - Admin-only policy updates (RBAC enforced)
+service SecurityService {
+  // ===== Password Policy Management =====
+  
+  // GetPasswordPolicy: Retrieves password requirements
+  //
+  // Returns: Min length, complexity, expiration, history, breach check
+  //
+  // Rate limit: 100/min per tenant
+  // Auth required: Yes (any authenticated user)
+  rpc GetPasswordPolicy(GetPasswordPolicyRequest) returns (PasswordPolicy);
+  
+  // UpdatePasswordPolicy: Modifies password requirements
+  //
+  // Admin-only operation. Updates tenant password policy.
+  //
+  // Rate limit: 10/hour per admin
+  // Auth required: Yes (admin role)
+  rpc UpdatePasswordPolicy(UpdatePasswordPolicyRequest) returns (PasswordPolicy);
+  
+  // CheckPasswordStrength: Validates password against policy
+  //
+  // Real-time validation for password change/reset forms.
+  // Checks: Length, complexity, breach database, username similarity.
+  //
+  // Rate limit: 100/min per user
+  // Auth required: Yes
+  rpc CheckPasswordStrength(CheckPasswordStrengthRequest) returns (PasswordStrength);
+  
+  // ===== Rate Limiting =====
+  
+  // GetRateLimitStatus: Checks rate limit status
+  //
+  // Returns: Current count, limit, window, time until reset.
+  // Useful for showing "N attempts remaining" to user.
+  //
+  // Rate limit: 100/min per user
+  // Auth required: Yes
+  rpc GetRateLimitStatus(GetRateLimitStatusRequest) returns (RateLimitStatus);
+  
+  // ===== Account Lockout =====
+  
+  // GetAccountLockoutStatus: Checks if account is locked
+  //
+  // Returns: Locked status, reason, unlock time.
+  //
+  // Rate limit: 100/min per user
+  // Auth required: Yes
+  rpc GetAccountLockoutStatus(GetAccountLockoutStatusRequest) returns (AccountLockoutStatus);
+  
+  // UnlockAccount: Manually unlocks locked account
+  //
+  // Admin operation. Used to unlock account before auto-unlock time.
+  // Requires justification (audit logged).
+  //
+  // Rate limit: 10/hour per admin
+  // Auth required: Yes (admin role)
+  rpc UnlockAccount(UnlockAccountRequest) returns (UnlockAccountResponse);
+  
+  // ===== Risk Assessment =====
+  
+  // AssessRisk: Evaluates authentication risk
+  //
+  // Considers:
+  //   - Device/location change
+  //   - Unusual time/pattern
+  //   - IP reputation
+  //   - Velocity (rapid attempts)
+  //   - Auth method strength
+  //
+  // Returns: Risk score (LOW/MEDIUM/HIGH/CRITICAL) + recommended action
+  // Action: ALLOW, STEP_UP_AUTH, CHALLENGE, BLOCK
+  //
+  // Rate limit: 100/min per user
+  // Auth required: Yes
+  rpc AssessRisk(AssessRiskRequest) returns (RiskScore);
+}
+
+// ========== Request/Response Messages ==========
+
+message GetPasswordPolicyRequest {
+  string tenant_id = 1;
+}
+
+message UpdatePasswordPolicyRequest {
+  PasswordPolicy policy = 1;
+}
+
+message CheckPasswordStrengthRequest {
+  string tenant_id = 1;
+  string password = 2;  // Never logged
+  string username = 3;  // For username-in-password check
+}
+
+message GetRateLimitStatusRequest {
+  string tenant_id = 1;
+  string subject_id = 2;  // user_id, ip_address, device_id
+  string operation = 3;   // "login", "password_reset", etc.
+}
+
+message GetAccountLockoutStatusRequest {
+  string tenant_id = 1;
+  string account_id = 2;  // user_id, ip_address, device_id
+}
+
+message UnlockAccountRequest {
+  string tenant_id = 1;
+  string account_id = 2;
+  string reason = 3;
+  string unlocked_by = 4;  // Admin user ID
+}
+
+message UnlockAccountResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message AssessRiskRequest {
+  string tenant_id = 1;
+  string user_id = 2;
+  string session_id = 3;
+  string device_id = 4;
+  string ip_address = 5;
+  string geo_location_id = 6;
+  geniustechspace.datastructure.v1.session.AuthenticationMethod auth_method = 7;
+}

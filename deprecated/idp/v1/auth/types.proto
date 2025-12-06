@@ -1,0 +1,63 @@
+// IDP Authentication Types - Version 1
+// Complex types used in authentication
+
+syntax = "proto3";
+
+package geniustechspace.idp.v1.auth;
+
+import "buf/validate/validate.proto";
+import "proto/idp/v1/auth/enums.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Idp.V1.Auth";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/idp/v1/auth;authv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.idp.v1.auth";
+
+// WebAuthnAssertion - W3C WebAuthn Level 2 compliant
+message WebAuthnAssertion {
+  string credential_id = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 1024
+  }];
+  bytes authenticator_data = 2 [(buf.validate.field).bytes = {
+    min_len: 37
+    max_len: 1024
+  }];
+  bytes client_data_json = 3 [(buf.validate.field).bytes = {
+    min_len: 1
+    max_len: 1024
+  }];
+  bytes signature = 4 [(buf.validate.field).bytes = {
+    min_len: 1
+    max_len: 1024
+  }];
+  bytes user_handle = 5 [(buf.validate.field).bytes = {
+    max_len: 64
+    ignore_empty: true
+  }];
+}
+
+// BiometricAssertion - ISO/IEC 19794 biometric data
+message BiometricAssertion {
+  BiometricType type = 1;
+  bytes biometric_data = 2 [(buf.validate.field).bytes = {
+    min_len: 1
+    max_len: 102400
+  }];
+  string device_attestation = 3 [(buf.validate.field).string = {
+    max_len: 4096
+    ignore_empty: true
+  }];
+}
+
+// ClientCertificate - X.509 mTLS authentication
+message ClientCertificate {
+  bytes certificate = 1 [(buf.validate.field).bytes = {
+    min_len: 1
+    max_len: 10240
+  }];
+  bytes signature = 2 [(buf.validate.field).bytes = {
+    min_len: 1
+    max_len: 1024
+  }];
+}

@@ -1,0 +1,374 @@
+// Authentication Proofs - Version 1
+//
+// Diverse authentication proof types for enterprise IDP.
+// Each proof type focuses on a single authentication method.
+//
+// COMPLIANCE: NIST 800-63B (Authentication Assurance Levels)
+// SECURITY: Contains credentials - never log, encrypt in transit
+// USAGE: Submitted by clients during authentication flows
+
+syntax = "proto3";
+
+package auth.v1;
+
+import "google/protobuf/timestamp.proto";
+import "auth/v1/enums.proto";
+import "auth/v1/webauthn.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Auth.V1";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/auth/v1;authv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.auth.v1";
+
+// ============================================================================
+// AUTHENTICATION PROOF CONTAINER
+// ============================================================================
+
+// AuthProof is a container for any authentication proof type
+message AuthProof {
+  reserved 16 to 30;
+
+  // Single proof per authentication attempt
+  oneof proof {
+    PasswordProof password = 1;
+    OTPProof otp = 2;
+    TOTPProof totp = 3;
+    BackupCodeProof backup_code = 4;
+    WebAuthnProof webauthn = 5;
+    BiometricProof biometric = 6;
+    MagicLinkProof magic_link = 7;
+    CertificateProof certificate = 8;
+    SSOAssertion sso_assertion = 9;
+    SocialLoginProof social_login = 10;
+    DeviceCodeProof device_code = 11;
+    PushNotificationProof push_notification = 12;
+    TokenProof token = 13;
+    SmartCardProof smart_card = 14;
+    SecurityKeyProof security_key = 15;
+  }
+}
+
+// ============================================================================
+// KNOWLEDGE FACTOR PROOFS (Something you know)
+// ============================================================================
+
+// PasswordProof contains password credential
+message PasswordProof {
+  reserved 2 to 10;
+
+  // Password value
+  string password = 1;
+}
+
+// OTPProof contains one-time password
+message OTPProof {
+  reserved 3 to 10;
+
+  // OTP code
+  string code = 1;
+
+  // Delivery method (email, SMS)
+  AuthenticationMethod method = 2;
+}
+
+// TOTPProof contains time-based one-time password
+message TOTPProof {
+  reserved 3 to 10;
+
+  // TOTP code (6-8 digits)
+  string code = 1;
+
+  // Algorithm used (optional, for verification)
+  string algorithm = 2;
+}
+
+// BackupCodeProof contains recovery backup code
+message BackupCodeProof {
+  reserved 2 to 10;
+
+  // Backup code
+  string code = 1;
+}
+
+// SecurityAnswerProof contains security question answer
+message SecurityAnswerProof {
+  reserved 3 to 10;
+
+  // Question ID
+  string question_id = 1;
+
+  // Answer to security question
+  string answer = 2;
+}
+
+// ============================================================================
+// POSSESSION FACTOR PROOFS (Something you have)
+// ============================================================================
+
+// MagicLinkProof contains magic link token
+message MagicLinkProof {
+  reserved 3 to 10;
+
+  // Magic link token
+  string token = 1;
+
+  // Email address (for validation)
+  string email = 2;
+}
+
+// DeviceCodeProof contains OAuth2 device code
+message DeviceCodeProof {
+  reserved 3 to 10;
+
+  // Device code
+  string device_code = 1;
+
+  // User code (optional)
+  string user_code = 2;
+}
+
+// PushNotificationProof contains push notification response
+message PushNotificationProof {
+  reserved 4 to 10;
+
+  // Push request ID
+  string request_id = 1;
+
+  // User response (approved/denied)
+  bool approved = 2;
+
+  // Device ID that responded
+  string device_id = 3;
+}
+
+// TokenProof contains bearer token or API key
+message TokenProof {
+  reserved 3 to 10;
+
+  // Token value
+  string token = 1;
+
+  // Token type
+  TokenType token_type = 2;
+}
+
+// CertificateProof contains X.509 certificate authentication
+message CertificateProof {
+  reserved 5 to 10;
+
+  // Client certificate (PEM format)
+  string certificate = 1;
+
+  // Certificate chain (PEM format)
+  repeated string certificate_chain = 2;
+
+  // Signature
+  bytes signature = 3;
+
+  // Certificate thumbprint
+  string thumbprint = 4;
+}
+
+// SmartCardProof contains smart card authentication data
+message SmartCardProof {
+  reserved 5 to 10;
+
+  // Card ID
+  string card_id = 1;
+
+  // PIN
+  string pin = 2;
+
+  // Challenge response
+  bytes challenge_response = 3;
+
+  // Certificate (if applicable)
+  string certificate = 4;
+}
+
+// SecurityKeyProof contains hardware security key proof (non-WebAuthn)
+message SecurityKeyProof {
+  reserved 4 to 10;
+
+  // Key ID
+  string key_id = 1;
+
+  // Challenge response
+  bytes challenge_response = 2;
+
+  // Signature
+  bytes signature = 3;
+}
+
+// ============================================================================
+// INHERENCE FACTOR PROOFS (Something you are)
+// ============================================================================
+
+// BiometricProof contains biometric authentication data
+message BiometricProof {
+  reserved 5 to 10;
+
+  // Biometric type (fingerprint, face, voice, iris)
+  string biometric_type = 1;
+
+  // Biometric template or assertion
+  bytes assertion = 2;
+
+  // Quality score (0-100)
+  int32 quality_score = 3;
+
+  // Device ID that captured biometric
+  string device_id = 4;
+}
+
+// WebAuthnProof contains WebAuthn authentication assertion
+message WebAuthnProof {
+  reserved 3 to 10;
+
+  // Credential ID
+  bytes credential_id = 1;
+
+  // WebAuthn credential data (see webauthn.proto)
+  WebAuthnCredential credential = 2;
+}
+
+// ============================================================================
+// SSO AND FEDERATED IDENTITY PROOFS
+// ============================================================================
+
+// SSOAssertion contains SSO/SAML assertion
+message SSOAssertion {
+  reserved 6 to 10;
+
+  // SAML assertion or JWT
+  string assertion = 1;
+
+  // Assertion format (SAML, JWT)
+  string format = 2;
+
+  // Relay state
+  string relay_state = 3;
+
+  // IDP entity ID
+  string idp_entity_id = 4;
+
+  // Signature
+  bytes signature = 5;
+}
+
+// SocialLoginProof contains social provider authentication
+message SocialLoginProof {
+  reserved 6 to 10;
+
+  // Social provider
+  SocialProvider provider = 1;
+
+  // OAuth2 authorization code
+  string code = 2;
+
+  // ID token (OIDC)
+  string id_token = 3;
+
+  // Access token
+  string access_token = 4;
+
+  // Redirect URI used
+  string redirect_uri = 5;
+}
+
+// ============================================================================
+// MFA ENROLLMENT AND VERIFICATION PROOFS
+// ============================================================================
+
+// MFAEnrollmentProof contains MFA enrollment data
+message MFAEnrollmentProof {
+  reserved 5 to 10;
+
+  // MFA type being enrolled
+  MultiFactorType mfa_type = 1;
+
+  // Verification code (for TOTP/OTP)
+  string verification_code = 2;
+
+  // Device ID (for push/biometric)
+  string device_id = 3;
+
+  // Public key (for WebAuthn/security keys)
+  bytes public_key = 4;
+}
+
+// MFAVerificationRequest requests MFA challenge
+message MFAVerificationRequest {
+  reserved 4 to 10;
+
+  // User ID
+  string user_id = 1;
+
+  // MFA types available
+  repeated MultiFactorType available_methods = 2;
+
+  // Preferred method
+  MultiFactorType preferred_method = 3;
+
+  // Tenant ID
+  string tenant_id = 11;
+}
+
+// MFAVerificationResponse returns MFA challenge
+message MFAVerificationResponse {
+  reserved 5 to 10;
+
+  // Challenge ID
+  string challenge_id = 1;
+
+  // MFA method
+  MultiFactorType method = 2;
+
+  // Challenge data (QR code, push notification ID, etc.)
+  bytes challenge_data = 3;
+
+  // Challenge expiration
+  google.protobuf.Timestamp expires_at = 4;
+
+  // User-facing message
+  string message = 11;
+}
+
+// ============================================================================
+// PASSWORDLESS AUTHENTICATION
+// ============================================================================
+
+// PasswordlessInitRequest initiates passwordless authentication
+message PasswordlessInitRequest {
+  reserved 4 to 10;
+
+  // User identifier
+  oneof identifier {
+    string email = 1;
+    string phone = 2;
+    string username = 3;
+  }
+
+  // Passwordless method
+  AuthenticationMethod method = 11;
+
+  // Tenant ID
+  string tenant_id = 12;
+}
+
+// PasswordlessInitResponse returns challenge/confirmation
+message PasswordlessInitResponse {
+  reserved 4 to 10;
+
+  // Challenge ID
+  string challenge_id = 1;
+
+  // Challenge data
+  bytes challenge_data = 2;
+
+  // Challenge expiration
+  google.protobuf.Timestamp expires_at = 3;
+
+  // User-facing message
+  string message = 11;
+}

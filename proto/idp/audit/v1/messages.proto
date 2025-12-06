@@ -1,0 +1,107 @@
+// DOMAIN: Identity Provider - Audit Logging Messages
+// COMPLIANCE: SOC 2 CC6.1, PCI DSS 10.2, GDPR Article 30, ISO 27001 A.12.4
+// SECURITY: Authentication required, immutable audit trail
+// PII: Contains user identifiers
+
+syntax = "proto3";
+
+package geniustechspace.idp.audit.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/timestamp.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Idp.Audit.V1";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/idp/audit/v1;idpauditv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.idp.audit.v1";
+
+// AuditEvent represents an immutable audit log entry.
+// COMPLIANCE: SOC 2 CC6.1, PCI DSS 10.2
+// SECURITY: Append-only, tamper-resistant
+message AuditEvent {
+  // Event ID. REQUIRED.
+  // Unique identifier for event.
+  string id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Tenant ID. REQUIRED.
+  string tenant_id = 2 [(buf.validate.field).string.min_len = 1];
+
+  // Event type. REQUIRED.
+  AuditEventType type = 3 [(buf.validate.field).enum.defined_only = true];
+
+  // Actor ID. REQUIRED.
+  // PII: Yes - GDPR Article 4(1) personal identifier
+  // Who performed the action.
+  string actor_id = 4 [(buf.validate.field).string.min_len = 1];
+
+  // Actor type. REQUIRED.
+  ActorType actor_type = 5 [(buf.validate.field).enum.defined_only = true];
+
+  // Action. REQUIRED.
+  // What action was performed (e.g., "user.login", "role.assign")
+  string action = 6 [(buf.validate.field).string.min_len = 1];
+
+  // Resource ID. OPTIONAL.
+  // What resource was affected.
+  string resource_id = 7;
+
+  // Resource type. OPTIONAL.
+  string resource_type = 8;
+
+  // Timestamp. REQUIRED.
+  google.protobuf.Timestamp timestamp = 9 [(buf.validate.field).required = true];
+
+  // IP address. OPTIONAL.
+  // PII: Yes - GDPR considers IP addresses personal data
+  string ip_address = 10;
+
+  // User agent. OPTIONAL.
+  string user_agent = 11;
+
+  // Result. REQUIRED.
+  AuditEventResult result = 12 [(buf.validate.field).enum.defined_only = true];
+
+  // Details. OPTIONAL.
+  // Additional context (JSON encoded).
+  map<string, string> details = 13;
+
+  // Correlation ID. OPTIONAL.
+  // For tracing related events.
+  string correlation_id = 14;
+}
+
+// AuditEventType categorizes audit events.
+enum AuditEventType {
+  AUDIT_EVENT_TYPE_UNSPECIFIED = 0;
+  AUTHENTICATION = 1; // Login, logout, MFA
+  AUTHORIZATION = 2; // Permission check, role assignment
+  IDENTITY = 3; // User create, update, delete
+  SESSION = 4; // Session create, revoke
+  TOKEN = 5; // Token issue, refresh, revoke
+  SECURITY = 6; // Password change, credential update
+  ADMIN = 7; // Administrative actions
+  DATA_ACCESS = 8; // Data read, export
+  CONFIGURATION = 9; // System configuration change
+  SYSTEM = 10; // System events
+  reserved 11 to 50;
+}
+
+// ActorType represents who performed the action.
+enum ActorType {
+  ACTOR_TYPE_UNSPECIFIED = 0;
+  USER = 1; // Human user
+  SERVICE_ACCOUNT = 2; // Service/application
+  ADMIN = 3; // Administrator
+  SYSTEM = 4; // System/automated
+  reserved 5 to 10;
+}
+
+// AuditEventResult represents outcome.
+enum AuditEventResult {
+  AUDIT_EVENT_RESULT_UNSPECIFIED = 0;
+  SUCCESS = 1; // Action succeeded
+  FAILURE = 2; // Action failed
+  DENIED = 3; // Access denied
+  ERROR = 4; // System error
+  reserved 5 to 10;
+}

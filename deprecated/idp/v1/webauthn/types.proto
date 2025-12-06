@@ -1,0 +1,15 @@
+// IDP WebAuthn Types - Version 1
+// WebAuthn type definitions (placeholder for future complex types)
+
+syntax = "proto3";
+
+package geniustechspace.idp.v1.webauthn;
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Idp.V1.WebAuthn";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/idp/v1/webauthn;webauthn";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.idp.v1.webauthn";
+
+// This file is reserved for future WebAuthn-specific types
+// that may be extracted from messages.proto for better organization.
+// Currently, all types are defined in messages.proto.

@@ -1,0 +1,103 @@
+// IDP Session Messages - Version 1
+//
+// Session management operation messages.
+//
+// COMPLIANCE:
+//   - OWASP Session Management Cheat Sheet
+//   - NIST 800-63B: Session management requirements
+//   - SOC 2 Type II: Access control monitoring
+//   - GDPR: User data access and control
+
+syntax = "proto3";
+
+package geniustechspace.idp.v1.session;
+
+import "buf/validate/validate.proto";
+import "proto/datastructure/v1/session/messages.proto";
+import "proto/datastructure/v1/session/enums.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Idp.V1.Session";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/idp/v1/session;session";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.idp.v1.session";
+
+// ListSessionsRequest retrieves user's sessions
+message ListSessionsRequest {
+  reserved 3 to 9, 16 to 19, 23 to 29;
+  
+  // User/Actor ID (defaults to authenticated user/actor)
+  oneof actor {
+    string user_id = 1;
+    string agent_id = 2;
+  }
+
+  // Tenant ID
+  string tenant_id = 10 [(buf.validate.field).string = { max_len: 128, ignore_empty: true }];
+  
+  // Context references (filter by device/client/network/location)
+  string device_id = 12 [(buf.validate.field).string = { max_len: 128, ignore_empty: true }];
+  string client_id = 13 [(buf.validate.field).string = { max_len: 128, ignore_empty: true }];
+  string network_id = 14 [(buf.validate.field).string = { max_len: 128, ignore_empty: true }];
+  string geo_location_id = 15 [(buf.validate.field).string = { max_len: 128, ignore_empty: true }];
+  
+  // Session status filters (empty = all statuses)
+  repeated geniustechspace.datastructure.v1.session.SessionStatus statuses = 20;
+  
+  // Include expired sessions (shortcut for adding EXPIRED to statuses)
+  bool include_expired = 21;
+}
+
+// ListSessionsResponse returns sessions
+message ListSessionsResponse {
+  reserved 2 to 10;
+  
+  // List of sessions
+  repeated geniustechspace.datastructure.v1.session.Session sessions = 1;
+}
+
+// RevokeSessionRequest revokes a specific session
+message RevokeSessionRequest {
+  reserved 2 to 10;
+  
+  // Session ID to revoke
+  string session_id = 1;
+}
+
+// RevokeSessionResponse confirms revocation
+message RevokeSessionResponse {
+  reserved 2 to 10;
+  
+  // Success flag
+  bool success = 1;
+}
+
+// RevokeAllSessionsRequest revokes all user sessions
+message RevokeAllSessionsRequest {
+  reserved 3 to 9, 16 to 19, 21 to 29;
+  
+  // User/Actor ID (defaults to authenticated user/actor)
+  oneof actor {
+    string user_id = 1;
+    string agent_id = 2;
+  }
+
+  // Tenant ID
+  string tenant_id = 10 [(buf.validate.field).string = { max_len: 128, ignore_empty: true }];
+  
+  // Context references (revoke sessions for specific device/client/network/location)
+  string device_id = 12 [(buf.validate.field).string = { max_len: 128, ignore_empty: true }];
+  string client_id = 13 [(buf.validate.field).string = { max_len: 128, ignore_empty: true }];
+  string network_id = 14 [(buf.validate.field).string = { max_len: 128, ignore_empty: true }];
+  string geo_location_id = 15 [(buf.validate.field).string = { max_len: 128, ignore_empty: true }];
+
+  // Exclude current session (don't revoke the session making this request)
+  bool exclude_current = 20;
+}
+
+// RevokeAllSessionsResponse confirms bulk revocation
+message RevokeAllSessionsResponse {
+  reserved 2 to 10;
+  
+  // Number of sessions revoked
+  int32 revoked_count = 1;
+}

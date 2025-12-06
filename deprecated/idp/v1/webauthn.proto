@@ -1,0 +1,158 @@
+// IDP WebAuthn - Version 1
+// Simplified WebAuthn/FIDO2 for passwordless authentication
+
+syntax = "proto3";
+
+package geniustechspace.idp.v1;
+
+import "buf/validate/validate.proto";
+import "proto/idp/v1/enums.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Idp.V1";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/idp/v1;idpv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.idp.v1";
+
+// ==== REGISTRATION (Creating new credentials) ====
+
+message BeginWebAuthnRegistrationRequest {
+  reserved 10 to 30;
+  
+  string user_id = 1;
+  string tenant_id = 2;
+  string username = 3;
+  string display_name = 4;
+  WebAuthnAuthenticatorAttachment authenticator_attachment = 5;
+  WebAuthnUserVerification user_verification = 6;
+}
+
+message BeginWebAuthnRegistrationResponse {
+  reserved 10 to 30;
+  
+  string challenge_id = 1;                    // Server-side challenge identifier
+  bytes challenge = 2;                        // Challenge bytes for authenticator
+  string rp_name = 3;                         // Relying party name
+  string rp_id = 4;                           // Relying party domain
+  bytes user_handle = 5;                      // User identifier
+  int64 timeout = 6;                          // Timeout in milliseconds
+}
+
+message CompleteWebAuthnRegistrationRequest {
+  reserved 10 to 30;
+  
+  string challenge_id = 1;
+  string tenant_id = 2;
+  string credential_id = 3;
+  bytes client_data_json = 4;
+  bytes attestation_object = 5;
+  repeated string transports = 6;             // "usb", "nfc", "ble", "internal"
+  string device_name = 7;                     // User-friendly device name
+}
+
+message CompleteWebAuthnRegistrationResponse {
+  reserved 5 to 30;
+  
+  bool success = 1;
+  string credential_id = 2;
+  string message = 3;
+  repeated string backup_codes = 4;           // Optional backup codes
+}
+
+// ==== AUTHENTICATION (Using existing credentials) ====
+
+message BeginWebAuthnAuthenticationRequest {
+  reserved 5 to 30;
+  
+  string user_id = 1;                         // Optional for usernameless
+  string tenant_id = 2;
+  WebAuthnUserVerification user_verification = 3;
+}
+
+message BeginWebAuthnAuthenticationResponse {
+  reserved 10 to 30;
+  
+  string challenge_id = 1;
+  bytes challenge = 2;
+  string rp_id = 3;
+  repeated string allowed_credential_ids = 4;  // Flat list of allowed credential IDs
+  int64 timeout = 5;
+}
+
+message CompleteWebAuthnAuthenticationRequest {
+  reserved 10 to 30;
+  
+  string challenge_id = 1;
+  string tenant_id = 2;
+  string credential_id = 3;
+  bytes client_data_json = 4;
+  bytes authenticator_data = 5;
+  bytes signature = 6;
+  bytes user_handle = 7;                      // For usernameless
+}
+
+message CompleteWebAuthnAuthenticationResponse {
+  reserved 5 to 30;
+  
+  bool success = 1;
+  string user_id = 2;                         // Resolved from user_handle
+  string message = 3;
+}
+
+// ==== CREDENTIAL MANAGEMENT ====
+
+message WebAuthnCredential {
+  reserved 15 to 30;
+  
+  string credential_id = 1;
+  string user_id = 2;
+  string tenant_id = 3;
+  string device_name = 4;
+  WebAuthnAuthenticatorAttachment attachment = 5;
+  repeated string transports = 6;
+  int64 sign_count = 7;
+  int64 created_at = 8;
+  int64 last_used_at = 9;
+  bool is_backed_up = 10;
+}
+
+message ListWebAuthnCredentialsRequest {
+  reserved 3 to 30;
+  
+  string user_id = 1;
+  string tenant_id = 2;
+}
+
+message ListWebAuthnCredentialsResponse {
+  reserved 2 to 30;
+  
+  repeated WebAuthnCredential credentials = 1;
+}
+
+message DeleteWebAuthnCredentialRequest {
+  reserved 4 to 30;
+  
+  string credential_id = 1;
+  string user_id = 2;
+  string tenant_id = 3;
+}
+
+message DeleteWebAuthnCredentialResponse {
+  reserved 2 to 30;
+  
+  bool success = 1;
+}
+
+message UpdateWebAuthnCredentialRequest {
+  reserved 5 to 30;
+  
+  string credential_id = 1;
+  string user_id = 2;
+  string tenant_id = 3;
+  string device_name = 4;
+}
+
+message UpdateWebAuthnCredentialResponse {
+  reserved 2 to 30;
+  
+  bool success = 1;
+}

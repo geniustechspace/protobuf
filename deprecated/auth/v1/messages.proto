@@ -1,0 +1,31 @@
+// Authentication Domain Messages - Version 1 [DEPRECATED]
+//
+// ⚠️ DEPRECATED: This file has been refactored into single-responsibility files:
+//   - auth/v1/authentication.proto - Authentication flow messages
+//   - auth/v1/password.proto - Password management messages
+//   - auth/v1/session.proto - Session management messages
+//   - datastructure/v1/auth/messages.proto - Supporting data structures
+//
+// This file is kept for backwards compatibility only.
+// New code should import from the specific files above.
+
+syntax = "proto3";
+
+package auth.v1;
+
+import "auth/v1/authentication.proto";
+import "auth/v1/password.proto";
+import "auth/v1/session.proto";
+import "proto/datastructure/v1/auth/messages.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Auth.V1";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/auth/v1;authv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.auth.v1";
+option deprecated = true;
+
+// ============================================================================
+// RE-EXPORTED MESSAGES (for backwards compatibility)
+// ============================================================================
+// All message definitions have been moved to their respective files.
+// The imports above make them available through this file for backwards compatibility.

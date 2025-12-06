@@ -1,0 +1,209 @@
+// DOMAIN: Identity Provider API - Common Types
+// COMPLIANCE: SOC 2 CC6.1, GDPR Article 5, ISO 27001 A.9.2
+// SECURITY: Authentication required, tenant isolation enforced
+// PII: Contains user identifiers
+
+syntax = "proto3";
+
+package geniustechspace.idp.api.v1;
+
+import "buf/validate/validate.proto";
+import "core/common/v1/common.proto";
+import "core/metadata/v1/metadata.proto";
+import "google/protobuf/timestamp.proto";
+import "idp/api/v1/enums.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Idp.Api.V1";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/idp/api/v1;idpapiv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.idp.api.v1";
+
+// AuthContext provides authentication context for requests.
+// SECURITY: Includes authentication proof and session binding.
+message AuthContext {
+  // Tenant ID. REQUIRED.
+  // PII: No - organizational identifier
+  string tenant_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // User ID. REQUIRED.
+  // PII: Yes - GDPR Article 4(1) personal identifier
+  string user_id = 2 [(buf.validate.field).string.min_len = 1];
+
+  // Session ID. OPTIONAL.
+  // Links request to active session for tracking.
+  string session_id = 3;
+
+  // Access token ID. OPTIONAL.
+  // For token-based authentication tracking.
+  string token_id = 4;
+
+  // Authentication method used. REQUIRED.
+  AuthenticationMethod auth_method = 5 [(buf.validate.field).enum.defined_only = true];
+
+  // Authentication timestamp. REQUIRED.
+  // When user authenticated (not request time).
+  google.protobuf.Timestamp authenticated_at = 6 [(buf.validate.field).required = true];
+
+  // MFA verified. OPTIONAL.
+  // Whether MFA was completed for this session.
+  bool mfa_verified = 7;
+
+  // MFA method used. OPTIONAL.
+  // Only if mfa_verified is true.
+  MFAType mfa_method = 8;
+
+  // Scopes granted. OPTIONAL.
+  // OAuth 2.0 scopes or permissions.
+  repeated string scopes = 9;
+
+  // IP address. OPTIONAL.
+  // PII: Yes - GDPR considers IP addresses personal data
+  // For security and audit purposes.
+  string ip_address = 10;
+}
+
+// Principal represents an authenticated entity (user or service account).
+message Principal {
+  // Principal ID. REQUIRED.
+  // PII: Yes - GDPR Article 4(1) personal identifier
+  string id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Principal type. REQUIRED.
+  PrincipalType type = 2 [(buf.validate.field).enum.defined_only = true];
+
+  // Display name. OPTIONAL.
+  // PII: Possibly - if contains real name
+  string display_name = 3;
+
+  // Email. OPTIONAL.
+  // PII: Yes - GDPR Article 4(1) personal identifier
+  string email = 4 [(buf.validate.field).string.email = true];
+
+  // Tenant ID. REQUIRED.
+  string tenant_id = 5 [(buf.validate.field).string.min_len = 1];
+
+  // Roles assigned. OPTIONAL.
+  repeated string roles = 6;
+
+  // Groups membership. OPTIONAL.
+  repeated string groups = 7;
+
+  // Metadata. OPTIONAL.
+  core.metadata.v1.Metadata metadata = 8;
+}
+
+// PrincipalType represents entity type.
+enum PrincipalType {
+  PRINCIPAL_TYPE_UNSPECIFIED = 0;
+  USER = 1; // Human user
+  SERVICE_ACCOUNT = 2; // Service/application account
+  API_CLIENT = 3; // API client
+  DEVICE = 4; // IoT device
+  reserved 5 to 20;
+}
+
+// Credential represents authentication credential metadata (NOT the credential itself).
+// SECURITY: Never include actual credential values (passwords, keys, secrets).
+message Credential {
+  // Credential ID. REQUIRED.
+  string id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Credential type. REQUIRED.
+  CredentialType type = 2 [(buf.validate.field).enum.defined_only = true];
+
+  // User ID. REQUIRED.
+  // PII: Yes - GDPR Article 4(1) personal identifier
+  string user_id = 3 [(buf.validate.field).string.min_len = 1];
+
+  // Tenant ID. REQUIRED.
+  string tenant_id = 4 [(buf.validate.field).string.min_len = 1];
+
+  // Display name. OPTIONAL.
+  // E.g., "YubiKey 5C", "Touch ID", "Work Phone"
+  string display_name = 5;
+
+  // Status. REQUIRED.
+  CredentialStatus status = 6 [(buf.validate.field).enum.defined_only = true];
+
+  // Created at. REQUIRED.
+  google.protobuf.Timestamp created_at = 7 [(buf.validate.field).required = true];
+
+  // Last used at. OPTIONAL.
+  google.protobuf.Timestamp last_used_at = 8;
+
+  // Expires at. OPTIONAL.
+  // For time-limited credentials.
+  google.protobuf.Timestamp expires_at = 9;
+
+  // Verified. REQUIRED.
+  // Whether credential has been verified (e.g., email confirmed).
+  bool verified = 10;
+
+  // Verified at. OPTIONAL.
+  google.protobuf.Timestamp verified_at = 11;
+
+  // Primary credential. OPTIONAL.
+  // Whether this is the user's primary/preferred credential.
+  bool primary = 12;
+
+  // Metadata. OPTIONAL.
+  map<string, string> metadata = 13;
+}
+
+// CredentialType represents credential mechanism.
+enum CredentialType {
+  CREDENTIAL_TYPE_UNSPECIFIED = 0;
+  PASSWORD = 1; // Password (hashed)
+  WEBAUTHN = 2; // WebAuthn/FIDO2 credential
+  TOTP = 3; // TOTP secret
+  EMAIL = 4; // Email address (for magic link)
+  PHONE = 5; // Phone number (for SMS)
+  BIOMETRIC = 6; // Biometric template
+  API_KEY = 7; // API key
+  CERTIFICATE = 8; // X.509 certificate
+  SOCIAL = 9; // Social provider link
+  BACKUP_CODE = 10; // Backup recovery code
+  reserved 11 to 30;
+}
+
+// CredentialStatus represents credential state.
+enum CredentialStatus {
+  CREDENTIAL_STATUS_UNSPECIFIED = 0;
+  ACTIVE = 1; // Active and usable
+  INACTIVE = 2; // Temporarily inactive
+  SUSPENDED = 3; // Suspended (security concern)
+  EXPIRED = 4; // Expired (time-based)
+  REVOKED = 5; // Permanently revoked
+  PENDING_VERIFICATION = 6; // Awaiting verification
+  reserved 7 to 20;
+}
+
+// PolicyViolation represents a policy constraint violation.
+message PolicyViolation {
+  // Policy ID. REQUIRED.
+  string policy_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Violation type. REQUIRED.
+  string violation_type = 2 [(buf.validate.field).string.min_len = 1];
+
+  // Message. REQUIRED.
+  // Human-readable description.
+  string message = 3 [(buf.validate.field).string.min_len = 1];
+
+  // Field. OPTIONAL.
+  // Field that violated the policy.
+  string field = 4;
+
+  // Severity. REQUIRED.
+  PolicyViolationSeverity severity = 5 [(buf.validate.field).enum.defined_only = true];
+}
+
+// PolicyViolationSeverity represents violation severity.
+enum PolicyViolationSeverity {
+  POLICY_VIOLATION_SEVERITY_UNSPECIFIED = 0;
+  INFO = 1; // Informational
+  WARNING = 2; // Warning (allowed but discouraged)
+  ERROR = 3; // Error (blocked)
+  CRITICAL = 4; // Critical (security threat)
+  reserved 5 to 10;
+}

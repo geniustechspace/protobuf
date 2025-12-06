@@ -1,6 +1,6 @@
 # Quick Start Guide
 
-Get started with the GeniusTechSpace protobuf schemas in 5 minutes!
+Get started with the Genius Tech Space protobuf schemas in 5 minutes!
 
 ## 1. Installation
 

@@ -1,0 +1,157 @@
+// DOMAIN: Core - Event Sourcing Foundation
+// COMPLIANCE: SOC 2 CC7.2 (System monitoring), ISO 27001 A.12.4.1 (Event logging)
+// SECURITY: Events contain tenant context for isolation. PII handling per domain.
+// PII: Varies - event payload may contain PII depending on event type
+
+syntax = "proto3";
+
+package geniustechspace.core.events.v1;
+
+import "buf/validate/validate.proto";
+import "core/common/v1/common.proto";
+import "google/protobuf/any.proto";
+import "google/protobuf/timestamp.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Core.Events.V1";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/core/events/v1;eventsv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.core.events.v1";
+
+// BaseEvent is the foundation for all domain events in event sourcing patterns.
+//
+// PURPOSE: Standardized event structure for event-driven architecture
+// COMPLIANCE: SOC 2 CC7.2 (Audit logging), ISO 27001 A.12.4.1 (Event logging)
+// IMMUTABLE: Events never modified after creation (append-only)
+// USAGE: All domain events should extend or embed this structure
+message BaseEvent {
+  // Unique event identifier (UUID v4). REQUIRED.
+  // GENERATION: Generated when event is created
+  // PURPOSE: Enables event deduplication and idempotent processing
+  string event_id = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 128
+  }];
+
+  // Event type identifier (e.g., "user.created", "tenant.updated"). REQUIRED.
+  // FORMAT: domain.action pattern using lowercase and dots
+  // VALIDATION: Must follow naming convention
+  // Examples: "user.created", "tenant.updated", "subscription.cancelled"
+  string event_type = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 128
+    pattern: "^[a-z][a-z0-9._-]*$"
+  }];
+
+  // Aggregate/entity ID that triggered event. REQUIRED.
+  // PURPOSE: Identifies which entity this event relates to
+  // Example: "usr_01HQZX5J8K9M3N4P5Q6R7S8T9V"
+  string aggregate_id = 3 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 128
+  }];
+
+  // Aggregate type (e.g., "user", "tenant", "subscription"). REQUIRED.
+  // PURPOSE: Identifies entity type for event routing and processing
+  // Examples: "user", "tenant", "subscription", "role"
+  string aggregate_type = 4 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 64
+    pattern: "^[a-z][a-z0-9_-]*$"
+  }];
+
+  // Tenant context for multi-tenant isolation. REQUIRED.
+  // COMPLIANCE: SOC 2 CC6.1 - Logical access controls
+  // SECURITY: Ensures events are properly isolated by tenant
+  common.v1.TenantContext tenant_context = 5 [(buf.validate.field).required = true];
+
+  // Event occurrence timestamp (UTC). REQUIRED.
+  // COMPLIANCE: Audit trail requirement
+  // TIMEZONE: Always UTC for consistency
+  google.protobuf.Timestamp occurred_at = 6 [(buf.validate.field).required = true];
+
+  // User/service that triggered event.
+  // COMPLIANCE: Audit trail - tracks actor responsible for event
+  // PII: Yes - User identifier
+  // FORMAT: User ID or service account identifier
+  string triggered_by = 7 [(buf.validate.field).string = {
+    max_len: 128
+    ignore_empty: true
+  }];
+
+  // Event schema version for evolution (default: 1).
+  // PURPOSE: Enables event schema evolution and migration
+  // USAGE: Increment when event payload structure changes
+  int32 event_version = 8 [(buf.validate.field).int32 = {gte: 1}];
+
+  // Domain-specific event payload (Any type for flexibility).
+  // PURPOSE: Contains event-specific data
+  // USAGE: Unpack to domain-specific message type based on event_type
+  google.protobuf.Any payload = 9;
+
+  // Additional event metadata (custom fields).
+  // PURPOSE: Extensible metadata for event enrichment
+  // SECURITY: Never include sensitive data in metadata
+  map<string, string> metadata = 10;
+
+  // Correlation ID for distributed tracing (spans multiple events).
+  // PURPOSE: Groups related events across services
+  // USAGE: Same correlation ID across all events in a business transaction
+  string correlation_id = 11 [(buf.validate.field).string = {
+    max_len: 128
+    ignore_empty: true
+  }];
+
+  // Causation ID links to event that caused this event (event chain).
+  // PURPOSE: Tracks event causality and event chains
+  // USAGE: Set to event_id of the event that triggered this event
+  string causation_id = 12 [(buf.validate.field).string = {
+    max_len: 128
+    ignore_empty: true
+  }];
+}
+
+// EventEnvelope wraps events for transport in event streaming systems.
+//
+// PURPOSE: Provides routing and ordering metadata for event streams
+// USAGE: Used for Kafka, Pulsar, or other event streaming platforms
+message EventEnvelope {
+  // Base event with all data. REQUIRED.
+  BaseEvent event = 1 [(buf.validate.field).required = true];
+
+  // Partition key for event stream routing (typically tenant_id).
+  // PURPOSE: Ensures events for same tenant go to same partition
+  // USAGE: Maintains ordering guarantees within partition
+  string partition_key = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 128
+  }];
+
+  // Sequence number for ordering within partition.
+  // PURPOSE: Enables strict ordering and gap detection
+  // BEHAVIOR: Monotonically increasing per partition
+  int64 sequence = 3 [(buf.validate.field).int64 = {gte: 0}];
+}
+
+// EventBatch groups events for efficient batch processing.
+//
+// PURPOSE: Optimizes throughput for batch operations
+// USAGE: Used for batch ETL, analytics, and bulk replay operations
+message EventBatch {
+  // Events in this batch. REQUIRED.
+  // VALIDATION: Batch must contain at least one event
+  repeated BaseEvent events = 1 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 1000
+  }];
+
+  // Batch identifier (UUID). REQUIRED.
+  // PURPOSE: Enables batch deduplication and tracking
+  string batch_id = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 128
+  }];
+
+  // Batch creation timestamp. REQUIRED.
+  // PURPOSE: Tracks when batch was assembled
+  google.protobuf.Timestamp batch_timestamp = 3 [(buf.validate.field).required = true];
+}

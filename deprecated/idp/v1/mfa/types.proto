@@ -1,0 +1,26 @@
+// IDP MFA Types - Version 1
+
+syntax = "proto3";
+
+package geniustechspace.idp.v1.mfa;
+
+import "google/protobuf/timestamp.proto";
+import "proto/idp/v1/mfa/enums.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Idp.V1.Mfa";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/idp/v1/mfa;mfav1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.idp.v1.mfa";
+
+message MFAFactor {
+  string factor_id = 1;
+  string user_id = 2;
+  string tenant_id = 3;
+  MFAFactorType type = 4;
+  MFAFactorStatus status = 5;
+  bool is_primary = 6;
+  string display_name = 7;
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp last_used_at = 9;
+  map<string, string> metadata = 10;
+}

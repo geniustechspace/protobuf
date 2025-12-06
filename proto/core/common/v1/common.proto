@@ -1,0 +1,141 @@
+// DOMAIN: Core - Common Value Objects
+// COMPLIANCE: SOC 2 CC6.1, GDPR Article 4(1), ISO 27001 A.9.2
+// SECURITY: Contains PII fields - handle per data protection regulations
+// PII: Yes - Address, ContactInfo contain personally identifiable information
+
+syntax = "proto3";
+
+package geniustechspace.core.common.v1;
+
+import "buf/validate/validate.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Core.Common.V1";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/core/common/v1;commonv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.core.common.v1";
+
+// Address represents a physical or mailing address with complete location information.
+//
+// PURPOSE: Standardized address format for billing, shipping, and contact purposes.
+// COMPLIANCE: PII (Personally Identifiable Information) - GDPR Article 4(1)
+// SECURITY: Recommend encryption at rest for addresses containing residential information
+// USAGE: Used in tenant billing addresses, user profiles, and shipping information
+message Address {
+  // Street address line 1. REQUIRED for complete addresses.
+  // VALIDATION: Must not be empty if address is provided
+  // Example: "123 Main Street", "Suite 400"
+  string street_line1 = 1 [(buf.validate.field).string = {
+    max_len: 255
+    ignore_empty: true
+  }];
+
+  // Street address line 2 (apartment, suite, building). Optional.
+  // Example: "Apt 5B", "Building C"
+  string street_line2 = 2 [(buf.validate.field).string = {
+    max_len: 255
+    ignore_empty: true
+  }];
+
+  // City or municipality name. REQUIRED for complete addresses.
+  // Example: "San Francisco", "London"
+  string city = 3 [(buf.validate.field).string = {
+    max_len: 100
+    ignore_empty: true
+  }];
+
+  // State, province, or region. REQUIRED for countries with states/provinces.
+  // Example: "California", "Ontario", "England"
+  string state = 4 [(buf.validate.field).string = {
+    max_len: 100
+    ignore_empty: true
+  }];
+
+  // Postal code or ZIP code. REQUIRED for most countries.
+  // Format varies by country: "94102" (US), "SW1A 1AA" (UK), "M5H 2N2" (CA)
+  string postal_code = 5 [(buf.validate.field).string = {
+    max_len: 20
+    ignore_empty: true
+  }];
+
+  // Country name or ISO 3166-1 alpha-2/alpha-3 code. REQUIRED.
+  // VALIDATION: Prefer ISO codes for consistency
+  // Examples: "US", "GB", "CA", "United States", "United Kingdom"
+  string country = 6 [(buf.validate.field).string = {
+    min_len: 2
+    max_len: 100
+    ignore_empty: true
+  }];
+}
+
+// ContactInfo stores comprehensive contact details for users and organizations.
+//
+// PURPOSE: Centralized contact information for communication and verification.
+// COMPLIANCE: PII - Contains personally identifiable information
+// SECURITY: Email and phone numbers should be validated before storage
+// USAGE: User profiles, tenant contacts, emergency contacts
+message ContactInfo {
+  // Primary email address. REQUIRED for most use cases.
+  // VALIDATION: Must conform to RFC 5322 email format
+  // COMPLIANCE: PII - GDPR Article 4(1), used for identity verification
+  // Example: "user@example.com"
+  string email = 1 [(buf.validate.field).string = {
+    email: true
+    max_len: 255
+    ignore_empty: true
+  }];
+
+  // Primary phone number with country code. Optional.
+  // FORMAT: E.164 format recommended: "+1234567890"
+  // COMPLIANCE: PII - May be used for multi-factor authentication
+  // Example: "+1-415-555-0123"
+  string phone = 2 [(buf.validate.field).string = {
+    max_len: 20
+    ignore_empty: true
+  }];
+
+  // Mobile phone number with country code. Optional.
+  // PURPOSE: Preferred for SMS notifications and MFA
+  // FORMAT: E.164 format recommended
+  // Example: "+1-415-555-0124"
+  string mobile = 3 [(buf.validate.field).string = {
+    max_len: 20
+    ignore_empty: true
+  }];
+
+  // Fax number with country code. Optional, legacy systems.
+  // FORMAT: E.164 format recommended
+  // Example: "+1-415-555-0125"
+  string fax = 4 [(buf.validate.field).string = {
+    max_len: 20
+    ignore_empty: true
+  }];
+}
+
+// Money represents monetary values with currency information.
+//
+// PURPOSE: Standardized money representation for billing, invoicing, and payments.
+// COMPLIANCE: PCI DSS when handling payment amounts
+// PRECISION: Amount stored in smallest currency unit (cents) to avoid floating-point errors
+// USAGE: Subscription pricing, invoice totals, payment amounts
+message Money {
+  // Currency code using ISO 4217 standard. REQUIRED.
+  // VALIDATION: Must be 3-letter uppercase code
+  // Examples: "USD" (US Dollar), "EUR" (Euro), "GBP" (British Pound), "JPY" (Japanese Yen)
+  string currency = 1 [(buf.validate.field).string = {
+    len: 3
+    pattern: "^[A-Z]{3}$"
+  }];
+
+  // Amount in smallest currency unit to avoid floating-point precision issues.
+  // REQUIRED. Must be non-negative for most use cases.
+  //
+  // EXAMPLES:
+  //   $10.50 USD = amount: 1050, currency: "USD"
+  //   €25.99 EUR = amount: 2599, currency: "EUR"
+  //   ¥1000 JPY = amount: 1000, currency: "JPY" (yen has no minor unit)
+  //
+  // VALIDATION:
+  //   - Most currencies: amount >= 0
+  //   - For refunds/credits: may be negative
+  int64 amount = 2;
+}

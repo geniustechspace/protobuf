@@ -1,0 +1,158 @@
+// Core Request Messages - Production v1
+//
+// Standardized request metadata for HTTP/gRPC handling.
+// SECURITY: Never include passwords, tokens, PII in metadata.
+// COMPLIANCE: SOC 2 CC6.1, CC7.2 | GDPR Article 32
+
+syntax = "proto3";
+
+package geniustechspace.datastructure.v1.request;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/timestamp.proto";
+import "proto/datastructure/v1/request/enums.proto";
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/datastructure/v1/request;requestv1";
+option java_multiple_files = true;
+option java_package = "space.geniustech.datastructure.v1.request";
+option csharp_namespace = "GeniusTechSpace.Datastructure.V1.Request";
+
+
+// RequestMetadata: Standardized request headers/client info.
+// Use in all service requests for consistent handling.
+// NOTE: Renamed from ClientContext to avoid confusion with datastructure.v1.client.ClientContext
+message RequestMetadata {
+  reserved 3 to 10, 16 to 20, 26 to 30;
+
+  // Communication protocol. REQUIRED.
+  RequestProtocol protocol = 1 [(buf.validate.field).required = true];
+
+  // HTTP method. REQUIRED.
+  oneof method {
+    HTTPRequestMethod http = 2;
+    // GRPCRequestMethod grpc = 2;
+  }
+
+  // User agent. RECOMMENDED.
+  string user_agent = 11 [(buf.validate.field).string.max_len = 512];
+
+  // Client IP (anonymized).
+  // COMPLIANCE: GDPR Article 32 (last octet anonymized).
+  string client_ip = 12 [(buf.validate.field).string = {
+    ip: true
+    ignore_empty: true
+  }];
+
+  // Client ID (tenancy).
+  // COMPLIANCE: GDPR Article 32 (last octet anonymized).
+  string client_id = 13 [(buf.validate.field).string = {
+    ignore_empty: true
+  }];
+
+  // Locale. FORMAT: IETF BCP 47.
+  string locale = 14 [(buf.validate.field).string = {
+    pattern: "^[a-z]{2}(-[A-Z]{2})?$"
+    ignore_empty: true
+  }];
+
+  // Timezone. FORMAT: IANA timezone.
+  string timezone = 15 [(buf.validate.field).string = {
+    max_len: 64
+    ignore_empty: true
+  }];
+
+  // Request timeout (ms).
+  int64 timeout_ms = 21 [(buf.validate.field).int64 = {
+    gte: 0
+    lte: 300000
+    ignore_empty: true
+  }];
+
+  // Request priority. DEFAULT: NORMAL.
+  // SECURITY: Validate server-side.
+  RequestPriority priority = 22;
+
+  // Validation mode. DEFAULT: STRICT.
+  ValidationMode validation = 23;
+
+  // Idempotency mode.
+  IdempotencyMode idempotency = 24;
+
+  // Idempotency key. FORMAT: UUID v4.
+  string idempotency_key = 25 [(buf.validate.field).string = {
+    pattern: "^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$"
+    ignore_empty: true
+  }];
+
+  // Additional headers (no sensitive data).
+  // SECURITY: Never include Authorization, API keys, cookies.
+  map<string, string> extra = 31;
+}
+
+// RequestContext: Comprehensive request context for authorization and auditing.
+// SECURITY: Contains sensitive data; encrypt in transit.
+message RequestContext {
+  reserved 7 to 20;
+
+  // Request metadata.
+  RequestMetadata request_metadata = 1;
+
+  // Authenticated user ID.
+  string user_id = 2 [(buf.validate.field).string.max_len = 128];
+
+  // Tenant/organization ID.
+  string tenant_id = 3 [(buf.validate.field).string = {
+    pattern: "^[a-z0-9-]*$"
+    max_len: 64
+    ignore_empty: true
+  }];
+
+  // Session ID.
+  string session_id = 4 [(buf.validate.field).string.max_len = 128];
+
+  // User roles (RBAC).
+  repeated string user_roles = 5 [(buf.validate.field).repeated = {
+    min_items: 0
+    max_items: 50
+    items: {
+      string: {
+        pattern: "^[a-z][a-z0-9_:-]*$"
+        max_len: 64
+      }
+    }
+  }];
+
+  // User permissions or request scope (fine-grained).
+  repeated string permissions = 6 [(buf.validate.field).repeated = {
+    min_items: 0
+    max_items: 100
+    items: {
+      string: {
+        pattern: "^[a-z][a-z0-9_:-]*$"
+        max_len: 64
+      }
+    }
+  }];
+
+  // Context references (lookup by ID)
+  string device_id = 21 [(buf.validate.field).string = { max_len: 128, ignore_empty: true }];
+  string client_id = 22 [(buf.validate.field).string = { max_len: 128, ignore_empty: true }];
+  string network_id = 23 [(buf.validate.field).string = { max_len: 128, ignore_empty: true }];
+  string geo_location_id = 24 [(buf.validate.field).string = { max_len: 128, ignore_empty: true }];
+
+  // Correlation ID for grouping related requests (e.g., batch jobs).
+  string correlation_id = 31 [(buf.validate.field).string.max_len = 128];
+
+  // Request ID (Parent request id if nested requests).
+  string request_id = 32 [(buf.validate.field).string.max_len = 128];
+
+  // Request creation timestamp (UTC). RECOMMENDED.
+  google.protobuf.Timestamp created_at = 33;
+
+  // Request expiration timestamp (UTC).
+  google.protobuf.Timestamp expires_at = 34;
+
+  // Additional Context (audit & trace).
+  // SECURITY: Never include Authorization, API keys, cookies.
+  map<string, string> metadata = 35;
+}

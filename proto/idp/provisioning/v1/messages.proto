@@ -1,0 +1,79 @@
+// DOMAIN: Identity Provider - User Provisioning Messages
+// COMPLIANCE: SCIM 2.0 (RFC 7643, 7644), SOC 2 CC6.1
+// SECURITY: Authentication required, tenant isolation enforced
+// PII: Contains user personal data
+
+syntax = "proto3";
+
+package geniustechspace.idp.provisioning.v1;
+
+import "buf/validate/validate.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Idp.Provisioning.V1";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/idp/provisioning/v1;idpprovisioningv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.idp.provisioning.v1";
+
+// ScimUser represents SCIM 2.0 user resource.
+// COMPLIANCE: RFC 7643 Section 4.1 (User Resource)
+// PII: Yes - contains personal data
+message ScimUser {
+  // User name. REQUIRED.
+  // PII: Yes - unique identifier
+  string user_name = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Name. OPTIONAL.
+  ScimName name = 2;
+
+  // Display name. OPTIONAL.
+  string display_name = 3;
+
+  // Emails. OPTIONAL.
+  repeated ScimEmail emails = 4;
+
+  // Phone numbers. OPTIONAL.
+  repeated ScimPhoneNumber phone_numbers = 5;
+
+  // Active. REQUIRED.
+  bool active = 6;
+}
+
+// ScimName represents SCIM name structure.
+message ScimName {
+  // Given name. OPTIONAL.
+  // PII: Yes - GDPR Article 4(1)
+  string given_name = 1;
+
+  // Family name. OPTIONAL.
+  // PII: Yes - GDPR Article 4(1)
+  string family_name = 2;
+
+  // Formatted. OPTIONAL.
+  string formatted = 3;
+}
+
+// ScimEmail represents SCIM email.
+message ScimEmail {
+  // Value. REQUIRED.
+  // PII: Yes - GDPR Article 4(1)
+  string value = 1 [(buf.validate.field).string.email = true];
+
+  // Primary. OPTIONAL.
+  bool primary = 2;
+
+  // Type. OPTIONAL.
+  string type = 3;
+}
+
+// ScimPhoneNumber represents SCIM phone number.
+message ScimPhoneNumber {
+  // Value. REQUIRED.
+  // PII: Yes - GDPR Article 4(1)
+  string value = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Primary. OPTIONAL.
+  bool primary = 2;
+
+  // Type. OPTIONAL.
+  string type = 3;
+}

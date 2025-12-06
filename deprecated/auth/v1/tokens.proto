@@ -1,0 +1,441 @@
+// Token Management Messages - Version 1
+//
+// Enterprise token management for OAuth2, OIDC, and API keys.
+// Supports token lifecycle, introspection, and revocation.
+//
+// COMPLIANCE: OAuth 2.0 (RFC 6749), OIDC Core 1.0, RFC 7662 (Token Introspection)
+// SECURITY: Tokens contain sensitive data - encrypt in transit and at rest
+// USAGE: Token issuance, validation, refresh, and revocation
+
+syntax = "proto3";
+
+package auth.v1;
+
+import "google/protobuf/timestamp.proto";
+import "auth/v1/enums.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Auth.V1";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/auth/v1;authv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.auth.v1";
+
+// ============================================================================
+// TOKEN SET MESSAGES
+// ============================================================================
+
+// TokenSet contains issued authentication tokens
+message TokenSet {
+  reserved 4 to 10, 16 to 30;
+
+  // Access token (JWT or opaque)
+  string access_token = 1;
+
+  // Refresh token (opaque)
+  string refresh_token = 2;
+
+  // ID token (JWT) - OIDC only
+  string id_token = 3;
+
+  // Token type (typically "Bearer")
+  string token_type = 11;
+
+  // Access token expiration in seconds
+  int64 expires_in = 12;
+
+  // Refresh token expiration in seconds
+  int64 refresh_expires_in = 13;
+
+  // Scopes granted
+  repeated string scopes = 14;
+
+  // Token issuance timestamp
+  google.protobuf.Timestamp issued_at = 15;
+}
+
+// ============================================================================
+// TOKEN REFRESH MESSAGES
+// ============================================================================
+
+// TokenRefreshRequest refreshes access token using refresh token
+message TokenRefreshRequest {
+  reserved 3 to 10;
+
+  // Refresh token
+  string refresh_token = 1;
+
+  // Requested scopes (optional, must be subset of original)
+  repeated string scopes = 2;
+
+  // Tenant ID
+  string tenant_id = 11;
+}
+
+// TokenRefreshResponse returns new access token
+message TokenRefreshResponse {
+  reserved 2 to 10;
+
+  // New token set
+  TokenSet tokens = 1;
+
+  // User ID
+  string user_id = 11;
+
+  // Tenant ID
+  string tenant_id = 12;
+}
+
+// ============================================================================
+// TOKEN REVOCATION MESSAGES
+// ============================================================================
+
+// TokenRevokeRequest revokes access or refresh token
+message TokenRevokeRequest {
+  reserved 3 to 10;
+
+  // Token to revoke
+  string token = 1;
+
+  // Token type hint
+  TokenType token_type_hint = 2;
+
+  // Tenant ID
+  string tenant_id = 11;
+}
+
+// TokenRevokeResponse confirms token revocation
+message TokenRevokeResponse {
+  reserved 2 to 10;
+
+  // Success flag
+  bool success = 1;
+
+  // User-facing message
+  string message = 11;
+}
+
+// TokenRevokeAllRequest revokes all tokens for a user
+message TokenRevokeAllRequest {
+  reserved 3 to 10;
+
+  // User ID (defaults to authenticated user)
+  string user_id = 1;
+
+  // Token types to revoke (empty = all types)
+  repeated TokenType token_types = 2;
+
+  // Tenant ID
+  string tenant_id = 11;
+}
+
+// TokenRevokeAllResponse confirms bulk revocation
+message TokenRevokeAllResponse {
+  reserved 2 to 10;
+
+  // Number of tokens revoked
+  int32 revoked_count = 1;
+
+  // User-facing message
+  string message = 11;
+}
+
+// ============================================================================
+// TOKEN INTROSPECTION MESSAGES
+// ============================================================================
+
+// TokenIntrospectRequest validates and retrieves token metadata (RFC 7662)
+message TokenIntrospectRequest {
+  reserved 3 to 10;
+
+  // Token to introspect
+  string token = 1;
+
+  // Token type hint
+  TokenType token_type_hint = 2;
+
+  // Tenant ID
+  string tenant_id = 11;
+}
+
+// TokenIntrospectResponse returns token metadata
+message TokenIntrospectResponse {
+  reserved 9 to 10, 20 to 30;
+
+  // Token is active and valid
+  bool active = 1;
+
+  // Token type
+  TokenType token_type = 2;
+
+  // Subject (user ID)
+  string sub = 3;
+
+  // Client ID
+  string client_id = 4;
+
+  // Scopes
+  repeated string scopes = 5;
+
+  // Expiration timestamp (Unix epoch)
+  int64 exp = 6;
+
+  // Issued at timestamp (Unix epoch)
+  int64 iat = 7;
+
+  // Not before timestamp (Unix epoch)
+  int64 nbf = 8;
+
+  // Issuer
+  string iss = 11;
+
+  // Audience
+  repeated string aud = 12;
+
+  // JWT ID
+  string jti = 13;
+
+  // Username
+  string username = 14;
+
+  // Email
+  string email = 15;
+
+  // Tenant ID
+  string tenant_id = 16;
+
+  // Session ID
+  string session_id = 17;
+
+  // Device ID
+  string device_id = 18;
+
+  // Additional claims
+  map<string, string> claims = 19;
+}
+
+// ============================================================================
+// JWT CLAIMS MESSAGES
+// ============================================================================
+
+// JWTClaims represents standard and custom JWT claims
+message JWTClaims {
+  reserved 16 to 30;
+
+  // Standard claims (RFC 7519)
+  string iss = 1;  // Issuer
+  string sub = 2;  // Subject (user ID)
+  repeated string aud = 3;  // Audience
+  int64 exp = 4;   // Expiration time
+  int64 nbf = 5;   // Not before
+  int64 iat = 6;   // Issued at
+  string jti = 7;  // JWT ID
+
+  // OIDC standard claims
+  string name = 8;
+  string email = 9;
+  bool email_verified = 10;
+  string preferred_username = 11;
+  string picture = 12;
+  string locale = 13;
+  string phone_number = 14;
+  bool phone_number_verified = 15;
+
+  // Application-specific claims
+  string tenant_id = 31;
+  repeated string roles = 32;
+  repeated string permissions = 33;
+  string session_id = 34;
+  string device_id = 35;
+
+  // Custom claims
+  map<string, string> custom_claims = 36;
+}
+
+// ============================================================================
+// API KEY MESSAGES
+// ============================================================================
+
+// ApiKeyCreateRequest creates new API key
+message ApiKeyCreateRequest {
+  reserved 5 to 10;
+
+  // API key name
+  string name = 1;
+
+  // Description
+  string description = 2;
+
+  // Scopes
+  repeated string scopes = 3;
+
+  // Expiration duration in seconds (0 = no expiration)
+  int64 expires_in = 4;
+
+  // Tenant ID
+  string tenant_id = 11;
+
+  // Associated user ID
+  string user_id = 12;
+
+  // Metadata
+  map<string, string> metadata = 13;
+}
+
+// ApiKeyCreateResponse returns new API key
+message ApiKeyCreateResponse {
+  reserved 3 to 10;
+
+  // API key (only returned once at creation)
+  string api_key = 1;
+
+  // API key metadata
+  ApiKeyInfo key_info = 2;
+
+  // User-facing message
+  string message = 11;
+}
+
+// ApiKeyInfo contains API key metadata (without the actual key)
+message ApiKeyInfo {
+  reserved 9 to 10, 16 to 30;
+
+  // Key ID
+  string key_id = 1;
+
+  // Key name
+  string name = 2;
+
+  // Description
+  string description = 3;
+
+  // Key prefix (for identification)
+  string key_prefix = 4;
+
+  // Scopes
+  repeated string scopes = 5;
+
+  // Created timestamp
+  google.protobuf.Timestamp created_at = 6;
+
+  // Last used timestamp
+  google.protobuf.Timestamp last_used_at = 7;
+
+  // Expiration timestamp
+  google.protobuf.Timestamp expires_at = 8;
+
+  // Active status
+  bool active = 11;
+
+  // User ID
+  string user_id = 12;
+
+  // Tenant ID
+  string tenant_id = 13;
+
+  // Usage count
+  int64 usage_count = 14;
+
+  // Metadata
+  map<string, string> metadata = 15;
+}
+
+// ApiKeyListRequest requests user's API keys
+message ApiKeyListRequest {
+  reserved 3 to 10;
+
+  // User ID (defaults to authenticated user)
+  string user_id = 1;
+
+  // Include inactive keys
+  bool include_inactive = 2;
+
+  // Tenant ID
+  string tenant_id = 11;
+}
+
+// ApiKeyListResponse returns list of API keys
+message ApiKeyListResponse {
+  reserved 2 to 10;
+
+  // List of API keys
+  repeated ApiKeyInfo keys = 1;
+
+  // Total count
+  int32 total_count = 11;
+}
+
+// ApiKeyRevokeRequest revokes an API key
+message ApiKeyRevokeRequest {
+  reserved 3 to 10;
+
+  // Key ID to revoke
+  string key_id = 1;
+
+  // User ID (defaults to authenticated user)
+  string user_id = 2;
+
+  // Tenant ID
+  string tenant_id = 11;
+}
+
+// ApiKeyRevokeResponse confirms API key revocation
+message ApiKeyRevokeResponse {
+  reserved 2 to 10;
+
+  // Success flag
+  bool success = 1;
+
+  // User-facing message
+  string message = 11;
+}
+
+// ============================================================================
+// TOKEN ROTATION MESSAGES
+// ============================================================================
+
+// TokenRotationPolicy defines token rotation behavior
+message TokenRotationPolicy {
+  reserved 6 to 30;
+
+  // Rotation interval in seconds
+  int64 rotation_interval = 1;
+
+  // Grace period for old token in seconds
+  int64 grace_period = 2;
+
+  // Auto-rotate on suspicious activity
+  bool auto_rotate_on_risk = 3;
+
+  // Maximum token age in seconds
+  int64 max_token_age = 4;
+
+  // Rotation required on next use
+  bool force_rotation = 5;
+}
+
+// TokenRotateRequest manually rotates tokens
+message TokenRotateRequest {
+  reserved 3 to 10;
+
+  // Current refresh token
+  string refresh_token = 1;
+
+  // Reason for rotation
+  string reason = 2;
+
+  // Tenant ID
+  string tenant_id = 11;
+}
+
+// TokenRotateResponse returns rotated tokens
+message TokenRotateResponse {
+  reserved 2 to 10;
+
+  // New token set
+  TokenSet tokens = 1;
+
+  // User-facing message
+  string message = 11;
+
+  // Previous tokens grace period end time
+  google.protobuf.Timestamp grace_period_ends_at = 12;
+}

@@ -1,0 +1,28 @@
+// IDP WebAuthn Enums - Version 1
+// WebAuthn enumeration types
+
+syntax = "proto3";
+
+package geniustechspace.idp.v1.webauthn;
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Idp.V1.WebAuthn";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/idp/v1/webauthn;webauthn";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.idp.v1.webauthn";
+
+// WebAuthnAuthenticatorAttachment
+enum WebAuthnAuthenticatorAttachment {
+  AUTHENTICATOR_ATTACHMENT_UNSPECIFIED = 0;
+  PLATFORM = 1;            // Built-in (Touch ID, Face ID, Windows Hello)
+  CROSS_PLATFORM = 2;      // External (USB, NFC, Bluetooth)
+  reserved 3 to 10;
+}
+
+// WebAuthnUserVerification
+enum WebAuthnUserVerification {
+  USER_VERIFICATION_UNSPECIFIED = 0;
+  REQUIRED = 1;
+  PREFERRED = 2;
+  DISCOURAGED = 3;
+  reserved 4 to 10;
+}

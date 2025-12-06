@@ -1,0 +1,161 @@
+// Client Enums - Production v1
+//
+// Standardized client-related enumerations for application and platform tracking.
+//
+// COMPLIANCE:
+//   - GDPR Article 30 (Records of processing activities)
+//   - SOC 2 (Audit trail for client tracking)
+//   - OWASP (Client identification for security)
+//
+// PRIVACY:
+//   - Client metadata may constitute quasi-identifiers
+//   - Combined with other data may enable user profiling
+//   - Implement data minimization principles
+
+syntax = "proto3";
+
+package geniustechspace.datastructure.v1.client;
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/datastructure/v1/client;clientv1";
+option java_multiple_files = true;
+option java_package = "space.geniustech.datastructure.v1.client";
+option csharp_namespace = "GeniusTechSpace.Datastructure.V1.Client";
+
+// ClientType represents the type of client application
+// Used for security policies and rate limiting
+enum ClientType {
+  CLIENT_TYPE_UNSPECIFIED = 0;
+  WEB_BROWSER = 1;      // Web browser application
+  MOBILE_APP = 2;       // Native mobile application
+  DESKTOP_APP = 3;      // Desktop application
+  CLI = 4;              // Command-line interface
+  API_CLIENT = 5;       // Direct API client
+  BOT = 6;              // Automated bot/script (may trigger rate limits)
+  IOT_DEVICE = 7;       // IoT device
+  SERVICE = 8;          // Backend service (server-to-server)
+  EMBEDDED = 9;         // Embedded system
+  THIRD_PARTY = 10;     // Third-party integration
+  reserved 11 to 30;
+}
+
+// ClientPlatform represents the operating platform
+// Used for platform-specific features and compatibility
+enum ClientPlatform {
+  CLIENT_PLATFORM_UNSPECIFIED = 0;
+  WEB = 1;              // Web platform (browser-based)
+  IOS = 2;              // Apple iOS
+  ANDROID = 3;          // Google Android
+  WINDOWS = 4;          // Microsoft Windows
+  MACOS = 5;            // Apple macOS
+  LINUX = 6;            // Linux
+  CHROME_OS = 7;        // Chrome OS
+  WATCH_OS = 8;         // Apple Watch OS
+  TV_OS = 9;            // TV OS (Apple TV, Android TV)
+  EMBEDDED_LINUX = 10;  // Embedded Linux
+  RTOS = 11;            // Real-time OS
+  reserved 12 to 30;
+}
+
+// ClientCapability represents client feature support
+// Used for feature detection and capability-based routing
+enum ClientCapability {
+  CLIENT_CAPABILITY_UNSPECIFIED = 0;
+  PUSH_NOTIFICATIONS = 1;
+  BIOMETRIC_AUTH = 2;      // Touch ID, Face ID, fingerprint
+  WEBAUTHN = 3;            // W3C WebAuthn support
+  GEOLOCATION = 4;         // GPS/location services (PII concern)
+  CAMERA = 5;
+  MICROPHONE = 6;
+  OFFLINE_MODE = 7;
+  BACKGROUND_SYNC = 8;
+  LOCAL_STORAGE = 9;
+  SECURE_ENCLAVE = 10;     // Hardware security module
+  NFC = 11;
+  BLUETOOTH = 12;
+  reserved 13 to 50;
+}
+
+// Browser represents web browser type
+// Used for browser-specific behavior and compatibility
+enum Browser {
+  BROWSER_UNSPECIFIED = 0;
+  CHROME = 1;           // Google Chrome
+  FIREFOX = 2;          // Mozilla Firefox
+  SAFARI = 3;           // Apple Safari
+  EDGE = 4;             // Microsoft Edge (Chromium-based)
+  OPERA = 5;            // Opera
+  BRAVE = 6;            // Brave Browser (privacy-focused)
+  VIVALDI = 7;          // Vivaldi
+  IE = 8;               // Internet Explorer (deprecated)
+  SAMSUNG = 9;          // Samsung Internet
+  UC = 10;              // UC Browser
+  YANDEX = 11;          // Yandex Browser
+  WEBKIT = 12;          // Generic WebKit browser
+  OTHER = 13;           // Other/unknown browser
+  reserved 14 to 30;
+}
+
+// RenderingEngine represents browser rendering engine
+// Used for rendering compatibility and feature detection
+enum RenderingEngine {
+  RENDERING_ENGINE_UNSPECIFIED = 0;
+  BLINK = 1;            // Chromium Blink (Chrome, Edge, Opera)
+  WEBKIT = 2;           // Apple WebKit (Safari)
+  GECKO = 3;            // Mozilla Gecko (Firefox)
+  TRIDENT = 4;          // Microsoft Trident (IE, deprecated)
+  EDGE_HTML = 5;        // Microsoft EdgeHTML (legacy Edge)
+  PRESTO = 6;           // Opera Presto (legacy)
+  OTHER = 7;            // Other/custom engine
+  reserved 8 to 20;
+}
+
+// ColorScheme represents UI color preference
+// Used for theme selection and accessibility
+enum ColorScheme {
+  COLOR_SCHEME_UNSPECIFIED = 0;
+  LIGHT = 1;            // Light mode
+  DARK = 2;             // Dark mode
+  AUTO = 3;             // System preference (prefers-color-scheme)
+  HIGH_CONTRAST = 4;    // High contrast mode (accessibility)
+  reserved 5 to 10;
+}
+
+// Framework represents application development framework
+// Used for framework-specific optimizations and telemetry
+enum Framework {
+  FRAMEWORK_UNSPECIFIED = 0;
+  REACT = 1;            // React (web)
+  REACT_NATIVE = 2;     // React Native (mobile)
+  FLUTTER = 3;          // Flutter (multi-platform)
+  VUE = 4;              // Vue.js (web)
+  ANGULAR = 5;          // Angular (web)
+  SVELTE = 6;           // Svelte (web)
+  NEXT_JS = 7;          // Next.js (React SSR)
+  NUXT = 8;             // Nuxt.js (Vue SSR)
+  IONIC = 9;            // Ionic (hybrid mobile)
+  XAMARIN = 10;         // Xamarin (mobile)
+  CORDOVA = 11;         // Apache Cordova (hybrid)
+  ELECTRON = 12;        // Electron (desktop)
+  SWIFT_UI = 13;        // SwiftUI (iOS/macOS)
+  JETPACK_COMPOSE = 14; // Jetpack Compose (Android)
+  KOTLIN_MP = 15;       // Kotlin Multiplatform
+  NATIVE_IOS = 16;      // Native iOS (UIKit)
+  NATIVE_ANDROID = 17;  // Native Android (Views)
+  UNITY = 18;           // Unity (game engine)
+  UNREAL = 19;          // Unreal Engine (game engine)
+  GODOT = 20;           // Godot (game engine)
+  OTHER = 21;           // Other/custom framework
+  reserved 22 to 50;
+}
+
+// ClientTrustLevel represents client verification level
+enum ClientTrustLevel {
+  CLIENT_TRUST_LEVEL_UNSPECIFIED = 0;
+  UNTRUSTED = 1;        // Unknown/untrusted client
+  KNOWN = 2;            // Previously seen client
+  TRUSTED = 3;          // Explicitly trusted client
+  VERIFIED = 4;         // Client verified (signature, attestation)
+  FIRST_PARTY = 5;      // First-party official client
+  MANAGED = 6;          // Enterprise-managed client
+  reserved 7 to 20;
+}

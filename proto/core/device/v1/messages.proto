@@ -1,0 +1,340 @@
+// Device Messages - Production v1
+//
+// Comprehensive device metadata structures for risk assessment and auditing.
+//
+// SECURITY:
+//   - Do NOT include secrets or stable hardware IDs without explicit consent
+//   - Device fingerprinting raises privacy concerns
+//   - Hardware IDs (IMEI, serial numbers) are sensitive PII
+//   - Implement consent mechanisms for device tracking
+//
+// COMPLIANCE:
+//   - GDPR Article 30 (Records of processing activities)
+//   - GDPR Article 6 (Lawful basis for processing device data)
+//   - ePrivacy Directive (Device tracking consent)
+//   - CCPA (Device identifiers are personal information)
+//   - SOC 2 (Audit trail for device access)
+//
+// PRIVACY:
+//   - PII: device_id, advertising_id, hardware_id, installed_apps
+//   - Combined device data enables cross-app tracking
+//   - Screen resolution and hardware specs are quasi-identifiers
+//   - Retention: 90 days recommended, 1 year maximum
+//
+// STANDARDS:
+//   - ISO/IEC 19770 (IT Asset Management)
+//   - IEEE 802 (MAC addresses - if used)
+
+syntax = "proto3";
+
+package geniustechspace.core.device.v1;
+
+import "buf/validate/validate.proto";
+import "core/device/v1/enums.proto";
+import "google/protobuf/timestamp.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Core.Device.V1";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/core/device/v1;devicev1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.core.device.v1";
+
+// DeviceContext contains comprehensive device metadata for risk assessment and auditing
+//
+// PURPOSE:
+//   - Device identification for fraud detection
+//   - Hardware capability detection
+//   - Risk assessment for authentication
+//   - Device inventory for enterprise management
+//
+// SECURITY:
+//   - device_id used for device binding and anomaly detection
+//   - Trust level determines device access permissions
+//   - Jailbreak/root detection for security policies
+//
+// PRIVACY WARNING:
+//   Hardware characteristics combined are highly unique and enable device fingerprinting.
+//   Implement proper consent mechanisms.
+message DeviceContext {
+  reserved 9 to 15, 35 to 40;
+
+  // ========== DEVICE IDENTIFICATION ==========
+  // PRIVACY: Device identifiers are PII in many jurisdictions
+
+  // Unique device identifier/fingerprint (UUID v4 recommended)
+  // SECURITY: Should be stable but not tied to hardware (allow reset)
+  string device_id = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 128
+  }];
+
+  // User-assigned device name (e.g., "John's iPhone", "Work Laptop")
+  // PRIVACY: May contain PII (user's name)
+  string device_name = 2 [(buf.validate.field).string = {
+    max_len: 100
+    ignore_empty: true
+  }];
+
+  // Device model (e.g., "iPhone 15 Pro", "Galaxy S24", "MacBook Pro")
+  string device_model = 3 [(buf.validate.field).string = {
+    max_len: 100
+    ignore_empty: true
+  }];
+
+  // Device manufacturer (e.g., "Apple", "Samsung", "Dell")
+  string manufacturer = 4 [(buf.validate.field).string = {
+    max_len: 100
+    ignore_empty: true
+  }];
+
+  // ========== OPERATING SYSTEM ==========
+
+  // Operating system type (iOS, Android, Windows, macOS, Linux)
+  OperatingSystem os = 5;
+
+  // OS version (e.g., "17.2", "14", "11")
+  string os_version = 6 [(buf.validate.field).string = {
+    max_len: 50
+    ignore_empty: true
+  }];
+
+  // OS build number (e.g., "21C52", "TP1A.220624.014")
+  string os_build = 7 [(buf.validate.field).string = {
+    max_len: 100
+    ignore_empty: true
+  }];
+
+  // Kernel version (for Linux/Unix systems)
+  string kernel_version = 8 [(buf.validate.field).string = {
+    max_len: 100
+    ignore_empty: true
+  }];
+
+  // ========== HARDWARE SPECIFICATIONS ==========
+
+  // Processor architecture (x86_64, ARM64, ARM, etc.)
+  CPUArchitecture cpu_architecture = 20;
+
+  // Number of CPU cores
+  int32 cpu_cores = 21 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 256
+    ignore_empty: true
+  }];
+
+  // Total RAM in megabytes
+  int64 ram_mb = 22 [(buf.validate.field).int64 = {
+    gte: 0
+    lte: 1048576 // 1 TB max
+    ignore_empty: true
+  }];
+
+  // Total storage in gigabytes
+  int64 storage_gb = 23 [(buf.validate.field).int64 = {
+    gte: 0
+    lte: 102400 // 100 TB max
+    ignore_empty: true
+  }];
+
+  // ========== SCREEN & DISPLAY ==========
+  // Hardware display characteristics
+  // PRIVACY: Screen dimensions are quasi-identifiers for fingerprinting
+
+  // Screen width in pixels (logical pixels on high-DPI displays)
+  int32 screen_width = 31 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 16384 // 16K displays
+    ignore_empty: true
+  }];
+
+  // Screen height in pixels
+  int32 screen_height = 32 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 16384
+    ignore_empty: true
+  }];
+
+  // Screen density/DPI (dots per inch)
+  // Common values: 96 (1x), 192 (2x), 288 (3x)
+  float screen_dpi = 33 [(buf.validate.field).float = {
+    gte: 48.0 // Very low DPI
+    lte: 1000.0 // Very high DPI (retina)
+    ignore_empty: true
+  }];
+
+  // Screen diagonal size in inches
+  float screen_size_inches = 34 [(buf.validate.field).float = {
+    gte: 1.0 // Smartwatch
+    lte: 100.0 // Large display wall
+    ignore_empty: true
+  }];
+
+  // ========== DEVICE CAPABILITIES ==========
+  // Hardware/software feature support
+  repeated DeviceCapability capabilities = 24 [(buf.validate.field).repeated.max_items = 50];
+
+  // ========== GEOLOCATION ==========
+  // PRIVACY: Location data is highly sensitive PII
+
+  // Geolocation ID (reference to separate geo location record)
+  string geo_location_id = 25 [(buf.validate.field).string = {
+    max_len: 128
+    ignore_empty: true
+  }];
+
+  // ========== SECURITY & TRUST ==========
+
+  // Device trust level (untrusted, known, trusted, verified, managed)
+  // Used for device-based access control
+  DeviceTrustLevel trust_level = 27;
+
+  // Device is jailbroken/rooted
+  // SECURITY: Jailbroken devices may bypass security controls
+  bool jailbroken = 28;
+
+  // Running on emulator/simulator
+  // SECURITY: Emulators used for fraud and bot attacks
+  bool emulator = 29;
+
+  // Debug mode enabled
+  // SECURITY: Debug mode may allow code injection
+  bool debuggable = 30;
+
+  // ========== TIMESTAMPS ==========
+
+  // First time this device was seen
+  google.protobuf.Timestamp first_seen_at = 26;
+
+  // Last time this device was seen
+  google.protobuf.Timestamp last_seen_at = 41;
+
+  // ========== ADDITIONAL METADATA ==========
+  // Flexible key-value storage for custom device properties
+  // SECURITY: Validate and sanitize all metadata values
+  // PRIVACY: Do not include PII in metadata
+  map<string, string> metadata = 42;
+}
+
+// DeviceFingerprint for stable device identification
+//
+// PURPOSE:
+//   - Cross-session device tracking
+//   - Fraud detection and prevention
+//   - Account takeover protection
+//   - Bot detection
+//
+// ⚠️ PRIVACY WARNING:
+//   Device fingerprinting can track users across apps and sessions without consent.
+//   Use only for security purposes with proper legal basis.
+//
+// COMPLIANCE:
+//   - GDPR Article 6 (Lawful basis required)
+//   - ePrivacy Directive (Device tracking consent)
+//   - CCPA (Device identifiers are personal information)
+//   - Advertising IDs require user consent
+//
+// ETHICS:
+//   - Inform users in privacy policy
+//   - Use only for fraud/security, NOT advertising
+//   - Allow users to reset device fingerprint
+//   - Respect platform privacy controls (iOS App Tracking Transparency)
+//
+// SECURITY:
+//   - Fingerprints can be spoofed
+//   - Use as one signal in multi-factor risk assessment
+//   - Hash sensitive IDs before storage
+message DeviceFingerprint {
+  reserved 10 to 20;
+
+  // ========== FINGERPRINT IDENTIFIER ==========
+
+  // Fingerprint hash (SHA-256 of all components)
+  // SECURITY: Store only hash, not raw hardware IDs
+  string fingerprint_hash = 1 [(buf.validate.field).string = {
+    len: 64 // SHA-256 hex = 64 characters
+    pattern: "^[a-f0-9]{64}$"
+  }];
+
+  // ========== FINGERPRINT COMPONENTS ==========
+  // PRIVACY: Each component is sensitive PII
+
+  // Device identifier (stable, user-resettable)
+  string device_id = 2 [(buf.validate.field).string = {
+    max_len: 128
+    ignore_empty: true
+  }];
+
+  // Vendor identifier (iOS: identifierForVendor, Android: varies)
+  // PRIVACY: Scoped to app vendor, resets on app uninstall
+  string vendor_id = 3 [(buf.validate.field).string = {
+    max_len: 128
+    ignore_empty: true
+  }];
+
+  // Advertising ID (iOS: IDFA, Android: AAID)
+  // PRIVACY: Requires user consent (iOS 14.5+), user-resettable
+  // COMPLIANCE: Must respect user's tracking preference
+  string advertising_id = 4 [(buf.validate.field).string = {
+    max_len: 128
+    ignore_empty: true
+  }];
+
+  // Hardware identifiers (MAC address, serial number, IMEI)
+  // ⚠️ PRIVACY: Highly sensitive, stable across factory resets
+  // COMPLIANCE: Collection requires explicit consent in most jurisdictions
+  string hardware_id = 5 [(buf.validate.field).string = {
+    max_len: 128
+    ignore_empty: true
+  }];
+
+  // ========== SOFTWARE FINGERPRINT ==========
+
+  // Installed app identifiers (package names)
+  // PRIVACY: Reveals user interests and behavior
+  repeated string installed_apps = 6 [(buf.validate.field).repeated.max_items = 1000];
+
+  // Installed fonts (desktop/web browsers)
+  // PRIVACY: Font list is highly unique fingerprint signal
+  repeated string fonts = 7 [(buf.validate.field).repeated.max_items = 500];
+
+  // Device locale (language and country)
+  string locale = 8 [(buf.validate.field).string = {
+    max_len: 35
+    ignore_empty: true
+  }];
+
+  // Device timezone (IANA timezone)
+  // PRIVACY: Reveals approximate geographic location
+  string timezone = 9 [(buf.validate.field).string = {
+    max_len: 100
+    ignore_empty: true
+  }];
+
+  // ========== TIMESTAMPS ==========
+
+  // Fingerprint generation timestamp
+  google.protobuf.Timestamp generated_at = 21;
+
+  // Fingerprint expiration (recommend 90 days)
+  google.protobuf.Timestamp expires_at = 22;
+
+  // ========== CONFIDENCE & QUALITY ==========
+
+  // Confidence score (0.0 - 1.0)
+  // High confidence = more unique signals collected
+  float confidence = 23 [(buf.validate.field).float = {
+    gte: 0.0
+    lte: 1.0
+  }];
+
+  // Stability score (how likely fingerprint remains stable)
+  // High score = stable hardware IDs, low score = volatile signals
+  int32 stability_score = 24 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 100
+  }];
+
+  // ========== ADDITIONAL SIGNALS ==========
+  // Other fingerprinting signals (screen, sensors, battery, etc.)
+  // PRIVACY: Limit signal collection to what's necessary for security
+  map<string, string> signals = 25;
+}

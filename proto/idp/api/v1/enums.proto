@@ -1,0 +1,142 @@
+// DOMAIN: Identity Provider API - Common Enumerations
+// COMPLIANCE: SOC 2 CC6.1, GDPR Article 5, ISO 27001 A.9.2
+// SECURITY: Authentication required, tenant isolation enforced
+// PII: No
+
+syntax = "proto3";
+
+package geniustechspace.idp.api.v1;
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Idp.Api.V1";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/idp/api/v1;idpapiv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.idp.api.v1";
+
+// AuthenticationStatus represents authentication result.
+// COMPLIANCE: NIST 800-63B Section 4.1.1 (Authentication Process)
+enum AuthenticationStatus {
+  AUTHENTICATION_STATUS_UNSPECIFIED = 0;
+  SUCCESS = 1; // Authentication successful
+  MFA_REQUIRED = 2; // Multi-factor authentication required
+  STEP_UP_REQUIRED = 3; // Step-up authentication required (higher assurance)
+  FAILED = 4; // Authentication failed
+  RATE_LIMITED = 5; // Too many attempts
+  ACCOUNT_LOCKED = 6; // Account locked due to failed attempts
+  EXPIRED = 7; // Credentials expired
+  INVALID_CREDENTIALS = 8; // Invalid username/password
+  ACCOUNT_DISABLED = 9; // Account disabled by admin
+  ACCOUNT_SUSPENDED = 10; // Account temporarily suspended
+  PASSWORD_RESET_REQUIRED = 11; // Password reset required
+  TERMS_ACCEPTANCE_REQUIRED = 12; // Terms of service acceptance required
+  reserved 13 to 50;
+}
+
+// AuthenticationMethod represents authentication mechanism.
+// COMPLIANCE: NIST 800-63B Section 4.2 (Authenticator Types)
+enum AuthenticationMethod {
+  AUTHENTICATION_METHOD_UNSPECIFIED = 0;
+  PASSWORD = 1; // Password-based (memorized secret)
+  PASSWORDLESS_EMAIL = 2; // Email magic link
+  PASSWORDLESS_SMS = 3; // SMS one-time code
+  WEBAUTHN = 4; // WebAuthn/FIDO2 (platform or cross-platform)
+  BIOMETRIC = 5; // Biometric (fingerprint, face, iris)
+  SOCIAL = 6; // Social login (Google, GitHub, etc.)
+  SAML = 7; // SAML 2.0 SSO
+  OAUTH = 8; // OAuth 2.0
+  LDAP = 9; // LDAP/Active Directory
+  CERTIFICATE = 10; // Client certificate (X.509)
+  OTP = 11; // One-time password (TOTP/HOTP)
+  PUSH_NOTIFICATION = 12; // Push notification approval
+  QR_CODE = 13; // QR code scan
+  API_KEY = 14; // API key authentication
+  SERVICE_ACCOUNT = 15; // Service account
+  reserved 16 to 50;
+}
+
+// MFAType represents multi-factor authentication type.
+// COMPLIANCE: NIST 800-63B Section 4.3 (Multi-Factor Authenticators)
+enum MFAType {
+  MFA_TYPE_UNSPECIFIED = 0;
+  TOTP = 1; // Time-based OTP (RFC 6238) - Google Authenticator, Authy
+  SMS = 2; // SMS code (not recommended by NIST, but widely used)
+  EMAIL = 3; // Email code
+  WEBAUTHN = 4; // WebAuthn/FIDO2 security key
+  BIOMETRIC = 5; // Biometric verification
+  PUSH_NOTIFICATION = 6; // Push notification approval (Duo, Okta Verify)
+  BACKUP_CODE = 7; // Single-use backup recovery code
+  VOICE_CALL = 8; // Voice call with code
+  reserved 9 to 30;
+}
+
+// RiskLevel represents assessed risk level.
+// COMPLIANCE: NIST 800-63B Section 4.4 (Risk-Based Authentication)
+enum RiskLevel {
+  RISK_LEVEL_UNSPECIFIED = 0;
+  LOW = 1; // Low risk - known device, location, behavior
+  MEDIUM = 2; // Medium risk - some anomalies detected
+  HIGH = 3; // High risk - significant anomalies (new device, location)
+  CRITICAL = 4; // Critical risk - multiple red flags (impossible travel, bot)
+  reserved 5 to 20;
+}
+
+// BiometricType for biometric authentication.
+// COMPLIANCE: NIST 800-63B Section 4.2.2 (Biometric Authenticators)
+enum BiometricType {
+  BIOMETRIC_TYPE_UNSPECIFIED = 0;
+  FINGERPRINT = 1; // Fingerprint scan
+  FACE = 2; // Facial recognition
+  IRIS = 3; // Iris scan
+  VOICE = 4; // Voice recognition
+  PALM = 5; // Palm print
+  RETINA = 6; // Retina scan
+  BEHAVIORAL = 7; // Behavioral biometrics (typing patterns, mouse movements)
+  reserved 8 to 30;
+}
+
+// SocialProvider for social login.
+enum SocialProvider {
+  SOCIAL_PROVIDER_UNSPECIFIED = 0;
+  GOOGLE = 1; // Google OAuth 2.0
+  GITHUB = 2; // GitHub OAuth 2.0
+  MICROSOFT = 3; // Microsoft Azure AD
+  FACEBOOK = 4; // Facebook Login
+  APPLE = 5; // Sign in with Apple
+  TWITTER = 6; // Twitter OAuth
+  LINKEDIN = 7; // LinkedIn OAuth
+  GITLAB = 8; // GitLab OAuth
+  BITBUCKET = 9; // Bitbucket OAuth
+  SLACK = 10; // Slack OAuth
+  DISCORD = 11; // Discord OAuth
+  reserved 12 to 50;
+}
+
+// TokenType represents token purpose and scope.
+// COMPLIANCE: RFC 6749 Section 1.4 (Access Token), RFC 7519 (JWT)
+enum TokenType {
+  TOKEN_TYPE_UNSPECIFIED = 0;
+  ACCESS_TOKEN = 1; // OAuth 2.0 access token (short-lived, 15 min)
+  REFRESH_TOKEN = 2; // OAuth 2.0 refresh token (long-lived, 30-90 days)
+  ID_TOKEN = 3; // OpenID Connect ID token (identity assertion)
+  SESSION_TOKEN = 4; // Session identifier
+  API_KEY = 5; // Long-lived API key for service accounts
+  AUTHORIZATION_CODE = 6; // OAuth 2.0 authorization code (single-use)
+  DEVICE_CODE = 7; // OAuth 2.0 device authorization (RFC 8628)
+  PASSWORD_RESET_TOKEN = 8; // Password reset token (short-lived, single-use)
+  EMAIL_VERIFICATION_TOKEN = 9; // Email verification token
+  MFA_TOKEN = 10; // Temporary MFA session token
+  MAGIC_LINK_TOKEN = 11; // Passwordless magic link token
+  reserved 12 to 50;
+}
+
+// SessionState represents session lifecycle state.
+enum SessionState {
+  SESSION_STATE_UNSPECIFIED = 0;
+  ACTIVE = 1; // Active session
+  IDLE = 2; // Idle but not expired
+  MFA_PENDING = 3; // Awaiting MFA verification
+  STEP_UP_PENDING = 4; // Awaiting step-up authentication
+  EXPIRED = 5; // Session expired (idle or absolute timeout)
+  REVOKED = 6; // Explicitly revoked by user or admin
+  TERMINATED = 7; // Terminated by system (logout, security event)
+  reserved 8 to 30;
+}

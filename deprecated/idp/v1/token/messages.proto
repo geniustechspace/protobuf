@@ -1,0 +1,164 @@
+// IDP Token Messages - Version 1
+//
+// Token management messages for OAuth2 and OIDC flows.
+// Handles token transmission for authentication responses.
+//
+// COMPLIANCE:
+//   - OAuth 2.0 (RFC 6749): Token management
+//   - RFC 7662: Token Introspection
+//   - RFC 7009: Token Revocation
+//   - OWASP: Token security best practices
+
+syntax = "proto3";
+
+package geniustechspace.idp.v1.token;
+
+import "buf/validate/validate.proto";
+import "proto/datastructure/v1/token/messages.proto";
+import "proto/datastructure/v1/token/enums.proto";
+import "proto/idp/v1/token/enums.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Idp.V1.Token";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/idp/v1/token;token";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.idp.v1.token";
+
+// AuthTokenSet contains issued authentication tokens
+// Used for transmitting tokens in authentication responses only
+message AuthTokenSet {
+  // Access token (JWT or opaque string)
+  string access_token = 1;
+
+  // Refresh token (opaque string)
+  string refresh_token = 2;
+
+  // ID token (JWT) - OpenID Connect only
+  string id_token = 3;
+
+  TokenType token_type = 4;
+
+  // Access token expires in seconds
+  int64 expires_in = 5;
+
+  // Granted OAuth scopes
+  repeated string scopes = 6;
+}
+
+// ListTokensRequest lists tokens for a user/actor
+message ListTokensRequest {
+  reserved 3 to 9, 16 to 19;
+  
+  // User/Actor ID (defaults to authenticated user/actor)
+  oneof actor {
+    string user_id = 1;
+    string agent_id = 2;
+  }
+  
+  // Tenant ID
+  string tenant_id = 10 [(buf.validate.field).string = { max_len: 128, ignore_empty: true }];
+  
+  // Session filter
+  string session_id = 11 [(buf.validate.field).string = { max_len: 128, ignore_empty: true }];
+  
+  // Context references (filter by device/client/network/location)
+  string device_id = 12 [(buf.validate.field).string = { max_len: 128, ignore_empty: true }];
+  string client_id = 13 [(buf.validate.field).string = { max_len: 128, ignore_empty: true }];
+  string network_id = 14 [(buf.validate.field).string = { max_len: 128, ignore_empty: true }];
+  string geo_location_id = 15 [(buf.validate.field).string = { max_len: 128, ignore_empty: true }];
+  
+  // Token type filters (empty = all types)
+  repeated geniustechspace.datastructure.v1.token.TokenType token_types = 20;
+  
+  // Status filters (empty = all statuses except expired, unless include_expired=true)
+  repeated geniustechspace.datastructure.v1.token.TokenStatus statuses = 21;
+  
+  // Include expired tokens
+  bool include_expired = 22;
+}
+
+// ListTokensResponse returns tokens
+message ListTokensResponse {
+  // List of tokens
+  repeated geniustechspace.datastructure.v1.token.TokenMetadata tokens = 1;
+}
+
+// RefreshTokenRequest refreshes access token
+message RefreshTokenRequest {
+  // Refresh token
+  string refresh_token = 1;
+
+  // Optional requested scopes
+  repeated string scopes = 2;
+}
+
+// RefreshTokenResponse returns new tokens
+message RefreshTokenResponse {
+  // New authentication token set
+  AuthTokenSet tokens = 1;
+}
+
+// RevokeTokenRequest revokes token
+message RevokeTokenRequest {
+  // Token to revoke
+  string token = 1;
+
+  // Token type hint (from datastructure)
+  geniustechspace.datastructure.v1.token.TokenType token_type_hint = 2;
+}
+
+// RevokeTokenResponse confirms revocation
+message RevokeTokenResponse {
+  // Success flag
+  bool success = 1;
+}
+
+// RevokeAllTokensRequest revokes all tokens for a user/actor
+message RevokeAllTokensRequest {
+  reserved 3 to 9, 16 to 19;
+  
+  // User/Actor ID (defaults to authenticated user/actor)
+  oneof actor {
+    string user_id = 1;
+    string agent_id = 2;
+  }
+  
+  // Tenant ID
+  string tenant_id = 10 [(buf.validate.field).string = { max_len: 128, ignore_empty: true }];
+  
+  // Session filter (revoke all tokens for specific session)
+  string session_id = 11 [(buf.validate.field).string = { max_len: 128, ignore_empty: true }];
+  
+  // Context references (revoke tokens for specific device/client/network/location)
+  string device_id = 12 [(buf.validate.field).string = { max_len: 128, ignore_empty: true }];
+  string client_id = 13 [(buf.validate.field).string = { max_len: 128, ignore_empty: true }];
+  string network_id = 14 [(buf.validate.field).string = { max_len: 128, ignore_empty: true }];
+  string geo_location_id = 15 [(buf.validate.field).string = { max_len: 128, ignore_empty: true }];
+  
+  // Token types to revoke (empty = all types)
+  repeated geniustechspace.datastructure.v1.token.TokenType token_types = 20;
+  
+  // Exclude current token (don't revoke the token making this request)
+  bool exclude_current = 21;
+}
+
+// RevokeAllTokensResponse confirms bulk revocation
+message RevokeAllTokensResponse {
+  // Success flag
+  bool success = 1;
+
+  // Number of tokens revoked
+  int32 revoked_count = 2;
+}
+
+
+// IntrospectTokenRequest checks token validity
+message IntrospectTokenRequest {
+  // Token to introspect
+  string token = 1;
+}
+
+// IntrospectTokenResponse returns token introspection result
+message IntrospectTokenResponse {
+  // Token introspection details from datastructure
+  geniustechspace.datastructure.v1.token.TokenIntrospection introspection = 1;
+}

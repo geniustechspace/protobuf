@@ -1,0 +1,106 @@
+// Network Messages - Production v1
+//
+// Comprehensive network context for connectivity and security analysis.
+// SECURITY: Contains IP addresses and network metadata for security analysis.
+// COMPLIANCE: GDPR (IP addresses are PII), SOC 2 (network monitoring)
+
+syntax = "proto3";
+
+package geniustechspace.datastructure.v1.network;
+
+import "google/protobuf/timestamp.proto";
+import "proto/datastructure/v1/network/enums.proto";
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/datastructure/v1/network;networkv1";
+option java_multiple_files = true;
+option java_package = "space.geniustech.datastructure.v1.network";
+option csharp_namespace = "GeniusTechSpace.Datastructure.V1.Network";
+
+// NetworkContext contains comprehensive network and connectivity metadata
+message NetworkContext {
+  reserved 20 to 30;
+
+  // IP and addressing
+  string ip_address = 1;            // Client IP address (IPv4 or IPv6)
+  IPVersion ip_version = 2;
+  string proxy_ip = 3;              // Proxy/VPN IP if detected
+  repeated string x_forwarded_for = 4; // X-Forwarded-For chain
+  
+  // Network type and connectivity
+  ConnectionType connection_type = 5;
+  string network_operator = 6;      // ISP or mobile operator
+  string network_name = 7;          // Network SSID or name
+  
+  // Protocol details
+  Protocol protocol = 8;
+  TLSVersion tls_version = 9;
+  string cipher_suite = 10;         // TLS cipher suite used
+  
+  // Request headers (protocol-level only; app headers in ClientContext)
+  string referer = 11;              // Referer/Origin
+  string accept_language = 12;      // Accept-Language header
+  map<string, string> headers = 13; // Additional protocol headers
+  
+  // Network characteristics
+  int32 latency_ms = 14;            // Round-trip latency
+  float bandwidth_mbps = 15;        // Available bandwidth
+  NetworkQuality quality = 16;
+  
+  // Geographic location ID (IP-derived, reference only)
+  string geo_location_id = 17;
+  
+  // Security indicators
+  SecurityIndicators security = 18;
+  
+  // Autonomous System info
+  string asn = 31;                  // Autonomous System Number
+  string as_organization = 32;      // AS organization name
+  
+  // Risk and reputation
+  int32 threat_score = 37;          // 0-100 threat score
+  repeated string threat_types = 38; // spam, proxy, bot, etc.
+  bool blacklisted = 39;            // IP on blacklist
+  
+  // Timestamps
+  google.protobuf.Timestamp detected_at = 40;
+  
+  // Additional metadata
+  map<string, string> metadata = 41;
+}
+
+// SecurityIndicators groups network security detection flags
+message SecurityIndicators {
+  bool vpn_detected = 1;            // VPN usage detected
+  bool tor_detected = 2;            // Tor exit node detected
+  bool datacenter_ip = 3;           // IP from datacenter/cloud provider
+  bool mobile_network = 4;          // Mobile carrier network
+  bool proxy_detected = 5;          // Proxy server detected
+  bool bot_detected = 6;            // Bot/automated traffic detected
+}
+
+// ConnectionInfo for active connection tracking
+message ConnectionInfo {
+  reserved 10 to 20;
+
+  // Connection identifier
+  string connection_id = 1;
+  
+  // Connection state
+  ConnectionState state = 2;
+  google.protobuf.Timestamp established_at = 3;
+  google.protobuf.Timestamp last_activity_at = 4;
+  
+  // Traffic statistics
+  int64 bytes_sent = 5;
+  int64 bytes_received = 6;
+  int64 packets_sent = 7;
+  int64 packets_received = 8;
+  
+  // Connection properties
+  int32 idle_timeout_seconds = 9;
+  bool keep_alive = 21;
+  int32 max_concurrent_streams = 22;
+  
+  // Additional metadata
+  map<string, string> metadata = 23;
+}

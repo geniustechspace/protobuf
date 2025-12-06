@@ -1,0 +1,27 @@
+// Geo Enums - Production v1
+//
+// Standardized geolocation-related enumerations.
+
+syntax = "proto3";
+
+package geniustechspace.core.geo.v1;
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Core.Geo.V1";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/core/geo/v1;geov1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.core.geo.v1";
+
+// GeoLocationSource represents the source of geolocation data
+enum GeoLocationSource {
+  GEO_LOCATION_SOURCE_UNSPECIFIED = 0;
+  IP = 1; // IP address geolocation
+  GPS = 2; // GPS/GNSS coordinates
+  WIFI = 3; // WiFi triangulation
+  CELLULAR = 4; // Cell tower triangulation
+  USER = 5; // User-provided location
+  MANUAL = 6; // Manually entered
+  GEOCODING = 7; // Reverse geocoding from address
+  BLUETOOTH = 8; // Bluetooth beacon
+  HYBRID = 9; // Multiple sources combined
+  reserved 10 to 20;
+}

@@ -1,0 +1,34 @@
+// Token Enumerations - Production v1
+//
+// Standardized token-related enumerations.
+
+syntax = "proto3";
+
+package geniustechspace.core.token.v1;
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Core.Token.V1";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/core/token/v1;tokenv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.core.token.v1";
+
+// TokenType represents different token types
+enum TokenType {
+  TOKEN_TYPE_UNSPECIFIED = 0;
+  ACCESS = 1; // Access token (short-lived)
+  REFRESH = 2; // Refresh token (long-lived)
+  ID = 3; // OpenID Connect ID token
+  API_KEY = 4; // API key token
+  SESSION = 5; // Session token
+  BEARER = 6; // Generic bearer token
+  reserved 7 to 20;
+}
+
+// TokenStatus represents token validity state
+enum TokenStatus {
+  TOKEN_STATUS_UNSPECIFIED = 0;
+  ACTIVE = 1; // Token is valid and active
+  EXPIRED = 2; // Token has expired
+  REVOKED = 3; // Token was revoked
+  INVALID = 4; // Token is invalid
+  reserved 5 to 10;
+}

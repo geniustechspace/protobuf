@@ -1,0 +1,252 @@
+// IDP Authentication Messages - Version 1
+// Core authentication request/response messages
+//
+// COMPLIANCE:
+//   - OAuth 2.0: RFC 6749 (Authorization Framework)
+//   - OpenID Connect Core 1.0
+//   - RFC 7519 (JWT)
+//   - NIST 800-63B (Digital Identity Guidelines)
+//   - GDPR Article 32 (Security of Processing)
+//
+// SECURITY:
+//   - Contains PII (email, phone) - encrypt in transit (TLS 1.3+)
+//   - Passwords never logged - use secure hashing (bcrypt/argon2)
+//   - Rate limiting required - implement exponential backoff
+//   - Audit logging mandatory - log all authentication attempts
+//
+// PRIVACY:
+//   - PII fields: email, phone, username
+//   - Data retention: Follow tenant-specific policies
+//   - Right to erasure: Support GDPR deletion requests
+
+syntax = "proto3";
+
+package geniustechspace.idp.v1.auth;
+
+import "buf/validate/validate.proto";
+import "proto/datastructure/v1/session/messages.proto";
+import "proto/idp/v1/auth/enums.proto";
+import "proto/idp/v1/auth/types.proto";
+import "proto/idp/v1/token/messages.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Idp.V1.Auth";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/idp/v1/auth;authv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.idp.v1.auth";
+
+// StartAuthenticationRequest - FLAT DESIGN
+// Initiates authentication flow without credentials (for passwordless flows)
+//
+// Use cases:
+//   - Magic link request (returns challenge)
+//   - WebAuthn initiation (returns challenge)
+//   - Check if user exists (for progressive profiling)
+//
+// SECURITY: This endpoint may be used for user enumeration attacks.
+//           Implement rate limiting and return consistent responses.
+message StartAuthenticationRequest {
+  reserved 6 to 9, 10 to 19;
+
+  // Tenant ID (required for multi-tenant)
+  string tenant_id = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 64
+    ignore_empty: true
+  }];
+
+  // ========== IDENTITY (one required) ==========
+  // PII WARNING: email, phone, username contain personally identifiable information
+  oneof identifier {
+    string username = 2 [(buf.validate.field).string = {
+      min_len: 3
+      max_len: 64
+      pattern: "^[a-zA-Z0-9._-]+$"
+    }];
+    string email = 3 [(buf.validate.field).string = {
+      email: true
+      max_len: 254
+    }];
+    string phone = 4 [(buf.validate.field).string = {
+      pattern: "^\\+[1-9]\\d{1,14}$"  // E.164 format
+      max_len: 16
+    }];
+    string user_id = 5 [(buf.validate.field).string = {
+      min_len: 1
+      max_len: 128
+    }];
+  }
+}
+
+// AuthenticationRequest - FLAT DESIGN
+// Primary authentication with credentials
+//
+// SECURITY REQUIREMENTS:
+//   - TLS 1.3+ required for transport
+//   - Password field never logged
+//   - Rate limiting: 5 attempts per minute per IP
+//   - Account lockout: 10 failed attempts = 30min lockout
+//   - Session binding: Verify IP/User-Agent consistency
+//
+// COMPLIANCE:
+//   - NIST 800-63B: Credential strength requirements
+//   - PCI DSS 3.2.1: If processing payment data
+//   - SOC 2 Type II: Audit trail required
+message AuthenticationRequest {
+  reserved 7 to 9, 20 to 28, 35 to 39, 50 to 99;
+
+  // Tenant ID (required for multi-tenant isolation)
+  string tenant_id = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 64
+    ignore_empty: true
+  }];
+
+  // ========== IDENTITY (one required) ==========
+  oneof identifier {
+    string username = 2 [(buf.validate.field).string = {
+      min_len: 3
+      max_len: 64
+      pattern: "^[a-zA-Z0-9._-]+$"
+    }];
+    string email = 3 [(buf.validate.field).string = {
+      email: true
+      max_len: 254
+    }];
+    string phone = 4 [(buf.validate.field).string = {
+      pattern: "^\\+[1-9]\\d{1,14}$"
+      max_len: 16
+    }];
+    string user_id = 5 [(buf.validate.field).string = {
+      min_len: 1
+      max_len: 128
+    }];
+    string session_id = 6 [(buf.validate.field).string = {
+      min_len: 8
+      max_len: 128
+    }];
+  }
+
+  // ========== CREDENTIALS (one required) ==========
+  oneof credential {
+    string password = 10 [(buf.validate.field).string = {
+      min_len: 8
+      max_len: 128
+    }];
+    string otp_code = 11 [(buf.validate.field).string = {
+      pattern: "^[0-9]{6}$"
+    }];
+    string totp_code = 12 [(buf.validate.field).string = {
+      pattern: "^[0-9]{6}$"
+    }];
+    string magic_link_token = 13 [(buf.validate.field).string = {
+      min_len: 32
+      max_len: 256
+    }];
+    string social_id_token = 14 [(buf.validate.field).string = {
+      min_len: 1
+      max_len: 4096
+    }];
+    string saml_assertion = 15 [(buf.validate.field).string = {
+      min_len: 1
+      max_len: 100000
+    }];
+    WebAuthnAssertion webauthn = 16;
+    BiometricAssertion biometric = 17;
+    string backup_code = 18 [(buf.validate.field).string = {
+      min_len: 8
+      max_len: 32
+    }];
+    ClientCertificate certificate = 19;
+  }
+
+  // Social provider (required when using social_id_token)
+  SocialProvider social_provider = 29;
+
+  // ========== OAUTH/OIDC OPTIONS ==========
+  repeated string scopes = 30 [(buf.validate.field).repeated = {
+    max_items: 20
+    items: {
+      string: {
+        min_len: 1
+        max_len: 64
+        pattern: "^[a-z0-9:._-]+$"
+      }
+    }
+  }];
+  string client_secret = 31 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 256
+    ignore_empty: true
+  }];
+  string nonce = 32 [(buf.validate.field).string = {
+    min_len: 8
+    max_len: 128
+    ignore_empty: true
+  }];
+  string state = 33 [(buf.validate.field).string = {
+    min_len: 8
+    max_len: 128
+    ignore_empty: true
+  }];
+  string redirect_uri = 34 [(buf.validate.field).string = {
+    uri: true
+    max_len: 2048
+    ignore_empty: true
+  }];
+
+  // ========== SESSION OPTIONS ==========
+  bool remember_session = 40;
+  int64 session_duration = 41 [(buf.validate.field).int64 = {
+    gte: 60
+    lte: 2592000
+    ignore_empty: true
+  }];
+}
+
+// AuthenticationResponse - FLAT, simple
+// Returns authentication result with tokens and session
+message AuthenticationResponse {
+  reserved 5 to 9, 12 to 19;
+
+  AuthenticationStatus status = 1;
+  string user_id = 2 [(buf.validate.field).string = {
+    max_len: 128
+    ignore_empty: true
+  }];
+  geniustechspace.idp.v1.token.AuthTokenSet tokens = 3;
+  geniustechspace.datastructure.v1.session.Session session = 4;
+  string message = 10 [(buf.validate.field).string = {
+    max_len: 500
+    ignore_empty: true
+  }];
+  string message_key = 11 [(buf.validate.field).string = {
+    max_len: 100
+    pattern: "^[a-z._]+$"
+    ignore_empty: true
+  }];
+}
+
+// LogoutRequest - FLAT
+message LogoutRequest {
+  reserved 3 to 30;
+
+  string session_id = 1 [(buf.validate.field).string = {
+    min_len: 8
+    max_len: 128
+  }];
+  string tenant_id = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 64
+  }];
+}
+
+// LogoutResponse - FLAT
+message LogoutResponse {
+  reserved 3 to 10;
+  
+  bool success = 1;
+  string message = 2 [(buf.validate.field).string = {
+    max_len: 200
+    ignore_empty: true
+  }];
+}

@@ -1,0 +1,79 @@
+// Network Enums - Production v1
+//
+// Standardized network-related enumerations.
+
+syntax = "proto3";
+
+package geniustechspace.datastructure.v1.network;
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/datastructure/v1/network;networkv1";
+option java_multiple_files = true;
+option java_package = "space.geniustech.datastructure.v1.network";
+option csharp_namespace = "GeniusTechSpace.Datastructure.V1.Network";
+
+// IPVersion represents IP protocol version
+enum IPVersion {
+  IP_VERSION_UNSPECIFIED = 0;
+  IPV4 = 1;
+  IPV6 = 2;
+  reserved 3 to 10;
+}
+
+// ConnectionType represents network connection type
+enum ConnectionType {
+  CONNECTION_TYPE_UNSPECIFIED = 0;
+  WIFI = 1;
+  CELLULAR = 2;
+  ETHERNET = 3;
+  VPN = 4;
+  BLUETOOTH = 5;
+  SATELLITE = 6;
+  reserved 7 to 20;
+}
+
+// NetworkQuality represents connection quality
+enum NetworkQuality {
+  NETWORK_QUALITY_UNSPECIFIED = 0;
+  EXCELLENT = 1;
+  GOOD = 2;
+  FAIR = 3;
+  POOR = 4;
+  OFFLINE = 5;
+  reserved 6 to 10;
+}
+
+// Protocol represents application protocol
+enum Protocol {
+  PROTOCOL_UNSPECIFIED = 0;
+  HTTP_1_0 = 1;
+  HTTP_1_1 = 2;
+  HTTP_2 = 3;
+  HTTP_3 = 4;
+  GRPC = 5;
+  WEBSOCKET = 6;
+  MQTT = 7;
+  AMQP = 8;
+  reserved 9 to 20;
+}
+
+// TLSVersion represents TLS protocol version
+enum TLSVersion {
+  TLS_VERSION_UNSPECIFIED = 0;
+  TLS_1_0 = 1 [deprecated = true];
+  TLS_1_1 = 2 [deprecated = true];
+  TLS_1_2 = 3;
+  TLS_1_3 = 4;
+  reserved 5 to 10;
+}
+
+// ConnectionState represents connection lifecycle state
+enum ConnectionState {
+  CONNECTION_STATE_UNSPECIFIED = 0;
+  CONNECTING = 1;
+  ACTIVE = 2;
+  IDLE = 3;
+  CLOSING = 4;
+  CLOSED = 5;
+  ERROR = 6;
+  reserved 7 to 10;
+}

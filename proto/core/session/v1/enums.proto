@@ -1,0 +1,57 @@
+// Session Enums - Production v1
+//
+// Enumerations for session management, multitenant aware.
+
+syntax = "proto3";
+
+package geniustechspace.core.session.v1;
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Core.Session.V1";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/core/session/v1;sessionv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.core.session.v1";
+
+// SessionStatus represents session lifecycle state
+enum SessionStatus {
+  SESSION_STATUS_UNSPECIFIED = 0;
+  ACTIVE = 1; // Session is active
+  EXPIRED = 2; // Session expired
+  REVOKED = 3; // Session revoked by user/admin
+  SUSPENDED = 4; // Session temporarily suspended
+}
+
+// AuthenticationStatus represents authentication state
+enum AuthenticationStatus {
+  AUTH_STATUS_UNSPECIFIED = 0;
+  UNAUTHENTICATED = 1; // No authentication yet
+  PARTIAL = 2; // Primary auth done, MFA pending
+  AUTHENTICATED = 3; // Fully authenticated (MFA completed if required)
+  STEP_UP_REQUIRED = 4; // Step-up authentication required (risk-based)
+}
+
+// AuthenticationMethod represents how user authenticated
+enum AuthenticationMethod {
+  AUTH_METHOD_UNSPECIFIED = 0;
+  PASSWORD = 1;
+  OTP = 2;
+  TOTP = 3;
+  WEBAUTHN = 4;
+  BIOMETRIC = 5;
+  MAGIC_LINK = 6;
+  SOCIAL = 7;
+  SAML = 8;
+  CERTIFICATE = 9;
+  PUSH = 10;
+}
+
+// MFAType represents multi-factor authentication types
+enum MFAType {
+  MFA_TYPE_UNSPECIFIED = 0;
+  TOTP = 1; // Time-based OTP (Google Authenticator)
+  SMS = 2; // SMS OTP
+  EMAIL = 3; // Email OTP
+  WEBAUTHN = 4; // Security key (YubiKey)
+  BIOMETRIC = 5; // Fingerprint, Face ID
+  PUSH = 6; // Push notification
+  BACKUP_CODE = 7; // Recovery code
+}

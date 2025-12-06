@@ -1,0 +1,114 @@
+// Token Messages - Production v1
+//
+// Reusable token data structures for JWT claims and token metadata.
+// These are domain-agnostic structures used across authentication and API services.
+//
+// COMPLIANCE: RFC 7519 (JWT), RFC 6749 (OAuth 2.0), OpenID Connect Core 1.0
+// SECURITY: Contains sensitive claims - encrypt in transit
+
+syntax = "proto3";
+
+package geniustechspace.datastructure.v1.token;
+
+import "google/protobuf/timestamp.proto";
+import "proto/datastructure/v1/token/enums.proto";
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/datastructure/v1/token;tokenv1";
+option java_multiple_files = true;
+option java_package = "space.geniustech.datastructure.v1.token";
+option csharp_namespace = "GeniusTechSpace.Datastructure.V1.Token";
+
+
+// TokenClaims represents standard JWT claims and custom extensions
+message TokenClaims {
+  reserved 8, 9, 13 to 19, 24 to 29;
+
+  // Standard JWT claims (RFC 7519)
+  string jti = 1;                           // JWT ID (unique identifier)
+  string iss = 2;                           // Issuer
+  string sub = 3;                           // Subject (user ID)
+  repeated string aud = 4;                  // Audience
+  google.protobuf.Timestamp exp = 5;        // Expiration time
+  google.protobuf.Timestamp nbf = 6;        // Not before time
+  google.protobuf.Timestamp iat = 7;        // Issued at time
+
+  // OpenID Connect claims
+  string azp = 10;                          // Authorized party (client ID)
+  repeated string scopes = 11;              // OAuth scopes
+  string nonce = 12;                        // Nonce for replay protection
+
+  // Custom claims
+  string tenant_id = 20;                    // Tenant identifier
+  string session_id = 21;                   // Associated session ID
+  repeated string roles = 22;               // User/Actor roles
+  repeated string permissions = 23;         // User/Actor permissions
+
+  // Additional metadata
+  TokenType token_type = 30;                // Type of token
+  map<string, string> metadata = 31;        // Extensible metadata
+}
+
+// TokenMetadata contains non-claim token information (For audit and management)
+message TokenMetadata {
+  reserved 8, 9, 13 to 19, 24 to 29, 34 to 35;
+
+  // Token identifier. REQUIRED
+  string token_id = 1;
+  // Tenant identifier
+  string tenant_id = 2 [(buf.validate.field).string = { max_len: 128, ignore_empty: true }];
+  // Associated session ID
+  string session_id = 3 [(buf.validate.field).string = { max_len: 128, ignore_empty: true }];
+  // Associated device ID
+  string device_id = 4 [(buf.validate.field).string = { max_len: 128, ignore_empty: true }];
+  // Associated network ID
+  string network_id = 5 [(buf.validate.field).string = { max_len: 128, ignore_empty: true }];
+
+  TokenType token_type = 6;                 // Token type
+  TokenStatus status = 7;                   // Token status
+
+  // Subject information:
+  oneof subject {
+    string user_id = 10;
+    string agent_id = 11;
+    string client_id = 12;
+  }
+
+  string issuer = 20;                         // Issuer
+
+  repeated string scopes = 21;                // Scopes granted
+  repeated string roles = 22;                 // User/Actor roles
+  repeated string permissions = 23;           // User/Actor permissions
+
+  google.protobuf.Timestamp issued_at = 30;   // Issued at
+  google.protobuf.Timestamp expires_at = 31;  // Expires at
+  // Revoked at (if revoked)
+  google.protobuf.Timestamp revoked_at = 32 [(buf.validate.field).timestamp = { ignore_empty: true }];
+
+  // Additional context
+  map<string, string> metadata = 36;
+}
+
+// TokenIntrospection represents token introspection result (RFC 7662)
+message TokenIntrospection {
+  // Whether token is active
+  bool active = 1;
+
+  // Token claims (if active)
+  TokenClaims claims = 2;
+
+  // Token metadata
+  TokenMetadata metadata = 3;
+}
+
+
+// TokenReturn is used for returning tokens in responses
+message TokenReturn {
+  // Access token (JWT or opaque string)
+  string token = 1;
+
+  // Access token expires in seconds
+  int64 expires_in = 5;
+
+  // Granted OAuth scopes
+  repeated string scopes = 6;
+}

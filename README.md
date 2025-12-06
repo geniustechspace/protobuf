@@ -1,4 +1,4 @@
-# GeniusTechSpace Protobuf Schema Repository
+# Genius Tech Space Protobuf Schema Repository
 
 **Production-ready, domain-driven, enterprise-grade Protocol Buffer definitions for multi-tenant microservices**
 
@@ -35,14 +35,26 @@ proto/
 │       ├── types.proto      # Address, Money, ContactInfo, Errors
 │       └── common.proto     # Convenience re-export
 │
-├── auth/                    # Authentication & Sessions
+├── idp/                     # Identity Provider (Standard IDP)
+│   └── v1/
+│       ├── enums.proto      # Core IDP enums
+│       ├── authentication.proto # Authentication operations
+│       ├── tokens.proto     # Token management
+│       ├── password.proto   # Password operations
+│       ├── session.proto    # Session management
+│       └── services.proto   # IdentityService definition
+│
+├── auth/                    # Authentication & Sessions [DEPRECATED - use idp/v1]
 │   └── v1/
 │       ├── enums.proto      # Status enums
-│       ├── messages.proto   # Credentials, Session, Token
-│       ├── requests.proto   # Request/Response pairs
-│       ├── service.proto    # AuthService definition
-│       ├── events.proto     # UserAuthenticated, etc.
-│       └── auth.proto       # Convenience re-export
+│       ├── authentication.proto # Authentication messages
+│       ├── password.proto   # Password management
+│       ├── session.proto    # Session management
+│       ├── tokens.proto     # Token messages
+│       ├── proofs.proto     # Auth proof types
+│       ├── webauthn.proto   # WebAuthn/FIDO2
+│       ├── events.proto     # Auth events
+│       └── services.proto   # Auth services
 │
 ├── users/                   # User Management
 │   └── v1/

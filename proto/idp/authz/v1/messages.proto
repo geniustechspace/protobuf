@@ -1,0 +1,179 @@
+// DOMAIN: Identity Provider - Authorization Messages
+// COMPLIANCE: SOC 2 CC6.1, GDPR Article 5, ISO 27001 A.9.1
+// SECURITY: Authentication required, tenant isolation enforced
+// PII: Contains user identifiers
+
+syntax = "proto3";
+
+package geniustechspace.idp.authz.v1;
+
+import "buf/validate/validate.proto";
+import "core/metadata/v1/metadata.proto";
+import "google/protobuf/timestamp.proto";
+import "idp/authz/v1/enums.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Idp.Authz.V1";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/idp/authz/v1;idpauthzv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.idp.authz.v1";
+
+// CheckPermissionRequest checks if user has permission.
+// AUTHENTICATION: Requires valid access token
+// RATE LIMIT: 100/sec per user
+message CheckPermissionRequest {
+  // Tenant ID. REQUIRED.
+  string tenant_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // User ID. REQUIRED.
+  // PII: Yes - GDPR Article 4(1) personal identifier
+  string user_id = 2 [(buf.validate.field).string.min_len = 1];
+
+  // Resource. REQUIRED.
+  // Format: "type:id" (e.g., "document:123", "api:users:list")
+  string resource = 3 [(buf.validate.field).string.min_len = 1];
+
+  // Action. REQUIRED.
+  string action = 4 [(buf.validate.field).string.min_len = 1];
+
+  // Context attributes. OPTIONAL.
+  // For ABAC evaluation (e.g., time, location, department)
+  map<string, string> context = 5;
+}
+
+// CheckPermissionResponse returns authorization decision.
+message CheckPermissionResponse {
+  // Allowed. REQUIRED.
+  bool allowed = 1;
+
+  // Effect. OPTIONAL.
+  // Whether allow or deny decision.
+  PermissionEffect effect = 2;
+
+  // Reason. OPTIONAL.
+  // Human-readable reason for decision.
+  string reason = 3;
+
+  // Policy ID. OPTIONAL.
+  // Policy that made the decision.
+  string policy_id = 4;
+}
+
+// Role represents a collection of permissions.
+message Role {
+  // Role ID. REQUIRED.
+  string id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Tenant ID. REQUIRED.
+  string tenant_id = 2 [(buf.validate.field).string.min_len = 1];
+
+  // Name. REQUIRED.
+  // Unique within tenant (e.g., "admin", "editor", "viewer")
+  string name = 3 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 64
+    pattern: "^[a-z0-9_-]+$"
+  }];
+
+  // Display name. REQUIRED.
+  string display_name = 4 [(buf.validate.field).string.min_len = 1];
+
+  // Description. OPTIONAL.
+  string description = 5;
+
+  // Role type. REQUIRED.
+  RoleType type = 6 [(buf.validate.field).enum.defined_only = true];
+
+  // Permissions. REQUIRED.
+  repeated string permissions = 7;
+
+  // Parent roles. OPTIONAL.
+  // For role hierarchy.
+  repeated string parent_roles = 8;
+
+  // Metadata. OPTIONAL.
+  core.metadata.v1.Metadata metadata = 9;
+}
+
+// Permission represents an action on a resource.
+message Permission {
+  // Permission ID. REQUIRED.
+  string id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Resource type. REQUIRED.
+  // E.g., "document", "user", "api"
+  string resource_type = 2 [(buf.validate.field).string.min_len = 1];
+
+  // Action. REQUIRED.
+  string action = 3 [(buf.validate.field).string.min_len = 1];
+
+  // Effect. REQUIRED.
+  PermissionEffect effect = 4 [(buf.validate.field).enum.defined_only = true];
+
+  // Conditions. OPTIONAL.
+  // Conditional logic for ABAC.
+  map<string, string> conditions = 5;
+
+  // Description. OPTIONAL.
+  string description = 6;
+}
+
+// AssignRoleRequest assigns role to user.
+// AUTHENTICATION: Requires valid access token
+// AUTHORIZATION: Requires 'roles:assign' permission
+message AssignRoleRequest {
+  // Tenant ID. REQUIRED.
+  string tenant_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // User ID. REQUIRED.
+  // PII: Yes - GDPR Article 4(1) personal identifier
+  string user_id = 2 [(buf.validate.field).string.min_len = 1];
+
+  // Role ID. REQUIRED.
+  string role_id = 3 [(buf.validate.field).string.min_len = 1];
+
+  // Expires at. OPTIONAL.
+  // For temporary role assignments.
+  google.protobuf.Timestamp expires_at = 4;
+
+  // Assigned by. OPTIONAL.
+  string assigned_by = 5;
+}
+
+// AssignRoleResponse confirms role assignment.
+message AssignRoleResponse {
+  // Success. REQUIRED.
+  bool success = 1;
+
+  // Assignment ID. OPTIONAL.
+  string assignment_id = 2;
+
+  // Message. OPTIONAL.
+  string message = 3;
+}
+
+// RevokeRoleRequest revokes role from user.
+// AUTHENTICATION: Requires valid access token
+// AUTHORIZATION: Requires 'roles:revoke' permission
+message RevokeRoleRequest {
+  // Tenant ID. REQUIRED.
+  string tenant_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // User ID. REQUIRED.
+  // PII: Yes - GDPR Article 4(1) personal identifier
+  string user_id = 2 [(buf.validate.field).string.min_len = 1];
+
+  // Role ID. REQUIRED.
+  string role_id = 3 [(buf.validate.field).string.min_len = 1];
+
+  // Revoked by. OPTIONAL.
+  string revoked_by = 4;
+}
+
+// RevokeRoleResponse confirms role revocation.
+message RevokeRoleResponse {
+  // Success. REQUIRED.
+  bool success = 1;
+
+  // Message. OPTIONAL.
+  string message = 2;
+}

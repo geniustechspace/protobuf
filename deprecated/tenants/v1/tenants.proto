@@ -1,0 +1,266 @@
+// Tenant Domain - Multi-Tenant Organization Management
+//
+// Defines tenant entities, settings, and management operations for
+// multi-tenant SaaS applications with subscription tiers and branding.
+//
+// COMPLIANCE: SOC 2 CC6.1 (Tenant isolation), ISO 27001 A.9.4.1, GDPR Article 5
+// SECURITY: Tenant data strictly isolated. Cross-tenant access prevented.
+
+syntax = "proto3";
+
+package tenants.v1;
+
+import "buf/validate/validate.proto";
+import "core/v1/common.proto";
+import "google/protobuf/timestamp.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Tenants.V1";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/tenants/v1;tenantsv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.tenants.v1";
+// TenantContext enforces multi-tenant data isolation across all operations.
+//
+// PURPOSE: Ensures tenant isolation and prevents cross-tenant data access
+// COMPLIANCE: SOC 2 CC6.1 (Logical access controls), ISO 27001 A.9.4.1 (Access control policy)
+// SECURITY: MUST be included in all requests to enforce tenant boundaries
+// ARCHITECTURE: Middleware should extract and validate tenant context from authentication
+message TenantContext {
+  // Unique tenant identifier. REQUIRED for all operations.
+  // VALIDATION: Must match authenticated user's tenant
+  // COMPLIANCE: Critical for SOC 2 tenant isolation requirements
+  // FORMAT: UUID v4 recommended
+  // Example: "tenant_01HQZX5J8K9M3N4P5Q6R7S8T9V"
+  string tenant_id = 1;
+
+  // Display name of the tenant. Used for UI and reporting only.
+  // OPTIONAL: Can be populated for logging and display purposes
+  // Example: "Acme Corporation", "Startup Inc"
+  string tenant_name = 2;
+
+  // Tenant subscription tier determining feature access. Optional.
+  // PURPOSE: Used for feature flagging and quota enforcement
+  // VALUES: "free", "starter", "professional", "enterprise"
+  // USAGE: Service layer checks tier for feature availability
+  string tier = 3;
+
+  // Current tenant status affecting API access. Optional.
+  // COMPLIANCE: SOC 2 CC6.2 (Access termination)
+  // VALUES: "active", "suspended", "trial", "inactive", "deleted"
+  // BEHAVIOR: Non-active status may block API access
+  string status = 4;
+}
+
+// Tenant represents a multi-tenant organization with settings and branding.
+// COMPLIANCE: SOC 2 CC6.1 (Logical separation), ISO 27001 A.9.4.1
+message Tenant {
+  // Metadata with ID, timestamps, audit trail
+  core.v1.Metadata metadata = 1;
+  // Tenant name. REQUIRED, 1-200 chars. Displayed in UI.
+  string name = 2;
+  // URL-friendly identifier. REQUIRED, 3-50 chars, lowercase alphanumeric+hyphens
+  string slug = 3;
+  // Custom domain. Optional. Example: "company.example.com"
+  string domain = 4;
+  // Current status. COMPLIANCE: SOC 2 CC6.2 (Access controls)
+  TenantStatus status = 5;
+  // Subscription tier. Determines features and limits.
+  TenantTier tier = 6;
+  // Configuration and feature settings
+  TenantSettings settings = 7;
+  // Primary contact information
+  core.v1.ContactInfo contact_info = 8;
+  // Billing address. PII: Yes
+  core.v1.Address billing_address = 9;
+  // Custom metadata fields
+  map<string, string> metadata_fields = 10;
+}
+
+// TenantStatus defines lifecycle states for tenant accounts.
+// COMPLIANCE: SOC 2 CC6.2 (Access termination/suspension)
+enum TenantStatus {
+  // Invalid status
+  TENANT_STATUS_UNSPECIFIED = 0;
+  // Active with full access
+  TENANT_STATUS_ACTIVE = 1;
+  // Suspended due to payment/policy. API access blocked.
+  TENANT_STATUS_SUSPENDED = 2;
+  // Trial period. Limited features/time.
+  TENANT_STATUS_TRIAL = 3;
+  // Inactive after period of non-use
+  TENANT_STATUS_INACTIVE = 4;
+  // Soft deleted. Data retained per retention policy.
+  TENANT_STATUS_DELETED = 5;
+}
+
+// TenantTier defines subscription tiers with different feature sets.
+// Determines quotas, features, and pricing.
+enum TenantTier {
+  // Invalid tier
+  TENANT_TIER_UNSPECIFIED = 0;
+  // Free tier. Limited users and features.
+  TENANT_TIER_FREE = 1;
+  // Starter tier. Basic features.
+  TENANT_TIER_STARTER = 2;
+  // Professional tier. Advanced features.
+  TENANT_TIER_PROFESSIONAL = 3;
+  // Enterprise tier. All features, priority support, SLAs.
+  TENANT_TIER_ENTERPRISE = 4;
+}
+
+// TenantSettings contains tenant-specific configuration
+message TenantSettings {
+  int32 max_users = 1;
+  int32 max_storage_gb = 2;
+  bool custom_domain_enabled = 3;
+  bool sso_enabled = 4;
+  bool api_access_enabled = 5;
+  repeated string allowed_ip_ranges = 6;
+  map<string, string> feature_flags = 7;
+  TenantBranding branding = 8;
+}
+
+// TenantBranding contains branding configuration
+message TenantBranding {
+  string logo_url = 1;
+  string primary_color = 2;
+  string secondary_color = 3;
+  string favicon_url = 4;
+  string custom_css = 5;
+}
+
+// CreateTenantRequest for creating a new tenant
+message CreateTenantRequest {
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 200
+  }];
+  string slug = 2 [(buf.validate.field).string = {
+    min_len: 3
+    max_len: 50
+    pattern: "^[a-z0-9-]+$"
+  }];
+  string domain = 3 [(buf.validate.field).string = {
+    min_len: 3
+    max_len: 253
+  }];
+  TenantTier tier = 4 [(buf.validate.field).enum.defined_only = true];
+  core.v1.ContactInfo contact_info = 5;
+  core.v1.Address billing_address = 6;
+}
+
+// CreateTenantResponse returns the created tenant
+message CreateTenantResponse {
+  Tenant tenant = 1;
+}
+
+// GetTenantRequest for retrieving a tenant
+message GetTenantRequest {
+  string tenant_id = 1;
+}
+
+// GetTenantResponse returns the requested tenant
+message GetTenantResponse {
+  Tenant tenant = 1;
+}
+
+// UpdateTenantRequest for updating a tenant
+message UpdateTenantRequest {
+  string tenant_id = 1;
+  string name = 2;
+  string domain = 3;
+  core.v1.ContactInfo contact_info = 4;
+  core.v1.Address billing_address = 5;
+  TenantSettings settings = 6;
+}
+
+// UpdateTenantResponse returns the updated tenant
+message UpdateTenantResponse {
+  Tenant tenant = 1;
+}
+
+// DeleteTenantRequest for deleting a tenant
+message DeleteTenantRequest {
+  string tenant_id = 1;
+}
+
+// DeleteTenantResponse confirms deletion
+message DeleteTenantResponse {
+  bool success = 1;
+}
+
+// ListTenantsRequest for listing tenants
+message ListTenantsRequest {
+  core.v1.PaginationRequest pagination = 1;
+  TenantStatus status = 2;
+  TenantTier tier = 3;
+  string search_query = 4;
+}
+
+// ListTenantsResponse returns a list of tenants
+message ListTenantsResponse {
+  repeated Tenant tenants = 1;
+  core.v1.PaginationResponse pagination = 2;
+}
+
+// UpdateTenantStatusRequest for updating tenant status
+message UpdateTenantStatusRequest {
+  string tenant_id = 1;
+  TenantStatus status = 2;
+  string reason = 3;
+}
+
+// UpdateTenantStatusResponse returns the updated tenant
+message UpdateTenantStatusResponse {
+  Tenant tenant = 1;
+}
+
+// UpdateTenantTierRequest for upgrading/downgrading tenant tier
+message UpdateTenantTierRequest {
+  string tenant_id = 1;
+  TenantTier tier = 2;
+}
+
+// UpdateTenantTierResponse returns the updated tenant
+message UpdateTenantTierResponse {
+  Tenant tenant = 1;
+}
+
+// GetTenantUsageRequest for retrieving tenant usage statistics
+message GetTenantUsageRequest {
+  string tenant_id = 1;
+}
+
+// GetTenantUsageResponse returns usage statistics
+message GetTenantUsageResponse {
+  int32 user_count = 1;
+  int64 storage_used_bytes = 2;
+  int64 api_calls_count = 3;
+  google.protobuf.Timestamp last_activity_at = 4;
+}
+
+// TenantService provides tenant management operations
+service TenantService {
+  // Create a new tenant
+  rpc CreateTenant(CreateTenantRequest) returns (CreateTenantResponse);
+
+  // Get a tenant by ID
+  rpc GetTenant(GetTenantRequest) returns (GetTenantResponse);
+
+  // Update a tenant
+  rpc UpdateTenant(UpdateTenantRequest) returns (UpdateTenantResponse);
+
+  // Delete a tenant
+  rpc DeleteTenant(DeleteTenantRequest) returns (DeleteTenantResponse);
+
+  // List tenants with filtering and pagination
+  rpc ListTenants(ListTenantsRequest) returns (ListTenantsResponse);
+
+  // Update tenant status
+  rpc UpdateTenantStatus(UpdateTenantStatusRequest) returns (UpdateTenantStatusResponse);
+
+  // Update tenant tier
+  rpc UpdateTenantTier(UpdateTenantTierRequest) returns (UpdateTenantTierResponse);
+
+  // Get tenant usage statistics
+  rpc GetTenantUsage(GetTenantUsageRequest) returns (GetTenantUsageResponse);
+}

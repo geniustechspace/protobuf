@@ -1,0 +1,53 @@
+// DOMAIN: Identity Provider - Authorization Enumerations
+// COMPLIANCE: SOC 2 CC6.1, GDPR Article 5, ISO 27001 A.9.1
+// SECURITY: Authentication required, tenant isolation enforced
+// PII: No
+
+syntax = "proto3";
+
+package geniustechspace.idp.authz.v1;
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Idp.Authz.V1";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/idp/authz/v1;idpauthzv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.idp.authz.v1";
+
+// PermissionAction represents action on resource.
+enum PermissionAction {
+  PERMISSION_ACTION_UNSPECIFIED = 0;
+  CREATE = 1; // Create new resource
+  READ = 2; // Read/view resource
+  UPDATE = 3; // Update existing resource
+  DELETE = 4; // Delete resource
+  LIST = 5; // List resources
+  EXECUTE = 6; // Execute/run resource
+  ADMIN = 7; // Administrative access
+  reserved 8 to 30;
+}
+
+// PermissionEffect represents authorization decision.
+enum PermissionEffect {
+  PERMISSION_EFFECT_UNSPECIFIED = 0;
+  ALLOW = 1; // Explicitly allow
+  DENY = 2; // Explicitly deny (takes precedence)
+  reserved 3 to 10;
+}
+
+// RoleType represents role category.
+enum RoleType {
+  ROLE_TYPE_UNSPECIFIED = 0;
+  SYSTEM = 1; // System-defined role (immutable)
+  CUSTOM = 2; // Custom tenant-defined role
+  TEMPORARY = 3; // Temporary time-limited role
+  SERVICE = 4; // Service account role
+  reserved 5 to 10;
+}
+
+// PolicyType represents policy evaluation type.
+enum PolicyType {
+  POLICY_TYPE_UNSPECIFIED = 0;
+  RBAC = 1; // Role-Based Access Control
+  ABAC = 2; // Attribute-Based Access Control
+  PBAC = 3; // Policy-Based Access Control
+  reserved 4 to 10;
+}

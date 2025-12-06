@@ -1,0 +1,19 @@
+// IDP Token Enums - Version 1
+// Token type enumerations for IDP module
+
+syntax = "proto3";
+
+package geniustechspace.idp.v1.token;
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Idp.V1.Token";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/idp/v1/token;token";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.idp.v1.token";
+
+// TokenType indicates the OAuth 2.0 token type
+enum TokenType {
+  TOKEN_TYPE_UNSPECIFIED = 0;
+  BEARER = 1;           // Bearer token (RFC 6750)
+  MAC = 2;              // MAC token (RFC 6749)
+  reserved 3 to 10;
+}

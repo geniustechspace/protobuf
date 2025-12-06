@@ -1,0 +1,83 @@
+// IDP Session Service - Version 1
+// Session lifecycle and monitoring
+//
+// COMPLIANCE:
+//   - OWASP Session Management Cheat Sheet
+//   - NIST 800-63B: Session management requirements
+//   - SOC 2 Type II: Access control monitoring
+//   - GDPR: User data access and control
+//
+// SECURITY:
+//   - Session binding (device/client/network context)
+//   - Idle timeout (15 min default)
+//   - Absolute timeout (24 hours default)
+//   - Concurrent session limits (configurable)
+//   - Anomaly detection (geo/device changes)
+//
+// RATE LIMITS:
+//   - ListSessions: 10/min per user
+//   - RevokeSession: 20/min per user
+//   - RevokeAllSessions: 5/min per user
+
+syntax = "proto3";
+
+package geniustechspace.idp.v1.session;
+
+import "proto/idp/v1/session/messages.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Idp.V1.Session";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/idp/v1/session;session";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.idp.v1.session";
+
+// SessionService handles session lifecycle and monitoring
+//
+// RESPONSIBILITY: Session listing, revocation, monitoring
+//
+// ARCHITECTURE:
+//   - Sessions tracked server-side (distributed cache + DB)
+//   - Tied to authentication tokens (token revoke → session revoke)
+//   - Device/client context binding for security
+service SessionService {
+  // ListSessions: Retrieves user's active sessions
+  //
+  // Useful for "active sessions" / "where you're logged in" UI.
+  // Shows device, location, last activity for each session.
+  //
+  // Filters: device, client, network, geo, status
+  //
+  // Rate limit: 10/min per user
+  // Auth required: Yes (user token)
+  rpc ListSessions(ListSessionsRequest) returns (ListSessionsResponse);
+  
+  // RevokeSession: Terminates a specific session
+  //
+  // Actions:
+  //   - Invalidate session
+  //   - Revoke associated tokens
+  //   - Log audit event
+  //
+  // Use cases:
+  //   - User removes device from "active sessions"
+  //   - Admin terminates suspicious session
+  //   - Security automation (anomaly detected)
+  //
+  // Rate limit: 20/min per user
+  // Auth required: Yes (user token or admin token)
+  rpc RevokeSession(RevokeSessionRequest) returns (RevokeSessionResponse);
+  
+  // RevokeAllSessions: Bulk session termination
+  //
+  // Use cases:
+  //   - "Sign out everywhere" feature
+  //   - Password change (force re-auth)
+  //   - Security incident (compromise suspected)
+  //   - Device lost (revoke all sessions from device)
+  //
+  // Filters: device, client, network, geo
+  // Option: exclude_current (keep current session active)
+  //
+  // Rate limit: 5/min per user
+  // Auth required: Yes (user token or admin token)
+  rpc RevokeAllSessions(RevokeAllSessionsRequest) returns (RevokeAllSessionsResponse);
+}

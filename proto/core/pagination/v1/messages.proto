@@ -1,0 +1,71 @@
+// Core Pagination Messages - Production v1
+//
+// Standardized pagination controls for all list/query operations.
+// COMPLIANCE: SOC 2 CC6.3 (Change management)
+// PERFORMANCE: Prevents memory exhaustion and timeout issues with large datasets
+// USAGE: Include in all List* request/response messages
+
+syntax = "proto3";
+
+package geniustechspace.core.pagination.v1;
+
+import "buf/validate/validate.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Core.Pagination.V1";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/core/pagination/v1;paginationv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.core.pagination.v1";
+
+// PaginationParams provides parameters for paginated list operations.
+message PaginationParams {
+  // Page number (1-indexed). Optional, defaults to 1.
+  int32 page = 1 [(buf.validate.field).int32 = {gte: 1}];
+
+  // Items per page. Optional, defaults to 20.
+  int32 page_size = 2 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 1000
+  }];
+
+  // Ordering criteria for results (e.g., "name asc", "date desc"). Optional.
+  string ordering = 3 [(buf.validate.field).string = {
+    max_len: 64
+    ignore_empty: true
+  }];
+
+  // Field name to sort results by (If ordering is not specified). Optional.
+  string sort_by = 4 [(buf.validate.field).string = {
+    max_len: 64
+    ignore_empty: true
+  }];
+
+  // Sort direction ("asc" or "desc"). Optional, defaults to "desc".
+  string sort_order = 5 [(buf.validate.field).string = {
+    pattern: "^(asc|desc)?$"
+    ignore_empty: true
+  }];
+}
+
+// PaginationInfo provides metadata about paginated result sets.
+message PaginationInfo {
+  // Current page number (1-indexed). REQUIRED.
+  int32 page = 1 [(buf.validate.field).int32 = {gte: 1}];
+
+  // Number of items in current page response. REQUIRED.
+  int32 page_size = 2 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 1000
+  }];
+
+  // Total items across all pages. REQUIRED.
+  int64 total_items = 3 [(buf.validate.field).int64 = {gte: 0}];
+
+  // Total number of pages available. REQUIRED.
+  int32 total_pages = 4 [(buf.validate.field).int32 = {gte: 0}];
+
+  // True if more pages exist after the current page. REQUIRED.
+  bool has_next = 5;
+
+  // True if pages exist before the current page. REQUIRED.
+  bool has_previous = 6;
+}

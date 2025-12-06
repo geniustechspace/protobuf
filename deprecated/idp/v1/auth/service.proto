@@ -1,0 +1,19 @@
+// IDP Authentication Service - Version 1
+// Core authentication operations
+
+syntax = "proto3";
+
+package geniustechspace.idp.v1.auth;
+
+import "proto/idp/v1/auth/messages.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Idp.V1.Auth";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/idp/v1/auth;authv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.idp.v1.auth";
+
+service AuthenticationService {
+  rpc StartAuthentication(StartAuthenticationRequest) returns (AuthenticationResponse);
+  rpc Authentication(AuthenticationRequest) returns (AuthenticationResponse);
+  rpc Logout(LogoutRequest) returns (LogoutResponse);
+}

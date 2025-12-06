@@ -1,0 +1,116 @@
+// IDP WebAuthn Service - Version 1
+// FIDO2 / WebAuthn credential management service
+//
+// COMPLIANCE:
+//   - W3C WebAuthn Level 2: Web Authentication standard
+//   - FIDO2 CTAP2: Client to Authenticator Protocol
+//   - NIST 800-63B AAL3: Highest authentication assurance
+//   - OWASP: Phishing-resistant authentication
+//
+// SECURITY:
+//   - Phishing-resistant (origin-bound credentials)
+//   - Replay-resistant (challenge-response)
+//   - Hardware-backed keys (TPM, Secure Enclave)
+//   - Attestation support (verify authenticator)
+//   - User verification (biometric/PIN)
+//
+// RATE LIMITS:
+//   - Begin*: 10/min per user (credential ceremonies)
+//   - Complete*: 5/min per user
+//   - List/Delete/Update: 20/min per user
+
+syntax = "proto3";
+
+package geniustechspace.idp.v1.webauthn;
+
+import "proto/idp/v1/webauthn/messages.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Idp.V1.WebAuthn";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/idp/v1/webauthn;webauthn";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.idp.v1.webauthn";
+
+// WebAuthnService handles FIDO2 credential lifecycle
+//
+// RESPONSIBILITY: WebAuthn registration, authentication, credential management
+//
+// ARCHITECTURE:
+//   - Two-phase ceremony (begin → complete)
+//   - Challenge-response pattern (prevent replay)
+//   - Stateless (challenge stored server-side temporarily)
+//
+// FLOWS:
+//   1. Registration: BeginRegistration → (client creates credential) → CompleteRegistration
+//   2. Authentication: BeginAuthentication → (client signs challenge) → CompleteAuthentication
+service WebAuthnService {
+  // BeginWebAuthnRegistration: Starts credential registration
+  //
+  // Returns PublicKeyCredentialCreationOptions for client.
+  // Client uses this to create new credential (Touch ID, security key, etc.).
+  //
+  // Rate limit: 10/min per user
+  // Auth required: Yes (user must be authenticated to register credential)
+  rpc BeginWebAuthnRegistration(BeginWebAuthnRegistrationRequest) returns (BeginWebAuthnRegistrationResponse);
+  
+  // CompleteWebAuthnRegistration: Finishes credential registration
+  //
+  // Validates client response and stores public key.
+  //
+  // Validates:
+  //   - Challenge matches
+  //   - Origin matches (prevent phishing)
+  //   - Signature valid
+  //   - Attestation (if required)
+  //
+  // Rate limit: 5/min per user
+  // Auth required: Yes (same session as BeginRegistration)
+  rpc CompleteWebAuthnRegistration(CompleteWebAuthnRegistrationRequest) returns (CompleteWebAuthnRegistrationResponse);
+  
+  // BeginWebAuthnAuthentication: Starts authentication ceremony
+  //
+  // Returns PublicKeyCredentialRequestOptions.
+  // Client uses this to sign challenge with registered credential.
+  //
+  // Can be used for:
+  //   - Primary authentication (passwordless)
+  //   - Second factor (MFA)
+  //
+  // Rate limit: 10/min per user
+  // Auth required: No (this IS authentication)
+  rpc BeginWebAuthnAuthentication(BeginWebAuthnAuthenticationRequest) returns (BeginWebAuthnAuthenticationResponse);
+  
+  // CompleteWebAuthnAuthentication: Finishes authentication
+  //
+  // Validates signature and returns authentication result.
+  // Can be used standalone or as part of broader auth flow.
+  //
+  // Rate limit: 5/min per user
+  // Auth required: No (validates via signature)
+  rpc CompleteWebAuthnAuthentication(CompleteWebAuthnAuthenticationRequest) returns (CompleteWebAuthnAuthenticationResponse);
+  
+  // ListWebAuthnCredentials: Lists user's registered credentials
+  //
+  // Shows security keys, platform authenticators (Touch ID, Windows Hello).
+  // Useful for "registered devices" UI in settings.
+  //
+  // Rate limit: 20/min per user
+  // Auth required: Yes (user token)
+  rpc ListWebAuthnCredentials(ListWebAuthnCredentialsRequest) returns (ListWebAuthnCredentialsResponse);
+  
+  // DeleteWebAuthnCredential: Removes a credential
+  //
+  // User removes lost/old security key or device.
+  //
+  // Rate limit: 20/min per user
+  // Auth required: Yes (user token)
+  rpc DeleteWebAuthnCredential(DeleteWebAuthnCredentialRequest) returns (DeleteWebAuthnCredentialResponse);
+  
+  // UpdateWebAuthnCredential: Updates credential metadata
+  //
+  // Updates friendly name, last used timestamp, etc.
+  // Does NOT change cryptographic material.
+  //
+  // Rate limit: 20/min per user
+  // Auth required: Yes (user token)
+  rpc UpdateWebAuthnCredential(UpdateWebAuthnCredentialRequest) returns (UpdateWebAuthnCredentialResponse);
+}
