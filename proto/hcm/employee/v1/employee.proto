@@ -1,0 +1,92 @@
+// DOMAIN: Human Capital Management - Employee
+// COMPLIANCE: ISO 30414 (Human Capital Reporting), SOC 2 CC6.1, Employment Law
+// SECURITY: PII data - employment information is personal data
+// PII: Yes - employment history is personal information
+
+syntax = "proto3";
+
+package geniustechspace.hcm.employee.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/timestamp.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Hcm.Employee.V1";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/hcm/employee/v1;hcmemployeev1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.hcm.employee.v1";
+
+// Employee - employment record linking user to organization.
+// PII: Yes - employment information is personal data.
+// MULTI-RECORD: Users can have multiple employment records (current + history).
+// USAGE: HR systems, payroll, org charts, workforce management.
+// COMPLIANCE: ISO 30414 Human Capital Reporting Standard.
+message Employee {
+  // Employment ID. Primary key.
+  string employment_id = 1 [(buf.validate.field).string.max_len = 512];
+
+  // User ID. Foreign key to identity system.
+  // REFERENCE: Links to idp.identity.profile user entity.
+  string user_id = 2 [(buf.validate.field).string.max_len = 512];
+
+  // Hierarchical tenant path for nested multi-tenancy.
+  // Examples: "acme-corp", "acme-corp/customer-1", "acme-corp/customer-1/sub-org"
+  // ISOLATION: Supports unlimited nesting levels for complex B2B2B... scenarios.
+  string tenant_path = 3 [(buf.validate.field).string.max_len = 512];
+
+  // Company/Organization name.
+  string company = 4 [(buf.validate.field).string.max_len = 255];
+
+  // Job title or position.
+  string job_title = 5 [(buf.validate.field).string.max_len = 100];
+
+  // Department.
+  string department = 6 [(buf.validate.field).string.max_len = 100];
+
+  // Employee ID (for HR/payroll integration).
+  // COMPLIANCE: Required for payroll, tax reporting.
+  string employee_id = 7 [(buf.validate.field).string.max_len = 50];
+
+  // Manager user ID for reporting hierarchy.
+  // REFERENCE: Links to another user (manager).
+  string manager_id = 8 [(buf.validate.field).string.max_len = 512];
+
+  // Employment type (full-time, part-time, contract, intern, etc.).
+  // COMPLIANCE: Required for labor law compliance, benefits eligibility.
+  string employment_type = 9 [(buf.validate.field).string.max_len = 50];
+
+  // Start date.
+  // COMPLIANCE: Required for tenure calculations, vesting schedules.
+  google.protobuf.Timestamp start_date = 10;
+
+  // End date (null if current position).
+  // COMPLIANCE: Required for exit documentation, final pay calculations.
+  google.protobuf.Timestamp end_date = 11;
+
+  // Current position flag.
+  bool is_current = 12;
+
+  // Location (city, state, country).
+  // COMPLIANCE: Required for tax jurisdiction, labor law compliance.
+  string location = 13 [(buf.validate.field).string.max_len = 255];
+
+  // Description or responsibilities.
+  string description = 14 [(buf.validate.field).string.max_len = 1000];
+
+  reserved 15 to 19;
+
+  // Created timestamp.
+  google.protobuf.Timestamp created_at = 20 [(buf.validate.field).required = true];
+
+  // Last updated timestamp.
+  google.protobuf.Timestamp updated_at = 21;
+
+  // Deletion timestamp (soft delete).
+  google.protobuf.Timestamp deleted_at = 22;
+
+  reserved 23 to 29;
+
+  // Optimistic locking version.
+  int64 version = 30 [(buf.validate.field).int64.gte = 1];
+
+  reserved 31 to 39;
+}

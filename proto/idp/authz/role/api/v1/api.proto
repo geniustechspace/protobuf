@@ -1,0 +1,20 @@
+// DOMAIN: Authorization - Role Management API(Consolidated Import)
+// COMPLIANCE: SOC 2 CC6.1, ISO 27001 A.9.2
+// SECURITY: Role-based access control (RBAC)
+// PII: No
+//
+// NOTE: This file serves as a convenience import that includes service, request, and response.
+// For modular imports, use:
+//   - idp/authz/role/api/v1/service.proto (service definition only)
+//   - idp/authz/role/api/v1/request.proto (request messages only)
+//   - idp/authz/role/api/v1/response.proto (response messages only)
+
+syntax = "proto3";
+
+package geniustechspace.idp.authz.role.api.v1;
+
+import "idp/authz/role/api/v1/request.proto";
+import "idp/authz/role/api/v1/response.proto";
+// import "idp/authz/role/api/v1/service.proto"; // TODO: Complete service definitions
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/idp/authz/role/api/v1;roleapiv1";

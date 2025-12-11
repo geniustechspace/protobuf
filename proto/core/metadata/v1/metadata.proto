@@ -24,7 +24,7 @@ option java_package = "com.geniustechspace.protobuf.core.metadata.v1";
 // USAGE: Embedded in all domain entities (User, Tenant, Role, Subscription, etc.)
 message Metadata {
   // Unique entity identifier. REQUIRED, immutable after creation.
-  // FORMAT: UUID v4 recommended for global uniqueness
+  // FORMAT: any string format (UUID, ULID, custom) recommended for global uniqueness
   // GENERATION: Generated server-side on entity creation
   // VALIDATION: Must be a valid identifier format
   // Example: "usr_01HQZX5J8K9M3N4P5Q6R7S8T9V" or UUID

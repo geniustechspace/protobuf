@@ -1,0 +1,37 @@
+// DOMAIN: Authorization - Role Management APIResponses
+// COMPLIANCE: SOC 2 CC6.1, ISO 27001 A.9.2
+// SECURITY: Role-based access control (RBAC)
+// PII: No
+
+syntax = "proto3";
+
+package geniustechspace.idp.authz.role.api.v1;
+
+import "core/api/pagination/v1/messages.proto";
+import "core/common/v1/common.proto";
+import "idp/authz/role/v1/role.proto";
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/idp/authz/role/api/v1;roleapiv1";
+
+// RoleResponse is the standard response for Create, Get, and Update role operations.
+message RoleResponse {
+  geniustechspace.idp.authz.role.v1.Role data = 1;
+  reserved 2 to 9;
+}
+message DeleteRoleResponse {
+  string role_id = 1;
+}
+message ListRolesResponse {
+  repeated geniustechspace.idp.authz.role.v1.Role roles = 1;
+  geniustechspace.core.api.pagination.v1.PaginationResponse pagination = 2;
+}
+message AssignRoleResponse {
+  geniustechspace.idp.authz.role.v1.RoleAssignment assignment = 1;
+}
+message UnassignRoleResponse {
+  string assignment_id = 1;
+}
+message ListRoleAssignmentsResponse {
+  repeated geniustechspace.idp.authz.role.v1.RoleAssignment assignments = 1;
+  geniustechspace.core.api.pagination.v1.PaginationResponse pagination = 2;
+}

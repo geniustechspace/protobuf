@@ -1,0 +1,480 @@
+// DOMAIN: Identity Provider - Authorization API
+// COMPLIANCE: SOC 2 CC6.2, ISO 27001 A.9.4
+// SECURITY: Authentication required, tenant isolation enforced
+//
+// ⚠️ DEPRECATED: This consolidated API file is deprecated.
+// Use modular subdomain APIs instead:
+// - proto/idp/authz/permission/api/v1/ for permission operations
+// - proto/idp/authz/role/api/v1/ for role operations
+// - proto/idp/authz/policy/api/v1/ for policy operations
+// See proto/idp/api/v1/MIGRATION.md for migration guide.
+
+syntax = "proto3";
+
+package geniustechspace.idp.api.v1;
+
+import "buf/validate/validate.proto";
+import "idp/authz/permission/v1/permission.proto";
+import "idp/authz/policy/v1/policy.proto";
+import "idp/authz/role/v1/role.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Idp.Api.V1";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/idp/api/v1;idpapiv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.idp.api.v1";
+
+// =============================================================================
+// PERMISSION CHECK API
+// =============================================================================
+
+// CheckPermissionRequest checks permission.
+message CheckPermissionRequest {
+  // Tenant path. REQUIRED.
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Subject (user ID). REQUIRED.
+  string subject = 2 [(buf.validate.field).string.max_len = 512];
+
+  // Resource to access. REQUIRED.
+  string resource = 3 [(buf.validate.field).string.max_len = 512];
+
+  // Action to perform. REQUIRED.
+  string action = 4 [(buf.validate.field).string.max_len = 512];
+
+  // Context attributes for ABAC. Optional.
+  map<string, string> context = 5;
+}
+
+message CheckPermissionResponse {
+  // Permission granted.
+  bool allowed = 1;
+
+  // Reason if denied.
+  string reason = 2;
+
+  // Matched policies.
+  repeated string policies = 3;
+
+  // Decision time (ms).
+  int32 decision_time_ms = 4;
+}
+
+// BatchCheckPermissionsRequest checks multiple permissions.
+message BatchCheckPermissionsRequest {
+  // Tenant path. REQUIRED.
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Permission checks. REQUIRED.
+  repeated CheckPermissionRequest checks = 2 [(buf.validate.field).repeated.min_items = 1];
+}
+
+message BatchCheckPermissionsResponse {
+  // Permission results.
+  repeated CheckPermissionResponse results = 1;
+}
+
+// =============================================================================
+// ROLE API
+// =============================================================================
+
+// CreateRoleRequest creates role.
+message CreateRoleRequest {
+  // Tenant path. REQUIRED.
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Role name. REQUIRED.
+  string name = 2 [(buf.validate.field).string.max_len = 512];
+
+  // Description. Optional.
+  string description = 3;
+
+  // Permissions. REQUIRED.
+  repeated string permissions = 4 [(buf.validate.field).repeated.min_items = 1];
+
+  // Parent role IDs for inheritance. Optional.
+  repeated string parent_roles = 5;
+
+  // Is system role (immutable). Optional.
+  bool is_system = 6;
+}
+
+message CreateRoleResponse {
+  // Created role.
+  geniustechspace.idp.authz.role.v1.Role role = 1;
+}
+
+// GetRoleRequest retrieves role.
+message GetRoleRequest {
+  // Tenant path. REQUIRED.
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Role ID. REQUIRED.
+  string role_id = 2 [(buf.validate.field).string.max_len = 512];
+}
+
+message GetRoleResponse {
+  // Role entity.
+  geniustechspace.idp.authz.role.v1.Role role = 1;
+}
+
+// UpdateRoleRequest updates role.
+message UpdateRoleRequest {
+  // Tenant path. REQUIRED.
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Role ID. REQUIRED.
+  string role_id = 2 [(buf.validate.field).string.max_len = 512];
+
+  // Name. Optional.
+  optional string name = 3;
+
+  // Description. Optional.
+  optional string description = 4;
+
+  // Permissions. Optional.
+  repeated string permissions = 5;
+}
+
+message UpdateRoleResponse {
+  // Updated role.
+  geniustechspace.idp.authz.role.v1.Role role = 1;
+}
+
+// DeleteRoleRequest deletes role.
+message DeleteRoleRequest {
+  // Tenant path. REQUIRED.
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Role ID. REQUIRED.
+  string role_id = 2 [(buf.validate.field).string.max_len = 512];
+}
+
+message DeleteRoleResponse {
+  // Success indicator.
+  bool success = 1;
+}
+
+// ListRolesRequest lists roles.
+message ListRolesRequest {
+  // Tenant path. REQUIRED.
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Page token. Optional.
+  string page_token = 2;
+
+  // Page size. Optional. Default: 50, Max: 100.
+  int32 page_size = 3 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 100
+  }];
+
+  // Include system roles. Optional.
+  bool include_system = 4;
+}
+
+message ListRolesResponse {
+  // Roles.
+  repeated geniustechspace.idp.authz.role.v1.Role roles = 1;
+
+  // Next page token.
+  string next_page_token = 2;
+
+  // Total count.
+  int32 total_count = 3;
+}
+
+// =============================================================================
+// ROLE ASSIGNMENT API
+// =============================================================================
+
+// AssignRoleRequest assigns role to subject.
+message AssignRoleRequest {
+  // Tenant path. REQUIRED.
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Subject ID (user/group). REQUIRED.
+  string subject_id = 2 [(buf.validate.field).string.max_len = 512];
+
+  // Subject type: user, group. REQUIRED.
+  string subject_type = 3 [(buf.validate.field).string.max_len = 512];
+
+  // Role ID. REQUIRED.
+  string role_id = 4 [(buf.validate.field).string.max_len = 512];
+
+  // Scope (resource path). Optional. Default: global.
+  string scope = 5;
+
+  // Expiry (Unix timestamp). Optional.
+  optional int64 expires_at = 6;
+}
+
+message AssignRoleResponse {
+  // Assignment ID.
+  string assignment_id = 1;
+
+  // Success indicator.
+  bool success = 2;
+}
+
+// RevokeRoleRequest revokes role assignment.
+message RevokeRoleRequest {
+  // Tenant path. REQUIRED.
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Assignment ID. REQUIRED.
+  string assignment_id = 2 [(buf.validate.field).string.max_len = 512];
+}
+
+message RevokeRoleResponse {
+  // Success indicator.
+  bool success = 1;
+}
+
+// ListRoleAssignmentsRequest lists role assignments.
+message ListRoleAssignmentsRequest {
+  // Tenant path. REQUIRED.
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Filter by subject ID. Optional.
+  string subject_id = 2;
+
+  // Filter by role ID. Optional.
+  string role_id = 3;
+
+  // Page token. Optional.
+  string page_token = 4;
+
+  // Page size. Optional. Default: 50, Max: 100.
+  int32 page_size = 5 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 100
+  }];
+}
+
+// RoleAssignment represents role assignment.
+message RoleAssignment {
+  // Assignment ID.
+  string id = 1;
+
+  // Tenant path.
+  string tenant_path = 2;
+
+  // Subject ID.
+  string subject_id = 3;
+
+  // Subject type.
+  string subject_type = 4;
+
+  // Role ID.
+  string role_id = 5;
+
+  // Role name.
+  string role_name = 6;
+
+  // Scope.
+  string scope = 7;
+
+  // Assigned at (Unix timestamp).
+  int64 assigned_at = 8;
+
+  // Expires at (Unix timestamp).
+  int64 expires_at = 9;
+
+  // Assigned by (user ID).
+  string assigned_by = 10;
+}
+
+message ListRoleAssignmentsResponse {
+  // Role assignments.
+  repeated RoleAssignment assignments = 1;
+
+  // Next page token.
+  string next_page_token = 2;
+
+  // Total count.
+  int32 total_count = 3;
+}
+
+// =============================================================================
+// POLICY API
+// =============================================================================
+
+// CreatePolicyRequest creates policy.
+message CreatePolicyRequest {
+  // Tenant path. REQUIRED.
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Policy name. REQUIRED.
+  string name = 2 [(buf.validate.field).string.max_len = 512];
+
+  // Description. Optional.
+  string description = 3;
+
+  // Effect: allow, deny. REQUIRED.
+  string effect = 4 [(buf.validate.field).string.max_len = 512];
+
+  // Actions. REQUIRED.
+  repeated string actions = 5 [(buf.validate.field).repeated.min_items = 1];
+
+  // Resources. REQUIRED.
+  repeated string resources = 6 [(buf.validate.field).repeated.min_items = 1];
+
+  // Conditions (ABAC). Optional.
+  map<string, string> conditions = 7;
+
+  // Priority. Optional. Higher priority wins on conflict.
+  int32 priority = 8;
+}
+
+message CreatePolicyResponse {
+  // Created policy.
+  geniustechspace.idp.authz.policy.v1.Policy policy = 1;
+}
+
+// GetPolicyRequest retrieves policy.
+message GetPolicyRequest {
+  // Tenant path. REQUIRED.
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Policy ID. REQUIRED.
+  string policy_id = 2 [(buf.validate.field).string.max_len = 512];
+}
+
+message GetPolicyResponse {
+  // Policy entity.
+  geniustechspace.idp.authz.policy.v1.Policy policy = 1;
+}
+
+// UpdatePolicyRequest updates policy.
+message UpdatePolicyRequest {
+  // Tenant path. REQUIRED.
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Policy ID. REQUIRED.
+  string policy_id = 2 [(buf.validate.field).string.max_len = 512];
+
+  // Name. Optional.
+  optional string name = 3;
+
+  // Description. Optional.
+  optional string description = 4;
+
+  // Effect. Optional.
+  optional string effect = 5;
+
+  // Actions. Optional.
+  repeated string actions = 6;
+
+  // Resources. Optional.
+  repeated string resources = 7;
+
+  // Conditions. Optional.
+  map<string, string> conditions = 8;
+
+  // Priority. Optional.
+  optional int32 priority = 9;
+}
+
+message UpdatePolicyResponse {
+  // Updated policy.
+  geniustechspace.idp.authz.policy.v1.Policy policy = 1;
+}
+
+// DeletePolicyRequest deletes policy.
+message DeletePolicyRequest {
+  // Tenant path. REQUIRED.
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Policy ID. REQUIRED.
+  string policy_id = 2 [(buf.validate.field).string.max_len = 512];
+}
+
+message DeletePolicyResponse {
+  // Success indicator.
+  bool success = 1;
+}
+
+// ListPoliciesRequest lists policies.
+message ListPoliciesRequest {
+  // Tenant path. REQUIRED.
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Filter by effect. Optional.
+  string effect = 2;
+
+  // Page token. Optional.
+  string page_token = 3;
+
+  // Page size. Optional. Default: 50, Max: 100.
+  int32 page_size = 4 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 100
+  }];
+}
+
+message ListPoliciesResponse {
+  // Policies.
+  repeated geniustechspace.idp.authz.policy.v1.Policy policies = 1;
+
+  // Next page token.
+  string next_page_token = 2;
+
+  // Total count.
+  int32 total_count = 3;
+}
+
+// =============================================================================
+// PERMISSION API
+// =============================================================================
+
+// ListPermissionsRequest lists available permissions.
+message ListPermissionsRequest {
+  // Tenant path. REQUIRED.
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Filter by resource type. Optional.
+  string resource_type = 2;
+
+  // Page token. Optional.
+  string page_token = 3;
+
+  // Page size. Optional. Default: 50, Max: 100.
+  int32 page_size = 4 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 100
+  }];
+}
+
+message ListPermissionsResponse {
+  // Permissions.
+  repeated geniustechspace.idp.authz.permission.v1.Permission permissions = 1;
+
+  // Next page token.
+  string next_page_token = 2;
+
+  // Total count.
+  int32 total_count = 3;
+}
+
+// GetUserPermissionsRequest gets effective permissions.
+message GetUserPermissionsRequest {
+  // Tenant path. REQUIRED.
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // User ID. REQUIRED.
+  string user_id = 2 [(buf.validate.field).string.max_len = 512];
+
+  // Resource scope. Optional.
+  string scope = 3;
+}
+
+message GetUserPermissionsResponse {
+  // Effective permissions.
+  repeated string permissions = 1;
+
+  // Roles contributing permissions.
+  repeated string roles = 2;
+
+  // Policies applied.
+  repeated string policies = 3;
+}

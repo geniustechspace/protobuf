@@ -1,0 +1,105 @@
+// DOMAIN: Identity - Group
+// COMPLIANCE: ISO 27001 A.9.2, SOC 2 CC6.1
+// SECURITY: Group-based access control
+// PURPOSE: User organization and permission management
+
+syntax = "proto3";
+
+package geniustechspace.idp.identity.group.v1;
+
+import "buf/validate/validate.proto";
+import "core/metadata/v1/metadata.proto";
+import "google/protobuf/timestamp.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Idp.Identity.Group.V1";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/idp/identity/group/v1;idpidentitygroupv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.idp.identity.group.v1";
+
+// Group entity - collection of users for organization and access control.
+// HIERARCHICAL: Groups can have parent/child relationships (max depth: 10).
+// AUTHORIZATION: Groups used for RBAC - roles assigned to groups.
+// INVARIANTS:
+// - Name unique within tenant
+// - Circular parent references not allowed
+// - System groups cannot be deleted
+message Group {
+  // Group ID. Immutable unique identifier.
+  string id = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Hierarchical tenant path for nested multi-tenancy. Immutable.
+  // Examples: "acme-corp", "acme-corp/customer-1", "acme-corp/customer-1/sub-org"
+  // ISOLATION: Supports unlimited nesting levels for complex B2B2B... scenarios.
+  string tenant_path = 2 [(buf.validate.field).string.max_len = 512];
+
+  // Group name. Required. Must be unique within tenant.
+  string name = 3 [(buf.validate.field).string.max_len = 512];
+
+  // Description of group purpose and membership.
+  string description = 4;
+
+  // Group type classification.
+  GroupType type = 5 [(buf.validate.field).enum.defined_only = true];
+
+  // Parent group ID for hierarchical structure.
+  string parent_id = 6;
+
+  // Organization ID - group owner/container.
+  string organization_id = 7;
+
+  // Member user IDs (UUIDs).
+  repeated string member_ids = 8;
+
+  // Member count (denormalized for performance).
+  int32 member_count = 9;
+
+  // Child group IDs for hierarchy navigation.
+  repeated string child_group_ids = 10;
+
+  // System group flag - platform-managed, immutable, cannot be deleted.
+  bool is_system = 11;
+
+  // Custom attributes for extensibility (key-value pairs).
+  map<string, string> custom_attributes = 12;
+
+  // Created timestamp. IMMUTABLE after creation.
+  // COMPLIANCE: SOC 2 CC6.3, GDPR Article 30 (audit trail)
+  google.protobuf.Timestamp created_at = 13 [(buf.validate.field).required = true];
+
+  // Last updated timestamp.
+  // COMPLIANCE: SOC 2 CC6.3 (change tracking)
+  google.protobuf.Timestamp updated_at = 14;
+
+  // Deletion timestamp. If set, entity is soft deleted.
+  // COMPLIANCE: GDPR Article 17, SOC 2 CC6.3 (deletion audit trail)
+  // QUERY: Use "WHERE deleted_at IS NULL" for active records
+  google.protobuf.Timestamp deleted_at = 15;
+
+  // Optimistic locking version counter. Incremented on each update.
+  // COMPLIANCE: SOC 2 CC6.1 (data integrity, concurrent modification protection)
+  int64 version = 16;
+}
+
+// GroupType - classification of groups by purpose and management.
+enum GroupType {
+  // Unspecified - invalid default value.
+  GROUP_TYPE_UNSPECIFIED = 0;
+
+  // System group - platform-managed (e.g., "All Users", "Administrators").
+  SYSTEM = 1;
+
+  // Custom group - tenant-created for specific needs.
+  CUSTOM = 2;
+
+  // Department - organizational unit (e.g., "Engineering", "Sales").
+  DEPARTMENT = 3;
+
+  // Team - cross-functional team (e.g., "Product Team A").
+  TEAM = 4;
+
+  // Project - project-based group (e.g., "Project Phoenix").
+  PROJECT = 5;
+
+  // Role-based - mapped to authorization roles.
+  ROLE_BASED = 6;
+}

@@ -1,0 +1,110 @@
+// DOMAIN: IDP - Protocols
+// PURPOSE: Standard identity and authorization protocols
+// STANDARDS: OAuth 2.0, OIDC, SAML 2.0, WebAuthn/FIDO2
+
+syntax = "proto3";
+
+package geniustechspace.idp.protocols.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/timestamp.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Idp.Protocols.V1";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/idp/protocols/v1;idpprotocolsv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.idp.protocols.v1";
+
+// OAuth2Client - OAuth 2.0 / OIDC client application.
+message OAuth2Client {
+  // OAuth2 client ID. REQUIRED.
+  // SECURITY: Globally unique identifier for the client application
+  string client_id = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 512
+  }];
+
+  // Tenant path. REQUIRED.
+  string tenant_path = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 512
+  }];
+
+  // Human-readable client name. REQUIRED.
+  string client_name = 3 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 512
+  }];
+
+  // OAuth2 client type. REQUIRED.
+  OAuth2ClientType client_type = 4 [(buf.validate.field).enum.defined_only = true];
+
+  // Allowed redirect URIs for OAuth2 flows. REQUIRED. At least one URI required.
+  // SECURITY: Must be exact matches, no wildcards for security
+  repeated string redirect_uris = 5 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 50
+    items: {
+      string: {
+        uri: true
+        max_len: 2048
+      }
+    }
+  }];
+
+  // Allowed OAuth2/OIDC scopes. REQUIRED. At least one scope required.
+  // Example: ["openid", "profile", "email", "offline_access"]
+  repeated string allowed_scopes = 6 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 100
+    items: {
+      string: {
+        min_len: 1
+        max_len: 64
+        pattern: "^[a-z][a-z0-9_:]*$"
+      }
+    }
+  }];
+
+  // Allowed grant types. REQUIRED. At least one grant type required.
+  repeated OAuth2GrantType grant_types = 7 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 10
+  }];
+
+  // Access token lifetime in seconds. Optional, defaults to 3600 (1 hour).
+  // VALIDATION: Must be between 60s and 86400s (24 hours)
+  int32 access_token_lifetime = 8 [(buf.validate.field).int32 = {
+    gte: 60
+    lte: 86400
+  }];
+
+  // Refresh token lifetime in seconds. Optional, defaults to 2592000 (30 days).
+  // VALIDATION: Must be between 3600s (1 hour) and 31536000s (1 year)
+  int32 refresh_token_lifetime = 9 [(buf.validate.field).int32 = {
+    gte: 3600
+    lte: 31536000
+  }];
+
+  // Require PKCE (Proof Key for Code Exchange). RECOMMENDED for public clients.
+  // SECURITY: Prevents authorization code interception attacks
+  bool require_pkce = 10;
+
+  // Created timestamp. IMMUTABLE after creation.
+  // COMPLIANCE: SOC 2 CC6.3, GDPR Article 30 (audit trail)
+  google.protobuf.Timestamp created_at = 11 [(buf.validate.field).required = true];
+}
+
+enum OAuth2ClientType {
+  OAUTH2_CLIENT_TYPE_UNSPECIFIED = 0;
+  CONFIDENTIAL = 1;
+  PUBLIC = 2;
+  SERVICE = 3;
+}
+
+enum OAuth2GrantType {
+  OAUTH2_GRANT_TYPE_UNSPECIFIED = 0;
+  AUTHORIZATION_CODE = 1;
+  REFRESH_TOKEN = 2;
+  CLIENT_CREDENTIALS = 3;
+  DEVICE_CODE = 4;
+}

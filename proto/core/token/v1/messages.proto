@@ -24,28 +24,107 @@ message TokenClaims {
   reserved 8, 9, 13 to 19, 24 to 29;
 
   // Standard JWT claims (RFC 7519)
-  string jti = 1; // JWT ID (unique identifier)
-  string iss = 2; // Issuer
-  string sub = 3; // Subject (user ID)
-  repeated string aud = 4; // Audience
-  google.protobuf.Timestamp exp = 5; // Expiration time
-  google.protobuf.Timestamp nbf = 6; // Not before time
-  google.protobuf.Timestamp iat = 7; // Issued at time
+
+  // JWT ID (unique identifier). REQUIRED.
+  string jti = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 128
+  }];
+
+  // Issuer. REQUIRED.
+  string iss = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 256
+  }];
+
+  // Subject (user ID). REQUIRED.
+  string sub = 3 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 256
+  }];
+
+  // Audience. REQUIRED. At least one audience required.
+  repeated string aud = 4 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 10
+    items: {
+      string: {
+        min_len: 1
+        max_len: 256
+      }
+    }
+  }];
+
+  // Expiration time. REQUIRED.
+  google.protobuf.Timestamp exp = 5 [(buf.validate.field).required = true];
+
+  // Not before time. Optional.
+  google.protobuf.Timestamp nbf = 6;
+
+  // Issued at time. REQUIRED.
+  google.protobuf.Timestamp iat = 7 [(buf.validate.field).required = true];
 
   // OpenID Connect claims
-  string azp = 10; // Authorized party (client ID)
-  repeated string scopes = 11; // OAuth scopes
-  string nonce = 12; // Nonce for replay protection
+
+  // Authorized party (client ID). Optional.
+  string azp = 10 [(buf.validate.field).string.max_len = 256];
+
+  // OAuth scopes. Optional.
+  repeated string scopes = 11 [(buf.validate.field).repeated = {
+    max_items: 50
+    items: {
+      string: {
+        min_len: 1
+        max_len: 64
+        pattern: "^[a-z][a-z0-9_:]*$"
+      }
+    }
+  }];
+
+  // Nonce for replay protection. Optional.
+  string nonce = 12 [(buf.validate.field).string.max_len = 128];
 
   // Custom claims
-  string tenant_id = 20; // Tenant identifier
-  string session_id = 21; // Associated session ID
-  repeated string roles = 22; // User/Actor roles
-  repeated string permissions = 23; // User/Actor permissions
+
+  // Tenant identifier. Optional.
+  string tenant_path = 20 [(buf.validate.field).string.max_len = 128];
+
+  // Associated session ID. Optional.
+  string session_id = 21 [(buf.validate.field).string.max_len = 128];
+
+  // User/Actor roles. Optional.
+  repeated string roles = 22 [(buf.validate.field).repeated = {
+    max_items: 20
+    items: {
+      string: {
+        min_len: 1
+        max_len: 64
+      }
+    }
+  }];
+
+  // User/Actor permissions. Optional.
+  repeated string permissions = 23 [(buf.validate.field).repeated = {
+    max_items: 100
+    items: {
+      string: {
+        min_len: 1
+        max_len: 128
+      }
+    }
+  }];
 
   // Additional metadata
   TokenType token_type = 30; // Type of token
-  map<string, string> metadata = 31; // Extensible metadata
+  map<string, string> metadata = 31 [(buf.validate.field).map = {
+    max_pairs: 20
+    keys: {
+      string: {max_len: 128}
+    }
+    values: {
+      string: {max_len: 512}
+    }
+  }]; // Extensible metadata
 }
 
 // TokenMetadata contains non-claim token information (For audit and management)
@@ -55,25 +134,13 @@ message TokenMetadata {
   // Token identifier. REQUIRED
   string token_id = 1;
   // Tenant identifier
-  string tenant_id = 2 [(buf.validate.field).string = {
-    max_len: 128
-    ignore_empty: true
-  }];
+  string tenant_path = 2 [(buf.validate.field).string = {max_len: 128}];
   // Associated session ID
-  string session_id = 3 [(buf.validate.field).string = {
-    max_len: 128
-    ignore_empty: true
-  }];
+  string session_id = 3 [(buf.validate.field).string = {max_len: 128}];
   // Associated device ID
-  string device_id = 4 [(buf.validate.field).string = {
-    max_len: 128
-    ignore_empty: true
-  }];
+  string device_id = 4 [(buf.validate.field).string = {max_len: 128}];
   // Associated network ID
-  string network_id = 5 [(buf.validate.field).string = {
-    max_len: 128
-    ignore_empty: true
-  }];
+  string network_id = 5 [(buf.validate.field).string = {max_len: 128}];
 
   TokenType token_type = 6; // Token type
   TokenStatus status = 7; // Token status
@@ -94,7 +161,7 @@ message TokenMetadata {
   google.protobuf.Timestamp issued_at = 30; // Issued at
   google.protobuf.Timestamp expires_at = 31; // Expires at
   // Revoked at (if revoked)
-  google.protobuf.Timestamp revoked_at = 32 [(buf.validate.field).timestamp = {ignore_empty: true}];
+  google.protobuf.Timestamp revoked_at = 32;
 
   // Additional context
   map<string, string> metadata = 36;
@@ -114,12 +181,29 @@ message TokenIntrospection {
 
 // TokenReturn is used for returning tokens in responses
 message TokenReturn {
-  // Access token (JWT or opaque string)
-  string token = 1;
+  // Access token (JWT or opaque string). REQUIRED.
+  // SECURITY: Never log or persist this value in plaintext
+  string token = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 8192 // Allow for large JWTs
+  }];
 
-  // Access token expires in seconds
-  int64 expires_in = 5;
+  // Access token expires in seconds. REQUIRED.
+  // VALIDATION: Must be a positive number
+  int64 expires_in = 5 [(buf.validate.field).int64 = {
+    gt: 0
+    lte: 31536000 // Max 1 year
+  }];
 
-  // Granted OAuth scopes
-  repeated string scopes = 6;
+  // Granted OAuth scopes. Optional.
+  repeated string scopes = 6 [(buf.validate.field).repeated = {
+    max_items: 50
+    items: {
+      string: {
+        min_len: 1
+        max_len: 64
+        pattern: "^[a-z][a-z0-9_:]*$"
+      }
+    }
+  }];
 }

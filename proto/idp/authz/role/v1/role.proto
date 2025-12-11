@@ -1,0 +1,163 @@
+// DOMAIN: Authorization - Role Aggregate Root
+// COMPLIANCE: SOC 2 CC6.2, ISO 27001 A.9.2
+// SECURITY: Role-Based Access Control (RBAC)
+// DDD: Aggregate Root - controls role definition and permission assignment
+
+syntax = "proto3";
+
+package geniustechspace.idp.authz.role.v1;
+
+import "buf/validate/validate.proto";
+import "core/metadata/v1/metadata.proto";
+import "google/protobuf/timestamp.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Idp.Authz.Role.V1";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/idp/authz/role/v1;idpauthzrolev1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.idp.authz.role.v1";
+
+// Role aggregate root - collection of permissions.
+// INVARIANTS:
+// - Role name unique within tenant
+// - System roles cannot be modified/deleted
+// - Circular inheritance not allowed
+// - Role hierarchy max depth: 5 levels
+message Role {
+  // Role ID. Immutable.
+  string id = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Hierarchical tenant path for nested multi-tenancy. Immutable.
+  // Examples: "acme-corp", "acme-corp/customer-1"
+  string tenant_path = 2 [(buf.validate.field).string.max_len = 512];
+
+  // Role name. Required. Unique within tenant.
+  string name = 3 [(buf.validate.field).string.max_len = 512];
+
+  // Display name (human-readable).
+  string display_name = 4;
+
+  // Description.
+  string description = 5;
+
+  // Role type.
+  RoleType type = 6 [(buf.validate.field).enum.defined_only = true];
+
+  // Permission names granted by this role.
+  repeated string permissions = 7;
+
+  // Parent role IDs (for inheritance).
+  repeated string parent_roles = 8;
+
+  // Scope level (global, tenant, organization).
+  string scope = 9;
+
+  // Is system role (immutable, cannot be deleted).
+  bool is_system = 10;
+
+  // Is default role (auto-assigned to new users).
+  bool is_default = 11;
+
+  // Assignment count (number of subjects with this role).
+  int32 assignment_count = 12;
+
+  // Tags for classification.
+  repeated string tags = 13;
+
+  // Created timestamp. IMMUTABLE after creation.
+  // COMPLIANCE: SOC 2 CC6.3, GDPR Article 30 (audit trail)
+  google.protobuf.Timestamp created_at = 14 [(buf.validate.field).required = true];
+
+  // Last updated timestamp.
+  // COMPLIANCE: SOC 2 CC6.3 (change tracking)
+  google.protobuf.Timestamp updated_at = 15;
+
+  // Deletion timestamp. If set, entity is soft deleted.
+  // COMPLIANCE: GDPR Article 17, SOC 2 CC6.3 (deletion audit trail)
+  // QUERY: Use "WHERE deleted_at IS NULL" for active records
+  google.protobuf.Timestamp deleted_at = 16;
+
+  // Optimistic locking version counter. Incremented on each update.
+  // COMPLIANCE: SOC 2 CC6.1 (data integrity, concurrent modification protection)
+  int64 version = 17;
+}
+
+// RoleType enum.
+enum RoleType {
+  ROLE_TYPE_UNSPECIFIED = 0;
+  SYSTEM = 1;
+  CUSTOM = 2;
+  ORGANIZATION = 3;
+  APPLICATION = 4;
+}
+
+// RoleAssignment entity - role assigned to subject.
+message RoleAssignment {
+  // Assignment ID. Immutable.
+  string id = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Tenant path. Immutable.
+  string tenant_path = 2 [(buf.validate.field).string.max_len = 512];
+
+  // Subject ID - user or group.
+  string subject_id = 3 [(buf.validate.field).string.max_len = 512];
+
+  // Subject type (user, group).
+  SubjectType subject_type = 4 [(buf.validate.field).enum.defined_only = true];
+
+  // Role ID.
+  string role_id = 5 [(buf.validate.field).string.max_len = 512];
+
+  // Scope (resource path for scoped permissions).
+  // EXAMPLES: /organizations/123, /projects/456, /*
+  string scope = 6;
+
+  // Assignment status.
+  RoleAssignmentStatus status = 7 [(buf.validate.field).enum.defined_only = true];
+
+  // Assigned by (user ID).
+  string assigned_by = 8;
+
+  // Assigned at timestamp.
+  int64 assigned_at = 9;
+
+  // Expires at timestamp (optional, for temporary roles).
+  int64 expires_at = 10;
+
+  // Conditions (ABAC - attribute-based conditions).
+  map<string, string> conditions = 11;
+
+  // Created timestamp. IMMUTABLE after creation.
+  // COMPLIANCE: SOC 2 CC6.3, GDPR Article 30 (audit trail)
+  google.protobuf.Timestamp created_at = 12 [(buf.validate.field).required = true];
+
+  // Last updated timestamp.
+  // COMPLIANCE: SOC 2 CC6.3 (change tracking)
+  google.protobuf.Timestamp updated_at = 13;
+
+  // Deletion timestamp. If set, entity is soft deleted.
+  // COMPLIANCE: GDPR Article 17, SOC 2 CC6.3 (deletion audit trail)
+  // QUERY: Use "WHERE deleted_at IS NULL" for active records
+  google.protobuf.Timestamp deleted_at = 14;
+
+  // Optimistic locking version counter. Incremented on each update.
+  // COMPLIANCE: SOC 2 CC6.1 (data integrity, concurrent modification protection)
+  int64 version = 15;
+}
+
+// SubjectType enum.
+enum SubjectType {
+  SUBJECT_TYPE_UNSPECIFIED = 0;
+  USER = 1;
+  GROUP = 2;
+  SERVICE_ACCOUNT = 3;
+  API_KEY = 4;
+}
+
+// RoleAssignmentStatus enum.
+enum RoleAssignmentStatus {
+  ROLE_ASSIGNMENT_STATUS_UNSPECIFIED = 0;
+  ACTIVE = 1;
+  EXPIRED = 2;
+  REVOKED = 3;
+  PENDING = 4;
+}

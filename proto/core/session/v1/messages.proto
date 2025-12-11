@@ -53,42 +53,24 @@ message Session {
   }];
 
   // Tenant context
-  string tenant_id = 2 [(buf.validate.field).string = {
+  string tenant_path = 2 [(buf.validate.field).string = {
     min_len: 3
     max_len: 64
   }];
 
   // User/Actor identifiers (at least one required)
   oneof actor {
-    string user_id = 3 [(buf.validate.field).string = {
-      max_len: 128
-      ignore_empty: true
-    }];
-    string agent_id = 4 [(buf.validate.field).string = {
-      max_len: 128
-      ignore_empty: true
-    }];
+    string user_id = 3 [(buf.validate.field).string = {max_len: 128}];
+    string agent_id = 4 [(buf.validate.field).string = {max_len: 128}];
   }
 
   // ============ CONTEXT REFERENCES ============
 
   // Context references (lookup by ID)
-  string device_id = 10 [(buf.validate.field).string = {
-    max_len: 128
-    ignore_empty: true
-  }];
-  string client_id = 11 [(buf.validate.field).string = {
-    max_len: 128
-    ignore_empty: true
-  }];
-  string network_id = 12 [(buf.validate.field).string = {
-    max_len: 128
-    ignore_empty: true
-  }];
-  string geo_location_id = 13 [(buf.validate.field).string = {
-    max_len: 128
-    ignore_empty: true
-  }];
+  string device_id = 10 [(buf.validate.field).string = {max_len: 128}];
+  string client_id = 11 [(buf.validate.field).string = {max_len: 128}];
+  string network_id = 12 [(buf.validate.field).string = {max_len: 128}];
+  string geo_location_id = 13 [(buf.validate.field).string = {max_len: 128}];
 
   // ============ SESSION STATE ============
 

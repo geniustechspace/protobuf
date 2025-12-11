@@ -1,0 +1,128 @@
+// Core API Pagination Messages - Production v1
+//
+// Hybrid pagination with cursor-based optimization and bidirectional navigation.
+// STANDARD: Industry-standard cursor pagination with transparent position tracking
+// DESIGN: Single responsibility - pagination only, sorting/filtering separate
+// COMPLIANCE: SOC 2 CC6.3 (Change management)
+// PERFORMANCE: O(log n) with cursor caching, graceful O(n) fallback without cursor
+// USAGE: Include in all List* request/response messages
+//
+// Strategy:
+// - Client provides cursor when available → O(log n) keyset pagination
+// - Client omits cursor → Falls back to offset, returns cursor for future use
+// - Client caches cursors per page → Enables fast bidirectional navigation
+// - Server always returns cursor → Client builds cache for optimal performance
+//
+// References:
+// - Cursor pagination: MongoDB, GraphQL Relay, Stripe patterns
+// - Keyset method: Transparent position tracking without opaque tokens
+// - Single Responsibility: Pagination concerns separated from sorting/filtering
+
+syntax = "proto3";
+
+package geniustechspace.core.api.pagination.v1;
+
+import "buf/validate/validate.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Core.Api.Pagination.V1";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/core/api/pagination/v1;paginationv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.core.api.pagination.v1";
+
+// PaginationRequest provides parameters for paginated list operations.
+// STANDARD: Industry-standard cursor pagination with transparent fields
+// SINGLE RESPONSIBILITY: Only handles pagination, not sorting/filtering
+//
+// Usage Pattern:
+// 1. First page: Set page=1, page_size=20 (no cursor)
+// 2. Next page: Set page=2, page_size=20, cursor from previous response
+// 3. Jump: Set page=N, page_size=20, cursor if cached (else falls back to offset)
+// 4. Server: Uses cursor if provided (fast), else uses offset (acceptable)
+message PaginationRequest {
+  // Maximum number of items to return per page. REQUIRED.
+  // VALIDATION: Must be between 1 and 1000
+  // If unspecified or 0, defaults to 20
+  // Values above 1000 will be coerced to 1000
+  // Example: 50
+  int32 page_size = 1 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 1000
+  }];
+
+  // Page number for pagination (1-indexed). Optional, defaults to 1.
+  // Works with or without cursor:
+  // - With cursor: Indicates page relative to cursor position
+  // - Without cursor: Falls back to offset-based pagination
+  // Example: 5 (fifth page)
+  int32 page = 2 [(buf.validate.field).int32 = {gte: 0}];
+
+  // Cursor position for keyset-based pagination. Optional.
+  // STANDARD: Industry-standard cursor pattern (MongoDB, GraphQL, Elasticsearch)
+  // FORMAT: Map of field name to value from last item of previous page
+  // PERFORMANCE: When provided, enables O(log n) keyset pagination
+  // CLIENT STRATEGY: Cache cursors per page for optimal navigation
+  //
+  // Common patterns:
+  // - Time-based: {"created_at": "2025-12-10T10:30:00.123Z", "id": "usr_123"}
+  // - Relevance: {"score": "0.95", "id": "doc_456"}
+  // - Alphabetical: {"name": "Smith", "id": "usr_789"}
+  //
+  // Key-value pairs:
+  // - Keys: Field names matching order_by clause in parent request
+  // - Values: String representation of field values
+  // - Must include unique ID field as tiebreaker
+  // - Supports any sortable type (timestamps, numbers, strings)
+  //
+  // Example: {"created_at": "2025-12-10T10:30:00.123Z", "id": "usr_01HQZX..."}
+  map<string, string> cursor = 3;
+}
+
+// PaginationResponse provides metadata about paginated result sets.
+// STANDARD: Industry-standard pagination metadata with cursor support
+// SINGLE RESPONSIBILITY: Only provides pagination state, not navigation logic
+message PaginationResponse {
+  // Total items across all pages. Optional.
+  // Populated when using offset mode or when count is inexpensive
+  // May be omitted when using pure cursor mode (expensive to compute)
+  // May be an estimate for very large datasets (document if so)
+  // Used for UI display: "Page 5 of 42" or "Showing 20 of 1,543 items"
+  // Example: 1543
+  int64 total_size = 1 [(buf.validate.field).int64 = {gte: 0}];
+
+  // Current page number (1-indexed). REQUIRED.
+  // Indicates which page of results is being returned
+  // Used for UI display: "Page 5 of 42"
+  // Always matches the requested page or defaults to 1
+  // Example: 5
+  int32 current_page = 2 [(buf.validate.field).int32 = {gte: 1}];
+
+  // Number of items in the current page. REQUIRED.
+  // May be less than requested page_size if:
+  // - At end of collection
+  // - Service chooses to return fewer items
+  // - Filtered results have fewer matches
+  // Example: 20
+  int32 page_size = 3 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 1000
+  }];
+
+  // Cursor position after current page for keyset-based pagination. Optional.
+  // STANDARD: Industry-standard cursor pattern
+  // FORMAT: Map of field name to value from last item in current page
+  // CLIENT USAGE: Cache this cursor associated with next page number
+  // PERFORMANCE: Providing this cursor in next request enables O(log n) pagination
+  //
+  // Server behavior:
+  // - Always populated when items are returned
+  // - Empty when no results or end of collection
+  // - Derived from last item's sort fields
+  //
+  // Client strategy:
+  // - Cache: cursors[current_page + 1] = response.cursor
+  // - Use cached cursor when navigating to page N
+  // - Enables bidirectional navigation without performance penalty
+  //
+  // Example: {"created_at": "2025-12-09T15:22:10.456Z", "id": "usr_01HQZY..."}
+  map<string, string> cursor = 4;
+}

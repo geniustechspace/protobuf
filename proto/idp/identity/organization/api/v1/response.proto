@@ -1,0 +1,28 @@
+// DOMAIN: Identity - Organization Management APIResponses
+// COMPLIANCE: SOC 2 CC6.1, ISO 27001 A.9.2
+// SECURITY: Authentication required, tenant isolation enforced
+// PII: No - Organization data is not personal information
+
+syntax = "proto3";
+
+package geniustechspace.idp.identity.organization.api.v1;
+
+import "core/api/pagination/v1/messages.proto";
+import "core/common/v1/common.proto";
+import "idp/identity/organization/v1/organization.proto";
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/idp/identity/organization/api/v1;organizationapiv1";
+
+// OrganizationResponse is the standard response for Create, Get, and Update organization operations.
+message OrganizationResponse {
+  geniustechspace.idp.identity.organization.v1.Organization data = 1;
+  reserved 2 to 9;
+}
+message DeleteOrganizationResponse {
+  string organization_id = 1;
+  bool hard_deleted = 2;
+}
+message ListOrganizationsResponse {
+  repeated geniustechspace.idp.identity.organization.v1.Organization organizations = 1;
+  geniustechspace.core.api.pagination.v1.PaginationResponse pagination = 2;
+}

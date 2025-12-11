@@ -47,11 +47,11 @@ enum AuthenticationMethod {
 // MFAType represents multi-factor authentication types
 enum MFAType {
   MFA_TYPE_UNSPECIFIED = 0;
-  TOTP = 1; // Time-based OTP (Google Authenticator)
-  SMS = 2; // SMS OTP
-  EMAIL = 3; // Email OTP
-  WEBAUTHN = 4; // Security key (YubiKey)
-  BIOMETRIC = 5; // Fingerprint, Face ID
-  PUSH = 6; // Push notification
-  BACKUP_CODE = 7; // Recovery code
+  MFA_TOTP = 1; // Time-based OTP (Google Authenticator)
+  MFA_SMS = 2; // SMS OTP
+  MFA_EMAIL = 3; // Email OTP
+  MFA_WEBAUTHN = 4; // Security key (YubiKey)
+  MFA_BIOMETRIC = 5; // Fingerprint, Face ID
+  MFA_PUSH = 6; // Push notification
+  MFA_BACKUP_CODE = 7; // Recovery code
 }

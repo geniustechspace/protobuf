@@ -1,0 +1,81 @@
+// DOMAIN: Contact - Address
+// COMPLIANCE: GDPR Article 5, SOC 2 CC6.1
+// SECURITY: PII data - encryption at rest required
+// PII: Yes - physical address information
+
+syntax = "proto3";
+
+package geniustechspace.contact.address.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/timestamp.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Contact.Address.V1";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/contact/address/v1;contactaddressv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.contact.address.v1";
+
+// UserAddress - user's physical address.
+// PII: Yes - GDPR Article 4(1) personal identifier.
+// MULTI-RECORD: Users can have multiple addresses (home, work, billing, shipping).
+// USAGE: Shipping, billing, contact information, location services.
+message UserAddress {
+  // Address ID. Primary key.
+  string address_id = 1 [(buf.validate.field).string.max_len = 512];
+
+  // User ID. Foreign key to identity system.
+  string user_id = 2 [(buf.validate.field).string.max_len = 512];
+
+  // Hierarchical tenant path for nested multi-tenancy.
+  // Examples: "acme-corp", "acme-corp/customer-1", "acme-corp/customer-1/sub-org"
+  // ISOLATION: Supports unlimited nesting levels for complex B2B2B... scenarios.
+  string tenant_path = 3 [(buf.validate.field).string.max_len = 512];
+
+  // Address type (home, work, billing, shipping, etc.).
+  string address_type = 4 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 50
+  }];
+
+  // Street address line 1.
+  string street_line1 = 5 [(buf.validate.field).string.max_len = 255];
+
+  // Street address line 2 (apartment, suite, etc.).
+  string street_line2 = 6 [(buf.validate.field).string.max_len = 255];
+
+  // City.
+  string city = 7 [(buf.validate.field).string.max_len = 100];
+
+  // State/Province/Region.
+  string state = 8 [(buf.validate.field).string.max_len = 100];
+
+  // Postal/ZIP code.
+  string postal_code = 9 [(buf.validate.field).string.max_len = 20];
+
+  // Country (ISO 3166-1 alpha-2 code: US, CA, GB, etc.).
+  string country = 10 [(buf.validate.field).string = {
+    len: 2
+    pattern: "^[A-Z]{2}$"
+  }];
+
+  // Primary address flag (one primary per type per user).
+  bool is_primary = 11;
+
+  reserved 12 to 19;
+
+  // Created timestamp.
+  google.protobuf.Timestamp created_at = 20 [(buf.validate.field).required = true];
+
+  // Last updated timestamp.
+  google.protobuf.Timestamp updated_at = 21;
+
+  // Deletion timestamp (soft delete).
+  google.protobuf.Timestamp deleted_at = 22;
+
+  reserved 23 to 29;
+
+  // Optimistic locking version.
+  int64 version = 30 [(buf.validate.field).int64.gte = 1];
+
+  reserved 31 to 39;
+}

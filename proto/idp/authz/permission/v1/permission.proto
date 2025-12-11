@@ -1,0 +1,104 @@
+// DOMAIN: Authorization - Permission Value Objects
+// COMPLIANCE: SOC 2 CC6.2, ISO 27001 A.9.4
+// SECURITY: Fine-grained access control
+// DDD: Value Objects - permissions are immutable
+
+syntax = "proto3";
+
+package geniustechspace.idp.authz.permission.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/timestamp.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Idp.Authz.Permission.V1";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/idp/authz/permission/v1;idpauthzpermissionv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.idp.authz.permission.v1";
+
+// Permission value object - atomic authorization unit.
+// IMMUTABLE: Permissions cannot be modified, only created/deleted
+// FORMAT: resource:action (e.g., users:read, groups:write)
+message Permission {
+  // Permission ID.
+  string id = 1;
+
+  // Hierarchical tenant path for nested multi-tenancy. Immutable.
+  // Examples: "acme-corp", "acme-corp/customer-1"
+  string tenant_path = 2 [(buf.validate.field).string.max_len = 512];
+
+  // Permission name (unique identifier).
+  // FORMAT: resource:action
+  // EXAMPLES: users:read, groups:write, organizations:delete
+  string name = 3 [(buf.validate.field).string = {
+    min_len: 3
+    pattern: "^[a-z][a-z0-9_]*:[a-z][a-z0-9_]*$"
+  }];
+
+  // Display name (human-readable).
+  string display_name = 4;
+
+  // Description.
+  string description = 5;
+
+  // Resource type (users, groups, organizations, etc.).
+  string resource_type = 6;
+
+  // Action type (read, write, delete, execute, etc.).
+  string action = 7;
+
+  // Scope level (global, tenant, organization, personal).
+  PermissionScope scope = 8;
+
+  // Is system permission (immutable).
+  bool is_system = 9;
+
+  // Category for grouping.
+  string category = 10;
+
+  // Tags for classification.
+  repeated string tags = 11;
+
+  // Created timestamp. IMMUTABLE after creation.
+  // COMPLIANCE: SOC 2 CC6.3, GDPR Article 30 (audit trail)
+  google.protobuf.Timestamp created_at = 12 [(buf.validate.field).required = true];
+
+  // Last updated timestamp.
+  // COMPLIANCE: SOC 2 CC6.3 (change tracking)
+  google.protobuf.Timestamp updated_at = 13;
+
+  // Deletion timestamp. If set, entity is soft deleted.
+  // COMPLIANCE: GDPR Article 17, SOC 2 CC6.3 (deletion audit trail)
+  // QUERY: Use "WHERE deleted_at IS NULL" for active records
+  google.protobuf.Timestamp deleted_at = 14;
+
+  // Optimistic locking version counter. Incremented on each update.
+  // COMPLIANCE: SOC 2 CC6.1 (data integrity, concurrent modification protection)
+  int64 version = 15;
+}
+
+// PermissionScope enum.
+enum PermissionScope {
+  PERMISSION_SCOPE_UNSPECIFIED = 0;
+  GLOBAL = 1;
+  TENANT = 2;
+  ORGANIZATION = 3;
+  PERSONAL = 4;
+}
+
+// PermissionSet value object - collection of permissions.
+message PermissionSet {
+  // Set ID.
+  string id = 1;
+
+  // Tenant path.
+  string tenant_path = 2;
+
+  // Set name.
+  string name = 3;
+
+  // Description.
+  string description = 4;
+
+  // Permission names.
+  repeated string permissions = 5;
+}

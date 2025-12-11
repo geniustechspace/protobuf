@@ -60,7 +60,7 @@ message DeviceContext {
   // ========== DEVICE IDENTIFICATION ==========
   // PRIVACY: Device identifiers are PII in many jurisdictions
 
-  // Unique device identifier/fingerprint (UUID v4 recommended)
+  // Unique device identifier/fingerprint (any string format (UUID, ULID, custom) recommended)
   // SECURITY: Should be stable but not tied to hardware (allow reset)
   string device_id = 1 [(buf.validate.field).string = {
     min_len: 1
@@ -69,22 +69,13 @@ message DeviceContext {
 
   // User-assigned device name (e.g., "John's iPhone", "Work Laptop")
   // PRIVACY: May contain PII (user's name)
-  string device_name = 2 [(buf.validate.field).string = {
-    max_len: 100
-    ignore_empty: true
-  }];
+  string device_name = 2 [(buf.validate.field).string = {max_len: 100}];
 
   // Device model (e.g., "iPhone 15 Pro", "Galaxy S24", "MacBook Pro")
-  string device_model = 3 [(buf.validate.field).string = {
-    max_len: 100
-    ignore_empty: true
-  }];
+  string device_model = 3 [(buf.validate.field).string = {max_len: 100}];
 
   // Device manufacturer (e.g., "Apple", "Samsung", "Dell")
-  string manufacturer = 4 [(buf.validate.field).string = {
-    max_len: 100
-    ignore_empty: true
-  }];
+  string manufacturer = 4 [(buf.validate.field).string = {max_len: 100}];
 
   // ========== OPERATING SYSTEM ==========
 
@@ -92,22 +83,13 @@ message DeviceContext {
   OperatingSystem os = 5;
 
   // OS version (e.g., "17.2", "14", "11")
-  string os_version = 6 [(buf.validate.field).string = {
-    max_len: 50
-    ignore_empty: true
-  }];
+  string os_version = 6 [(buf.validate.field).string = {max_len: 50}];
 
   // OS build number (e.g., "21C52", "TP1A.220624.014")
-  string os_build = 7 [(buf.validate.field).string = {
-    max_len: 100
-    ignore_empty: true
-  }];
+  string os_build = 7 [(buf.validate.field).string = {max_len: 100}];
 
   // Kernel version (for Linux/Unix systems)
-  string kernel_version = 8 [(buf.validate.field).string = {
-    max_len: 100
-    ignore_empty: true
-  }];
+  string kernel_version = 8 [(buf.validate.field).string = {max_len: 100}];
 
   // ========== HARDWARE SPECIFICATIONS ==========
 
@@ -118,21 +100,18 @@ message DeviceContext {
   int32 cpu_cores = 21 [(buf.validate.field).int32 = {
     gte: 1
     lte: 256
-    ignore_empty: true
   }];
 
   // Total RAM in megabytes
   int64 ram_mb = 22 [(buf.validate.field).int64 = {
     gte: 0
     lte: 1048576 // 1 TB max
-    ignore_empty: true
   }];
 
   // Total storage in gigabytes
   int64 storage_gb = 23 [(buf.validate.field).int64 = {
     gte: 0
     lte: 102400 // 100 TB max
-    ignore_empty: true
   }];
 
   // ========== SCREEN & DISPLAY ==========
@@ -143,14 +122,12 @@ message DeviceContext {
   int32 screen_width = 31 [(buf.validate.field).int32 = {
     gte: 0
     lte: 16384 // 16K displays
-    ignore_empty: true
   }];
 
   // Screen height in pixels
   int32 screen_height = 32 [(buf.validate.field).int32 = {
     gte: 0
     lte: 16384
-    ignore_empty: true
   }];
 
   // Screen density/DPI (dots per inch)
@@ -158,14 +135,12 @@ message DeviceContext {
   float screen_dpi = 33 [(buf.validate.field).float = {
     gte: 48.0 // Very low DPI
     lte: 1000.0 // Very high DPI (retina)
-    ignore_empty: true
   }];
 
   // Screen diagonal size in inches
   float screen_size_inches = 34 [(buf.validate.field).float = {
     gte: 1.0 // Smartwatch
     lte: 100.0 // Large display wall
-    ignore_empty: true
   }];
 
   // ========== DEVICE CAPABILITIES ==========
@@ -176,10 +151,7 @@ message DeviceContext {
   // PRIVACY: Location data is highly sensitive PII
 
   // Geolocation ID (reference to separate geo location record)
-  string geo_location_id = 25 [(buf.validate.field).string = {
-    max_len: 128
-    ignore_empty: true
-  }];
+  string geo_location_id = 25 [(buf.validate.field).string = {max_len: 128}];
 
   // ========== SECURITY & TRUST ==========
 
@@ -258,33 +230,21 @@ message DeviceFingerprint {
   // PRIVACY: Each component is sensitive PII
 
   // Device identifier (stable, user-resettable)
-  string device_id = 2 [(buf.validate.field).string = {
-    max_len: 128
-    ignore_empty: true
-  }];
+  string device_id = 2 [(buf.validate.field).string = {max_len: 128}];
 
   // Vendor identifier (iOS: identifierForVendor, Android: varies)
   // PRIVACY: Scoped to app vendor, resets on app uninstall
-  string vendor_id = 3 [(buf.validate.field).string = {
-    max_len: 128
-    ignore_empty: true
-  }];
+  string vendor_id = 3 [(buf.validate.field).string = {max_len: 128}];
 
   // Advertising ID (iOS: IDFA, Android: AAID)
   // PRIVACY: Requires user consent (iOS 14.5+), user-resettable
   // COMPLIANCE: Must respect user's tracking preference
-  string advertising_id = 4 [(buf.validate.field).string = {
-    max_len: 128
-    ignore_empty: true
-  }];
+  string advertising_id = 4 [(buf.validate.field).string = {max_len: 128}];
 
   // Hardware identifiers (MAC address, serial number, IMEI)
   // ⚠️ PRIVACY: Highly sensitive, stable across factory resets
   // COMPLIANCE: Collection requires explicit consent in most jurisdictions
-  string hardware_id = 5 [(buf.validate.field).string = {
-    max_len: 128
-    ignore_empty: true
-  }];
+  string hardware_id = 5 [(buf.validate.field).string = {max_len: 128}];
 
   // ========== SOFTWARE FINGERPRINT ==========
 
@@ -297,17 +257,11 @@ message DeviceFingerprint {
   repeated string fonts = 7 [(buf.validate.field).repeated.max_items = 500];
 
   // Device locale (language and country)
-  string locale = 8 [(buf.validate.field).string = {
-    max_len: 35
-    ignore_empty: true
-  }];
+  string locale = 8 [(buf.validate.field).string = {max_len: 35}];
 
   // Device timezone (IANA timezone)
   // PRIVACY: Reveals approximate geographic location
-  string timezone = 9 [(buf.validate.field).string = {
-    max_len: 100
-    ignore_empty: true
-  }];
+  string timezone = 9 [(buf.validate.field).string = {max_len: 100}];
 
   // ========== TIMESTAMPS ==========
 

@@ -1,0 +1,409 @@
+// DOMAIN: Identity - Profile Events
+// COMPLIANCE: SOC 2 CC6.3, GDPR Article 30
+// SECURITY: Audit trail for identity changes
+// PII: Yes - contains personal identity information
+
+syntax = "proto3";
+
+package geniustechspace.idp.identity.profile.events.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/timestamp.proto";
+import "idp/identity/profile/v1/profile.proto";
+import "idp/identity/profile/v1/social.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Idp.Identity.Profile.Events.V1";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/idp/identity/profile/events/v1;idpidentityprofileeventsv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.idp.identity.profile.events.v1";
+
+// ProfileCreated emitted when user profile is created.
+// EVENT: Publish to event bus for downstream consumers (CRM, analytics, audit)
+// REPLAYABLE: Yes - contains complete profile state for event sourcing
+// COMPLIANCE: SOC 2 CC6.3 (audit trail requirement)
+// PII: Yes - contains personal identity information
+message ProfileCreated {
+  // Event ID. Unique identifier for event tracing.
+  string event_id = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Tenant path for hierarchical isolation.
+  // Examples: "acme-corp", "acme-corp/customer-1", "acme-corp/customer-1/sub-org"
+  string tenant_path = 2 [(buf.validate.field).string.max_len = 512];
+
+  // Event timestamp. When the event occurred.
+  google.protobuf.Timestamp event_timestamp = 3 [(buf.validate.field).required = true];
+
+  // Profile ID created.
+  string profile_id = 4 [(buf.validate.field).string.max_len = 512];
+
+  // User ID owning the profile.
+  string user_id = 5 [(buf.validate.field).string.max_len = 512];
+
+  // User who created the profile (system, admin, user_id for self).
+  string created_by = 6;
+
+  // Source. Creation source (web, mobile, api, admin, migration).
+  string source = 7;
+
+  // Correlation ID. For distributed tracing across services.
+  string correlation_id = 8 [(buf.validate.field).string.max_len = 512];
+
+  // Metadata. Additional context (IP, user-agent, etc.).
+  map<string, string> metadata = 9;
+
+  reserved 10 to 19;
+
+  // Profile snapshot. Complete UserProfile entity state after creation.
+  // EVENT SOURCING: Used to reconstruct entity state from event stream.
+  geniustechspace.idp.identity.profile.v1.UserProfile profile_snapshot = 20;
+
+  reserved 21 to 29;
+
+  // Session ID. User session that triggered this event.
+  // SECURITY: Session-based anomaly detection, session hijacking.
+  // ANALYTICS: User journey analysis across session.
+  string session_id = 30 [(buf.validate.field).string = {max_len: 128}];
+
+  // Device ID. Reference to device entity for full context lookup.
+  // SECURITY: Fraud detection, device reputation tracking.
+  // COMPLIANCE: SOC 2 CC6.1, GDPR Article 30 audit trail.
+  string device_id = 31 [(buf.validate.field).string = {max_len: 128}];
+
+  // Client ID. Reference to client entity for full context lookup.
+  // SECURITY: API abuse detection, rate limiting, bot detection.
+  // COMPLIANCE: SOC 2 CC6.1, GDPR Article 30 audit trail.
+  string client_id = 32 [(buf.validate.field).string = {max_len: 128}];
+
+  // Network ID. Reference to network/request context.
+  // SECURITY: IP reputation, geographic anomaly detection.
+  // COMPLIANCE: SOC 2 CC6.1, GDPR Article 30 audit trail.
+  string network_id = 33 [(buf.validate.field).string = {max_len: 128}];
+}
+
+// ProfileUpdated emitted when user profile is modified.
+// EVENT: Publish to event bus for downstream consumers
+// REPLAYABLE: Yes - contains complete profile state after update for event sourcing
+// COMPLIANCE: SOC 2 CC6.3 (change tracking)
+// PII: Yes - contains personal data
+message ProfileUpdated {
+  // Event ID. Unique identifier for event tracing.
+  string event_id = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Tenant path for hierarchical isolation.
+  string tenant_path = 2 [(buf.validate.field).string.max_len = 512];
+
+  // Event timestamp. When the event occurred.
+  google.protobuf.Timestamp event_timestamp = 3 [(buf.validate.field).required = true];
+
+  // Profile ID updated.
+  string profile_id = 4 [(buf.validate.field).string.max_len = 512];
+
+  // User ID owning the profile.
+  string user_id = 5 [(buf.validate.field).string.max_len = 512];
+
+  // Updated by. Actor who performed the update.
+  string updated_by = 6;
+
+  // Changed fields. List of field names that changed.
+  repeated string changed_fields = 7;
+
+  // Reason. Optional reason for the update.
+  string reason = 8;
+
+  // Correlation ID. For distributed tracing.
+  string correlation_id = 9 [(buf.validate.field).string.max_len = 512];
+
+  // Metadata. Additional context.
+  map<string, string> metadata = 10;
+
+  reserved 11 to 19;
+
+  // Profile snapshot before. Complete UserProfile entity state before update.
+  // EVENT SOURCING: Used to reconstruct entity state from event stream.
+  geniustechspace.idp.identity.profile.v1.UserProfile profile_snapshot_before = 20;
+
+  // Profile snapshot after. Complete UserProfile entity state after update.
+  // EVENT SOURCING: Used to reconstruct entity state from event stream.
+  geniustechspace.idp.identity.profile.v1.UserProfile profile_snapshot_after = 21;
+
+  reserved 22 to 29;
+
+  // Session ID. User session that triggered this event.
+  // SECURITY: Track which session performed update.
+  string session_id = 30 [(buf.validate.field).string = {max_len: 128}];
+
+  // Device ID. Reference to device entity for full context lookup.
+  // SECURITY: Detect suspicious updates from new/untrusted devices.
+  // COMPLIANCE: SOC 2 CC6.1, GDPR Article 30 audit trail.
+  string device_id = 31 [(buf.validate.field).string = {max_len: 128}];
+
+  // Client ID. Reference to client entity for full context lookup.
+  // SECURITY: Track which client performed update for audit.
+  // COMPLIANCE: SOC 2 CC6.1, GDPR Article 30 audit trail.
+  string client_id = 32 [(buf.validate.field).string = {max_len: 128}];
+
+  // Network ID. Reference to network/request context.
+  // SECURITY: Detect update from suspicious IP/location.
+  // COMPLIANCE: SOC 2 CC6.1, GDPR Article 30 audit trail.
+  string network_id = 33 [(buf.validate.field).string = {max_len: 128}];
+}
+
+// ProfileDeleted emitted when user profile is soft deleted.
+// EVENT: Publish to event bus for downstream cleanup
+// REPLAYABLE: Yes - contains final state before deletion for event sourcing
+// COMPLIANCE: GDPR Article 17 (right to erasure), SOC 2 CC6.3
+// PII: Yes - contains final profile state for audit trail
+message ProfileDeleted {
+  // Event ID. Unique identifier for event tracing.
+  string event_id = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Tenant path for hierarchical isolation.
+  string tenant_path = 2 [(buf.validate.field).string.max_len = 512];
+
+  // Event timestamp. When the event occurred.
+  google.protobuf.Timestamp event_timestamp = 3 [(buf.validate.field).required = true];
+
+  // Profile ID deleted.
+  string profile_id = 4 [(buf.validate.field).string.max_len = 512];
+
+  // User ID owning the profile.
+  string user_id = 5 [(buf.validate.field).string.max_len = 512];
+
+  // Deleted by. Actor who performed the deletion.
+  string deleted_by = 6;
+
+  // Reason. Reason for deletion (user request, admin action, compliance, GDPR erasure).
+  string reason = 7;
+
+  // GDPR erasure request flag. GDPR Article 17 Right to Erasure.
+  bool gdpr_erasure_request = 8;
+
+  // Correlation ID. For distributed tracing.
+  string correlation_id = 9 [(buf.validate.field).string.max_len = 512];
+
+  // Metadata. Additional context.
+  map<string, string> metadata = 10;
+
+  reserved 11 to 19;
+
+  // Profile snapshot before. Complete UserProfile entity state before deletion.
+  // EVENT SOURCING: Final state before soft/hard delete.
+  // COMPLIANCE: Required for GDPR audit trail.
+  geniustechspace.idp.identity.profile.v1.UserProfile profile_snapshot_before = 20;
+
+  reserved 21 to 29;
+
+  // Session ID. User session that triggered this event.
+  // SECURITY: Track which session performed deletion.
+  // COMPLIANCE: Critical for GDPR Article 17 audit.
+  string session_id = 30 [(buf.validate.field).string = {max_len: 128}];
+
+  // Device ID. Reference to device entity for full context lookup.
+  // SECURITY: Verify deletion from authorized device.
+  // COMPLIANCE: SOC 2 CC6.1, GDPR Article 17, Article 30 audit trail.
+  string device_id = 31 [(buf.validate.field).string = {max_len: 128}];
+
+  // Client ID. Reference to client entity for full context lookup.
+  // SECURITY: Verify deletion from authorized client.
+  // COMPLIANCE: SOC 2 CC6.1, GDPR Article 17, Article 30 audit trail.
+  string client_id = 32 [(buf.validate.field).string = {max_len: 128}];
+
+  // Network ID. Reference to network/request context.
+  // SECURITY: Track deletion request origin.
+  // COMPLIANCE: SOC 2 CC6.1, GDPR Article 17, Article 30 audit trail.
+  string network_id = 33 [(buf.validate.field).string = {max_len: 128}];
+}
+
+// SocialProfileLinked emitted when user links social media profile.
+// EVENT: Publish to event bus for verification, analytics
+// REPLAYABLE: Yes - contains complete social profile state for event sourcing
+// COMPLIANCE: SOC 2 CC6.3 (audit trail)
+// PII: Yes - social profile information
+message SocialProfileLinked {
+  // Event ID. Unique identifier for event tracing.
+  string event_id = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Tenant path for hierarchical isolation.
+  string tenant_path = 2 [(buf.validate.field).string.max_len = 512];
+
+  // Event timestamp. When the event occurred.
+  google.protobuf.Timestamp event_timestamp = 3 [(buf.validate.field).required = true];
+
+  // Social profile ID created.
+  string social_profile_id = 4 [(buf.validate.field).string.max_len = 512];
+
+  // User ID linking the profile.
+  string user_id = 5 [(buf.validate.field).string.max_len = 512];
+
+  // Provider name (github, linkedin, twitter, etc.).
+  string provider = 6;
+
+  // User who linked the profile (for audit).
+  string linked_by = 7;
+
+  // Link method. How profile was linked (oauth, manual, admin).
+  string link_method = 8;
+
+  // Correlation ID. For distributed tracing across services.
+  string correlation_id = 9 [(buf.validate.field).string.max_len = 512];
+
+  // Metadata. Additional context (OAuth provider response, etc.).
+  map<string, string> metadata = 10;
+
+  reserved 11 to 19;
+
+  // Social profile snapshot. Complete UserSocialProfile entity state after creation.
+  // EVENT SOURCING: Used to reconstruct entity state from event stream.
+  geniustechspace.idp.identity.profile.v1.UserSocialProfile social_profile_snapshot = 20;
+
+  reserved 21 to 29;
+
+  // Session ID. User session that triggered this event.
+  // SECURITY: Track social profile linking session for OAuth verification.
+  // ANALYTICS: User journey analysis across session.
+  string session_id = 30 [(buf.validate.field).string = {max_len: 128}];
+
+  // Device ID. Reference to device entity for full context lookup.
+  // SECURITY: Detect social profile linking from suspicious devices.
+  // COMPLIANCE: SOC 2 CC6.1, GDPR Article 30 audit trail.
+  string device_id = 31 [(buf.validate.field).string = {max_len: 128}];
+
+  // Client ID. Reference to client entity for full context lookup.
+  // SECURITY: Track OAuth client for verification.
+  // COMPLIANCE: SOC 2 CC6.1, GDPR Article 30 audit trail.
+  string client_id = 32 [(buf.validate.field).string = {max_len: 128}];
+
+  // Network ID. Reference to network/request context.
+  // SECURITY: Verify OAuth callback from expected IP.
+  // COMPLIANCE: SOC 2 CC6.1, GDPR Article 30 audit trail.
+  string network_id = 33 [(buf.validate.field).string = {max_len: 128}];
+}
+
+// SocialProfileUnlinked emitted when user unlinks social media profile.
+// EVENT: Publish to event bus for cleanup, analytics
+// REPLAYABLE: Yes - contains final social profile state for event sourcing
+// COMPLIANCE: SOC 2 CC6.3 (audit trail)
+// PII: Yes - contains final social profile state
+message SocialProfileUnlinked {
+  // Event ID. Unique identifier for event tracing.
+  string event_id = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Tenant path for hierarchical isolation.
+  string tenant_path = 2 [(buf.validate.field).string.max_len = 512];
+
+  // Event timestamp. When the event occurred.
+  google.protobuf.Timestamp event_timestamp = 3 [(buf.validate.field).required = true];
+
+  // Social profile ID deleted.
+  string social_profile_id = 4 [(buf.validate.field).string.max_len = 512];
+
+  // User ID unlinking the profile.
+  string user_id = 5 [(buf.validate.field).string.max_len = 512];
+
+  // Provider name (github, linkedin, twitter, etc.).
+  string provider = 6;
+
+  // User who unlinked the profile.
+  string unlinked_by = 7;
+
+  // Reason. Optional reason for unlinking.
+  string reason = 8;
+
+  // Correlation ID. For distributed tracing.
+  string correlation_id = 9 [(buf.validate.field).string.max_len = 512];
+
+  // Metadata. Additional context.
+  map<string, string> metadata = 10;
+
+  reserved 11 to 19;
+
+  // Social profile snapshot before. Complete UserSocialProfile entity state before unlinking.
+  // EVENT SOURCING: Final state before deletion.
+  // COMPLIANCE: Required for audit trail.
+  geniustechspace.idp.identity.profile.v1.UserSocialProfile social_profile_snapshot_before = 20;
+
+  reserved 21 to 29;
+
+  // Session ID. User session that triggered this event.
+  // SECURITY: Track which session unlinked social profile.
+  string session_id = 30 [(buf.validate.field).string = {max_len: 128}];
+
+  // Device ID. Reference to device entity for full context lookup.
+  // SECURITY: Detect social profile unlinking from suspicious devices.
+  // COMPLIANCE: SOC 2 CC6.1, GDPR Article 30 audit trail.
+  string device_id = 31 [(buf.validate.field).string = {max_len: 128}];
+
+  // Client ID. Reference to client entity for full context lookup.
+  // SECURITY: Track which client performed unlinking.
+  // COMPLIANCE: SOC 2 CC6.1, GDPR Article 30 audit trail.
+  string client_id = 32 [(buf.validate.field).string = {max_len: 128}];
+
+  // Network ID. Reference to network/request context.
+  // SECURITY: Track unlinking request origin.
+  // COMPLIANCE: SOC 2 CC6.1, GDPR Article 30 audit trail.
+  string network_id = 33 [(buf.validate.field).string = {max_len: 128}];
+}
+
+// SocialProfileVerified emitted when social profile is verified (OAuth or manual).
+// EVENT: Publish to event bus for trust scoring, analytics
+// REPLAYABLE: Yes - contains complete social profile state after verification
+// COMPLIANCE: SOC 2 CC6.1 (identity verification)
+// PII: Yes - contains social profile information
+message SocialProfileVerified {
+  // Event ID. Unique identifier for event tracing.
+  string event_id = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Tenant path for hierarchical isolation.
+  string tenant_path = 2 [(buf.validate.field).string.max_len = 512];
+
+  // Event timestamp. When the event occurred.
+  google.protobuf.Timestamp event_timestamp = 3 [(buf.validate.field).required = true];
+
+  // Social profile ID verified.
+  string social_profile_id = 4 [(buf.validate.field).string.max_len = 512];
+
+  // User ID owning the profile.
+  string user_id = 5 [(buf.validate.field).string.max_len = 512];
+
+  // Provider name (github, linkedin, twitter, etc.).
+  string provider = 6;
+
+  // Verification method (oauth, manual, admin).
+  string verification_method = 7;
+
+  // User who performed verification (for manual/admin).
+  string verified_by = 8;
+
+  // Correlation ID. For distributed tracing.
+  string correlation_id = 9 [(buf.validate.field).string.max_len = 512];
+
+  // Metadata. Additional context (OAuth provider response, verification proof).
+  map<string, string> metadata = 10;
+
+  reserved 11 to 19;
+
+  // Social profile snapshot after. Complete UserSocialProfile entity state after verification.
+  // EVENT SOURCING: Used to reconstruct entity state from event stream.
+  geniustechspace.idp.identity.profile.v1.UserSocialProfile social_profile_snapshot_after = 20;
+
+  reserved 21 to 29;
+
+  // Session ID. Session that triggered verification.
+  // SECURITY: Track verification session for OAuth flows.
+  string session_id = 30 [(buf.validate.field).string = {max_len: 128}];
+
+  // Device ID. Reference to device entity for full context lookup.
+  // SECURITY: Detect verification from unexpected device (account takeover).
+  // COMPLIANCE: SOC 2 CC6.1, GDPR Article 30 audit trail.
+  string device_id = 31 [(buf.validate.field).string = {max_len: 128}];
+
+  // Client ID. Reference to client entity for full context lookup.
+  // SECURITY: Track OAuth client performing verification.
+  // COMPLIANCE: SOC 2 CC6.1, GDPR Article 30 audit trail.
+  string client_id = 32 [(buf.validate.field).string = {max_len: 128}];
+
+  // Network ID. Reference to network/request context.
+  // SECURITY: Verify OAuth callback from expected network.
+  // COMPLIANCE: SOC 2 CC6.1, GDPR Article 30 audit trail.
+  string network_id = 33 [(buf.validate.field).string = {max_len: 128}];
+}

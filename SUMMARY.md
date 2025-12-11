@@ -6,126 +6,137 @@ This repository contains a production-ready, domain-driven, tenant-aware Protoco
 
 ## What Was Created
 
-### 1. Domain Structure (7 Domains)
+### 1. Domain Structure (6 Domains)
+
+#### IDP Domain (`proto/idp/`) - Domain-First Architecture
+
+- **Architecture**: Three-layer pattern (v1/, events/v1/, api/v1/)
+- **Package Pattern**: geniustechspace.idp.{domain}.{subdomain}.{layer}.v1
+- **Bounded Contexts**:
+  - Identity: user, group, organization, profile (4 subdomains)
+  - Authentication (authn): credential, session, mfa (3 subdomains)
+  - Authorization (authz): permission, role, policy (3 subdomains)
+- **API Files**: 40 modular files (10 subdomains × 4 files: api.proto, request.proto, response.proto, service.proto)
+- **Implementation**: UserService fully implemented with 9 RPCs, others in progress
+- **Documentation**: Comprehensive ARCHITECTURE.md and README.md
 
 #### Core Domain (`proto/core/`)
+
 - **v1**: Common types, tenant context, pagination, error handling
 - **v2**: Enhanced with hierarchical tenancy, audit trails, cursor pagination
 - **Events**: Base event for event-driven architecture
 - **Documentation**: Comprehensive README with examples
 
-#### Auth Domain (`proto/auth/`)
-- **v1**: Authentication, sessions, token management, password reset
-- **Service**: AuthService with 6 RPC methods
-- **Events**: 6 domain events for authentication lifecycle
-- **Documentation**: Security best practices, integration patterns
+#### Contact Domain (`proto/contact/`)
 
-#### Users Domain (`proto/users/`)
-- **v1**: User management, profiles, preferences, status management
-- **Service**: UserService with 7 RPC methods
-- **Events**: 7 domain events for user lifecycle
-- **Messages**: 14 message types including requests/responses
+- **Subdomains**: Address, Phone
+- **v1**: Contact information management (addresses, phone numbers)
+- **Features**: Structured address data, phone validation
 
-#### Access Policy Domain (`proto/access_policy/`)
-- **v1**: Roles, permissions, policies, RBAC
-- **Service**: AccessPolicyService with 8 RPC methods
-- **Events**: 8 domain events for authorization changes
-- **Features**: Condition-based policies, role assignment
+#### HCM Domain (`proto/hcm/`)
 
-#### Tenants Domain (`proto/tenants/`)
-- **v1**: Tenant management, tiers, settings, branding, usage tracking
-- **Service**: TenantService with 8 RPC methods
-- **Events**: 7 domain events for tenant lifecycle
-- **Documentation**: Multi-tenancy patterns, tier management
-- **Features**: Status management, tier upgrades, custom branding
+- **Subdomains**: Employee
+- **v1**: Human Capital Management - employee data
+- **Status**: Initial structure in place
 
-#### Billing Domain (`proto/billing/`)
-- **v1**: Subscriptions, invoices, payments, plans
-- **Service**: BillingService with 9 RPC methods
-- **Events**: 11 domain events for billing lifecycle
-- **Features**: Subscription management, payment methods, invoicing
+#### Preference Domain (`proto/preference/`)
 
-#### Notifications Domain (`proto/notifications/`)
-- **v1**: Multi-channel notifications (email, SMS, push, in-app)
-- **Service**: NotificationService with 8 RPC methods
-- **Events**: 6 domain events for notification lifecycle
-- **Features**: Preferences, read tracking, priority levels
+- **Subdomains**: User
+- **v1**: User preference management
+- **Status**: Initial structure in place
+
+#### Storage Domain (`proto/storage/`)
+
+- **Status**: Reserved for future file/object storage features
 
 ### 2. Protocol Buffer Files
 
-Total: **15 proto files**
-- Domain definitions: 7
-- Event definitions: 7
-- Version 2 example: 1
+Total: **83 proto files**
+
+- IDP domain: 55 files
+- Core domain: 24 files  
+- Other domains: 4 files
 
 ### 3. gRPC Services
 
-Total: **6 services** with **54 RPC methods**
-- AuthService: 6 methods
-- UserService: 7 methods
-- AccessPolicyService: 8 methods
-- TenantService: 8 methods
-- BillingService: 9 methods
-- NotificationService: 8 methods
+Total: **6 services** with **9+ RPC methods**
+
+**IDP Services:**
+
+- **IdentityService**: Core identity operations (in `proto/idp/api/v1/services.proto`)
+- **AuthenticationService**: Authentication operations (in `proto/idp/api/v1/services.proto`)
+- **AuthorizationService**: Authorization operations (in `proto/idp/api/v1/services.proto`)
+- **UserService**: 9 methods fully implemented (Create, Get, Update, Delete, List, Search, UpdateStatus, VerifyEmail, VerifyPhone)
+- **CredentialService**: Credential management
+- **SessionService**: Session management
 
 ### 4. Domain Events
 
-Total: **45+ domain events** across all domains for:
+Domain events defined for:
+
 - Event sourcing
 - CQRS patterns
 - Audit trails
 - Real-time notifications
 - Inter-service communication
 
+**IDP Events:**
+
+- Identity User: UserCreated, UserUpdated, UserDeleted, UserStatusChanged, UserEmailVerified, UserPhoneVerified (6 events)
+- Other IDP event stubs in place for future implementation
+
 ### 5. Buf Configuration
 
 #### buf.yaml
+
 - Linting rules (STANDARD + UNARY_RPC)
 - Breaking change detection
 - Version management
 - Module configuration
 
 #### buf.gen.yaml
-- Multi-language code generation:
+
+- Multi-language code generation (8 languages):
   - Go (protoc-gen-go, protoc-gen-go-grpc)
-  - Python (protoc-gen-python, protoc-gen-python-grpc)
-  - Java (protoc-gen-java, protoc-gen-java-grpc)
-  - TypeScript (connectrpc/es)
-  - C# (protoc-gen-csharp, protoc-gen-csharp-grpc)
-  - Documentation (buf-plugin-doc)
+  - Rust (prost, tonic)
+  - Java (protoc-gen-java, grpc-java)
+  - Kotlin (protoc-gen-kotlin)
+  - Swift (swift-protobuf, grpc-swift)
+  - Dart (protoc-gen-dart)
+  - Python (protoc-gen-python, grpc-python)
+  - TypeScript (connectrpc/es, protoc-gen-js, grpc-web)
 
 ### 6. CI/CD Pipeline
 
-GitHub Actions workflow (`.github/workflows/buf.yml`) with 7 jobs:
+CI/CD planned with GitHub Actions workflow for:
 
 1. **Lint**: Validate proto files, check formatting
 2. **Breaking**: Detect breaking changes in PRs
 3. **Build**: Generate code for all languages
-4. **Schema List**: Create schema inventory
-5. **Push to Registry**: Publish to Buf Schema Registry
-6. **Generate Clients**: Per-domain, per-language clients
-7. **Documentation**: Generate and deploy docs to GitHub Pages
+4. **Push to Registry**: Publish to Buf Schema Registry (when configured)
 
 ### 7. Documentation
 
-#### Main Documentation (4 files)
-- **README.md** (7,115 bytes): Overview, features, quick start, domain descriptions
-- **ARCHITECTURE.md** (9,960 bytes): Design patterns, multi-tenancy, scalability
-- **CLIENT_GENERATION.md** (10,917 bytes): Language-specific client generation
-- **DEPLOYMENT.md** (12,542 bytes): Kubernetes, service mesh, monitoring
-- **CONTRIBUTING.md** (8,296 bytes): Guidelines for contributing
-- **QUICK_START.md** (6,771 bytes): 5-minute getting started guide
+#### Main Documentation
 
-#### Domain Documentation (3+ files)
-- **proto/core/README.md** (5,186 bytes): Core types and events
-- **proto/auth/README.md** (7,014 bytes): Authentication patterns
-- **proto/tenants/README.md** (9,499 bytes): Multi-tenancy implementation
+- **README.md**: Overview, features, quick start, domain descriptions
+- **CONTRIBUTING.md**: Guidelines for contributing
+- **QUICK_START.md**: 5-minute getting started guide
+- **SUMMARY.md**: Implementation summary
+- **PROTO_DOCUMENTATION_STANDARD.md**: Documentation standards
+- **VALIDATION.md**: Validation rules guide
 
-Total documentation: **~57,300 bytes** of comprehensive guides and examples
+#### Domain Documentation
+
+- **49 README files** across all proto domains and subdomains
+- Comprehensive documentation for IDP architecture
+- Core domain types and patterns
+- Contact, HCM, Preference domain guides
 
 ### 8. Features Implemented
 
 #### Multi-Tenancy
+
 - ✅ TenantContext in all requests
 - ✅ Tenant isolation patterns
 - ✅ Database-per-tenant support
@@ -134,18 +145,21 @@ Total documentation: **~57,300 bytes** of comprehensive guides and examples
 - ✅ Tenant resolution strategies
 
 #### Versioning
+
 - ✅ v1 schemas for all domains
 - ✅ v2 example showing backward compatibility
 - ✅ Reserved fields for deprecation
 - ✅ Version evolution guidelines
 
 #### Event-Driven Architecture
+
 - ✅ BaseEvent with correlation/causation IDs
 - ✅ Domain events for all aggregates
 - ✅ Event envelope for transport
 - ✅ Event batch processing support
 
 #### Code Generation
+
 - ✅ Go package generation
 - ✅ Python module generation
 - ✅ Java class generation
@@ -154,6 +168,7 @@ Total documentation: **~57,300 bytes** of comprehensive guides and examples
 - ✅ Documentation generation
 
 #### Quality Assurance
+
 - ✅ Buf linting (100% passing)
 - ✅ Buf formatting (100% passing)
 - ✅ Breaking change detection
@@ -161,6 +176,7 @@ Total documentation: **~57,300 bytes** of comprehensive guides and examples
 - ✅ Naming convention enforcement
 
 #### Developer Experience
+
 - ✅ Comprehensive documentation
 - ✅ Code examples in multiple languages
 - ✅ Quick start guide
@@ -170,7 +186,23 @@ Total documentation: **~57,300 bytes** of comprehensive guides and examples
 
 ### 9. Enterprise Features
 
+**IDP Features:**
+
+- ✅ Domain-first three-layer architecture
+- ✅ Modular API files (request, response, service separation)
+- ✅ Flattened entity audit fields (created_at, updated_at, deleted_at, version)
+- ✅ Multi-method authentication (6 credential types)
+- ✅ Multi-factor authentication (7 MFA methods)
+- ✅ WebAuthn/FIDO2 support
 - ✅ Role-based access control (RBAC)
+- ✅ Attribute-based access control (ABAC)
+- ✅ Policy-based authorization
+- ✅ Hierarchical groups and organizations
+- ✅ Session management with risk scoring
+- ✅ Standards compliance (OAuth 2.0, OIDC, SAML 2.0, SCIM 2.0)
+
+**Legacy Features:**
+
 - ✅ Subscription management
 - ✅ Billing and invoicing
 - ✅ Multi-channel notifications
@@ -196,18 +228,15 @@ Total documentation: **~57,300 bytes** of comprehensive guides and examples
 
 ## Key Metrics
 
-| Metric | Count |
-|--------|-------|
-| Domains | 7 |
-| Proto Files | 15 |
-| gRPC Services | 6 |
-| RPC Methods | 54+ |
-| Domain Events | 45+ |
-| Message Types | 100+ |
-| Documentation Files | 7 |
-| Documentation Size | ~57 KB |
-| Languages Supported | 5 |
-| CI/CD Jobs | 7 |
+| Metric              | Count                                         |
+| ------------------- | --------------------------------------------- |
+| Domains             | 6 (IDP, Core, Contact, HCM, Preference, Storage) |
+| IDP Subdomains      | 10 (identity: 4, authn: 3, authz: 3)          |
+| Proto Files         | 83 total (IDP: 55, Core: 24, Other: 4)        |
+| gRPC Services       | 6 (IdentityService, AuthenticationService, AuthorizationService, UserService, CredentialService, SessionService) |
+| UserService RPCs    | 9 fully implemented methods                   |
+| Documentation Files | 49 README files + 6 main docs                 |
+| Languages Supported | 8 (Go, Rust, Java, Kotlin, Swift, Dart, Python, TypeScript) |
 
 ## Technology Stack
 
@@ -219,20 +248,45 @@ Total documentation: **~57,300 bytes** of comprehensive guides and examples
 - **Documentation**: Markdown
 - **Version Control**: Git
 
-## Ready for Production
+## Implementation Status
 
-This implementation is production-ready and includes:
+### IDP Domain (Domain-First Architecture)
+
+**Completed:**
+
+- ✅ Domain-first three-layer architecture implemented
+- ✅ 10 subdomains scaffolded with full structure
+- ✅ Identity/User: Full implementation (domain entity, 6 events, API service with 9 RPCs)
+- ✅ Modular API file splitting (api.proto, request.proto, response.proto, service.proto)
+- ✅ Flattened entity audit fields pattern
+- ✅ Package naming: geniustechspace.idp.{domain}.{subdomain}.{layer}.v1
+- ✅ 49 README files documenting all packages
+- ✅ Comprehensive ARCHITECTURE.md
+- ✅ CredentialService and SessionService scaffolded
+- ✅ Top-level IDP services (IdentityService, AuthenticationService, AuthorizationService)
+
+**In Progress:**
+
+- 🔄 Event implementations for remaining subdomains
+- 🔄 API implementations for group, organization, profile
+- 🔄 Full implementations for authn/authz domains
+
+**Planned:**
+
+- ⏳ Supporting modules (audit, connectors, protocols, provisioning, webhook)
+- ⏳ MFA subdomain full implementation
+- ⏳ Permission and Policy subdomain implementations
+
+### Other Domains
 
 ✅ **Enterprise-grade schemas** with proper versioning
-✅ **Complete API surface** for all core business domains
+✅ **IDP domain-first architecture** with 10 subdomains scaffolded
 ✅ **Multi-tenancy** support at the protocol level
 ✅ **Event-driven** architecture patterns
-✅ **Multi-language** client generation
-✅ **CI/CD pipeline** for automated validation
-✅ **Comprehensive documentation** for all stakeholders
+✅ **Multi-language** client generation (8 languages)
+✅ **Comprehensive documentation** (49 README files)
 ✅ **Security best practices** built-in
-✅ **Scalability patterns** documented
-✅ **Monitoring and observability** guidance
+✅ **Modular API design** for maintainability
 
 ## Next Steps for Teams
 

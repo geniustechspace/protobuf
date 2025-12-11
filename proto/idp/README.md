@@ -1,95 +1,393 @@
-# Identity Provider (IDP) Module
+# Identity Provider (IDP) - Domain-First Architecture
 
-Enterprise-grade identity provider protocol definitions for multi-tenant authentication, authorization, and identity management.
+**Enterprise-grade identity provider with Domain-Driven Design (DDD) and Event-Driven Architecture (EDA)**
 
-## Package
+## Architecture Overview
+
+The IDP follows a **domain-first, three-layer architecture** with strict separation of concerns:
+
+1. **Domain Layer** (`{domain}/{subdomain}/v1/`) - Pure domain models, entities, enums
+2. **Events Layer** (`{domain}/{subdomain}/events/v1/`) - Domain events for state changes
+3. **API Layer** (`{domain}/{subdomain}/api/v1/`) - gRPC services, requests/responses
+
+Each subdomain is self-contained with all three layers co-located, enabling independent evolution and microservice extraction.
+
+## Package Naming Convention
 
 ```protobuf
-package geniustechspace.idp.*.v1;
+// Domain entities and enums
+package geniustechspace.idp.identity.user.v1;
+
+// Domain events
+package geniustechspace.idp.identity.user.events.v1;
+
+// gRPC API services
+package geniustechspace.idp.identity.user.api.v1;
 ```
 
-## Overview
+**Pattern:** `geniustechspace.idp.{domain}.{subdomain}.{layer}.v1`
 
-The IDP module provides comprehensive protocol definitions for building modern identity providers with:
+## Bounded Contexts
 
-- **Authentication (authn)** - Multi-method authentication (password, passwordless, WebAuthn, MFA)
-- **Authorization (authz)** - RBAC, ABAC, permissions, policies, access control
-- **Identity Management** - User profiles, identity lifecycle, verification
-- **Audit Logging** - Compliance-ready audit trails (SOC 2, PCI DSS, GDPR)
-- **Connectors** - External identity providers (LDAP, SAML, OAuth, social)
-- **Protocols** - Standard protocols (OAuth 2.0, OIDC, SAML 2.0)
-- **Provisioning** - SCIM-based user provisioning and directory sync
-- **Webhooks** - Event-driven integrations
-- **API** - Unified API definitions and common types
+### 1. Identity Domain
 
-## Module Structure
+**Subdomains:** user, group, organization, profile  
+**Concerns:** User lifecycle, profiles, group membership, org hierarchy  
+**Events:** UserCreated, GroupUpdated, OrganizationDeleted
+
+### 2. Authentication Domain (authn)
+
+**Subdomains:** credential, session, mfa  
+**Concerns:** Multi-method auth, MFA enrollment, session management  
+**Events:** CredentialCreated, SessionStarted, MfaVerified
+
+### 3. Authorization Domain (authz)
+
+**Subdomains:** permission, role, policy  
+**Concerns:** RBAC, ABAC, permissions, access control policies  
+**Events:** RoleAssigned, PermissionGranted, PolicyEvaluated
+
+### 4. Supporting Modules
+
+**Modules:** audit, connectors, protocols, provisioning, webhook  
+**Concerns:** Audit logging, identity federation, OAuth2/OIDC, SCIM, webhooks
+
+## Directory Structure
 
 ```text
 proto/idp/
-├── README.md                    # This file
-├── api/v1/                      # Unified API and common types
-│   ├── common.proto            # Shared IDP types
-│   ├── enums.proto             # Shared IDP enums
-│   └── README.md
-├── authn/v1/                   # Authentication
-│   ├── messages.proto          # Auth requests/responses
-│   ├── enums.proto             # Auth methods, statuses
-│   ├── password.proto          # Password authentication
-│   ├── webauthn.proto          # WebAuthn/FIDO2
-│   ├── mfa.proto               # Multi-factor authentication
-│   ├── session.proto           # Session management
-│   ├── token.proto             # Token management
-│   ├── service.proto           # Authentication service
-│   └── README.md
-├── authz/v1/                   # Authorization
-│   ├── messages.proto          # Authz requests/responses
-│   ├── enums.proto             # Permission types, scopes
-│   ├── rbac.proto              # Role-Based Access Control
-│   ├── abac.proto              # Attribute-Based Access Control
-│   ├── policy.proto            # Authorization policies
-│   ├── service.proto           # Authorization service
-│   └── README.md
-├── identity/v1/                # Identity Management
-│   ├── messages.proto          # Identity requests/responses
-│   ├── enums.proto             # Identity types, states
-│   ├── user.proto              # User profiles
-│   ├── verification.proto      # Identity verification
-│   ├── service.proto           # Identity service
-│   └── README.md
-├── audit/v1/                   # Audit Logging
-│   ├── messages.proto          # Audit events
-│   ├── enums.proto             # Event types, categories
-│   ├── service.proto           # Audit service
-│   └── README.md
-├── connectors/v1/              # External Connectors
-│   ├── messages.proto          # Connector requests/responses
-│   ├── enums.proto             # Connector types
-│   ├── ldap.proto              # LDAP/Active Directory
-│   ├── saml.proto              # SAML 2.0
-│   ├── oauth.proto             # OAuth 2.0 providers
-│   ├── social.proto            # Social login providers
-│   ├── service.proto           # Connector service
-│   └── README.md
-├── protocols/v1/               # Standard Protocols
-│   ├── messages.proto          # Protocol messages
-│   ├── enums.proto             # Protocol types
-│   ├── oauth2.proto            # OAuth 2.0
-│   ├── oidc.proto              # OpenID Connect
-│   ├── saml2.proto             # SAML 2.0
-│   ├── service.proto           # Protocol service
-│   └── README.md
-├── provisioning/v1/            # User Provisioning
-│   ├── messages.proto          # Provisioning requests/responses
-│   ├── enums.proto             # Provisioning types
-│   ├── scim.proto              # SCIM 2.0
-│   ├── service.proto           # Provisioning service
-│   └── README.md
-└── webhook/v1/                 # Webhooks
-    ├── messages.proto          # Webhook events
-    ├── enums.proto             # Event types
-    ├── service.proto           # Webhook service
-    └── README.md
+├── README.md                                    # This file
+│
+├── identity/                                    # Identity bounded context
+│   ├── user/
+│   │   ├── v1/
+│   │   │   ├── user.proto                      # User entity + UserStatus enum
+│   │   │   └── README.md                       # Domain model documentation
+│   │   ├── events/v1/
+│   │   │   ├── events.proto                    # UserCreated, UserUpdated, etc.
+│   │   │   └── README.md                       # Event documentation
+│   │   └── api/v1/
+│   │       ├── api.proto                       # UserService gRPC operations
+│   │       └── README.md                       # API documentation
+│   ├── group/                                   # Same 3-layer structure
+│   │   ├── v1/                                 # Group entity
+│   │   ├── events/v1/                          # Group events
+│   │   └── api/v1/                             # GroupService API
+│   ├── organization/                            # Same 3-layer structure
+│   │   ├── v1/                                 # Organization entity
+│   │   ├── events/v1/                          # Organization events
+│   │   └── api/v1/                             # OrganizationService API
+│   └── profile/                                 # Same 3-layer structure
+│       ├── v1/                                 # Profile entity (PII)
+│       ├── events/v1/                          # Profile events
+│       └── api/v1/                             # ProfileService API
+│
+├── authn/                                       # Authentication bounded context
+│   ├── credential/
+│   │   ├── v1/                                 # Credential entity + types
+│   │   ├── events/v1/                          # CredentialCreated, etc.
+│   │   └── api/v1/                             # CredentialService API
+│   ├── session/
+│   │   ├── v1/                                 # Session entity + status
+│   │   ├── events/v1/                          # SessionStarted, etc.
+│   │   └── api/v1/                             # SessionService API
+│   └── mfa/
+│       ├── v1/                                 # MFA entity + types
+│       ├── events/v1/                          # MfaEnrolled, etc.
+│       └── api/v1/                             # MfaService API
+│
+├── authz/                                       # Authorization bounded context
+│   ├── permission/
+│   │   ├── v1/                                 # Permission entity
+│   │   ├── events/v1/                          # PermissionGranted, etc.
+│   │   └── api/v1/                             # PermissionService API
+│   ├── role/
+│   │   ├── v1/                                 # Role entity + assignments
+│   │   ├── events/v1/                          # RoleAssigned, etc.
+│   │   └── api/v1/                             # RoleService API
+│   └── policy/
+│       ├── v1/                                 # Policy entity + ABAC rules
+│       ├── events/v1/                          # PolicyEvaluated, etc.
+│       └── api/v1/                             # PolicyService API
+│
+└── [audit, connectors, protocols, provisioning, webhook]/
+    ├── v1/                                     # Supporting module entities
+    ├── events/v1/                              # Module events
+    └── api/v1/                                 # Module APIs (to be added)
 ```
+
+## Three-Layer Architecture
+
+### Layer 1: Domain Model (`v1/`)
+
+**Purpose:** Pure domain entities, enums, and business logic
+
+**Contains:**
+
+- Entity definitions (User, Group, Credential, etc.)
+- Domain enums (UserStatus, CredentialType, etc.)
+- Business invariants and constraints
+- Metadata and audit fields
+
+**Does NOT contain:**
+
+- RPC service definitions
+- Request/response messages
+- API-specific validation
+- Transport concerns
+
+**Example:** `identity/user/v1/user.proto`
+
+```protobuf
+package geniustechspace.idp.identity.user.v1;
+
+message User {
+  string id = 1;
+  string tenant_id = 2;
+  string email = 3;
+  UserStatus status = 4;
+  // ... domain fields
+}
+
+enum UserStatus {
+  USER_STATUS_UNSPECIFIED = 0;
+  ACTIVE = 1;
+  INACTIVE = 2;
+  // ...
+}
+```
+
+### Layer 2: Domain Events (`events/v1/`)
+
+**Purpose:** State change notifications for event-driven architecture
+
+**Contains:**
+
+- Event messages for entity lifecycle (Created, Updated, Deleted)
+- Status change events (StatusChanged)
+- Domain-specific events (EmailVerified, MfaEnrolled)
+- Event metadata (event_id, timestamp, correlation_id)
+
+**Pattern:** Events reference domain types via imports
+
+**Example:** `identity/user/events/v1/events.proto`
+
+```protobuf
+package geniustechspace.idp.identity.user.events.v1;
+
+import "idp/identity/user/v1/user.proto";
+import "core/v1/common.proto";
+
+message UserCreated {
+  core.v1.Metadata metadata = 1;
+  string tenant_id = 2;
+  string user_id = 3;
+  string email = 4;
+  string created_by = 5;
+}
+```
+
+### Layer 3: API Services (`api/v1/`)
+
+**Purpose:** gRPC service contracts for external consumption
+
+**Contains:**
+
+- Service definitions (UserService, CredentialService, etc.)
+- Request messages (CreateUserRequest, ValidateCredentialRequest)
+- Response messages (GetUserResponse, ListRolesResponse)
+- Validation annotations (buf.validate)
+- Rate limiting documentation
+- Authentication/authorization requirements
+
+**Pattern:** API imports domain types, never the reverse
+
+**Example:** `identity/user/api/v1/api.proto`
+
+```protobuf
+package geniustechspace.idp.identity.user.api.v1;
+
+import "idp/identity/user/v1/user.proto";
+import "core/v1/common.proto";
+
+service UserService {
+  rpc CreateUser(CreateUserRequest) returns (CreateUserResponse);
+  rpc GetUser(GetUserRequest) returns (GetUserResponse);
+  // ...
+}
+
+message GetUserRequest {
+  string tenant_id = 1;
+  string user_id = 2;
+}
+
+message GetUserResponse {
+  geniustechspace.idp.identity.user.v1.User user = 1;
+}
+```
+
+## Dependency Flow
+
+```text
+API Layer (api/v1)
+   ↓ imports
+Domain Layer (v1) ← imports ← Events Layer (events/v1)
+```
+
+**Rules:**
+
+- API can import domain types
+- Events can import domain types
+- Domain NEVER imports API or events
+- Cross-domain imports allowed for relationships (e.g., policy imports role.SubjectType)
+
+## Benefits of Domain-First Architecture
+
+1. **Co-location:** All subdomain concerns in one directory tree
+2. **Independent Evolution:** Change user API without affecting group domain
+3. **Microservice Ready:** Extract `identity/user/` as standalone service
+4. **Clear Boundaries:** Three layers enforce separation of concerns
+5. **Event-Driven:** Events are first-class citizens, not afterthoughts
+6. **Testing:** Domain models testable without gRPC infrastructure
+7. **Documentation:** README at every layer explains purpose and usage
+
+## API Services
+
+### IdentityService (24 RPCs)
+
+```protobuf
+service IdentityService {
+  // User Management: CreateUser, GetUser, UpdateUser, DeleteUser, ListUsers
+  // Profile: GetUserProfile, UpdateUserProfile
+  // Verification: VerifyEmail, ConfirmEmailVerification, VerifyPhone, ConfirmPhoneVerification
+  // Groups: CreateGroup, GetGroup, UpdateGroup, DeleteGroup, AddGroupMember, RemoveGroupMember, ListGroups
+  // Organizations: CreateOrganization, GetOrganization, UpdateOrganization, DeleteOrganization, ListOrganizations
+  // Search: SearchIdentities
+}
+```
+
+### AuthenticationService (10 RPCs)
+
+```protobuf
+service AuthenticationService {
+  // Authentication: Authenticate, VerifyMfa
+  // Sessions: RefreshToken, ValidateToken, Logout, ListSessions, RevokeSession
+  // Passwords: ChangePassword, ResetPassword, ConfirmPasswordReset
+}
+```
+
+### AuthorizationService (17 RPCs)
+
+```protobuf
+service AuthorizationService {
+  // Checks: CheckPermission, BatchCheckPermissions
+  // Roles: CreateRole, GetRole, UpdateRole, DeleteRole, ListRoles
+  // Assignments: AssignRole, RevokeRole, ListRoleAssignments
+  // Policies: CreatePolicy, GetPolicy, UpdatePolicy, DeletePolicy, ListPolicies
+  // Queries: ListPermissions, GetUserPermissions
+}
+```
+
+## Domain Models
+
+### Identity Context
+
+**User Aggregate:**
+
+- 24 fields: id, tenant_id, username, email, phone, status, mfa_enabled, etc.
+- 8 status states: ACTIVE, INACTIVE, SUSPENDED, LOCKED, DELETED, PENDING_VERIFICATION, PENDING_APPROVAL, EXPIRED
+- Invariants: Username unique per tenant, email unique when verified
+
+**Group Aggregate:**
+
+- Hierarchical structure with parent_id
+- 6 types: SYSTEM, CUSTOM, DEPARTMENT, TEAM, PROJECT, ROLE_BASED
+- Max hierarchy depth: 10 levels
+
+**Organization Aggregate:**
+
+- Hierarchical structure with parent_id
+- 7 types, 6 sizes, 5 statuses
+- Domain ownership (email domain auto-join)
+- Branding configuration (logo, colors, CSS)
+
+### Authentication Context
+
+**Credential Aggregate:**
+
+- 6 types: PASSWORD, WEBAUTHN, TOTP, API_KEY, CERTIFICATE, RECOVERY_CODE
+- Oneof credential_data for type-specific fields
+- Password always hashed (bcrypt/argon2id)
+- WebAuthn FIDO2 certified
+
+**Session Aggregate:**
+
+- Access/refresh token hashes (never plaintext)
+- Session context: IP, user agent, device, geolocation, risk score
+- Idle/absolute timeouts
+- Token rotation on refresh
+
+**MFA Value Objects:**
+
+- MfaEnrollment: TOTP, SMS, Email, WebAuthn
+- MfaChallenge: Challenge ID, expiry, attempts
+- 7 methods: TOTP, SMS, EMAIL, WEBAUTHN, VOICE, PUSH, BACKUP_CODES
+
+### Authorization Context
+
+**Role Aggregate:**
+
+- Permission collection with inheritance
+- Parent roles for hierarchy (max depth: 5)
+- 4 types: SYSTEM, CUSTOM, ORGANIZATION, APPLICATION
+- System roles immutable
+
+**Policy Aggregate:**
+
+- ABAC/PBAC with conditions
+- Allow/Deny effect (explicit deny always wins)
+- Priority-based evaluation (1-1000)
+- PolicyCondition: 12 operators (equals, in, contains, regex, etc.)
+
+**Permission Value Object:**
+
+- Format: `resource:action` (e.g., `users:read`)
+- 4 scopes: GLOBAL, TENANT, ORGANIZATION, PERSONAL
+- Immutable
+
+## Domain Events (EDA)
+
+### Identity Events
+
+```protobuf
+UserCreated, UserUpdated, UserDeleted, UserStatusChanged
+EmailVerified, PhoneVerified, UserLocked, UserUnlocked
+GroupCreated, GroupUpdated, GroupDeleted
+UserAddedToGroup, UserRemovedFromGroup
+OrganizationCreated, OrganizationUpdated, OrganizationDeleted, OrganizationStatusChanged
+```
+
+### Authentication Events
+
+```protobuf
+AuthenticationAttempted, AuthenticationSucceeded, AuthenticationFailed
+SessionCreated, SessionRefreshed, SessionExpired, SessionRevoked
+CredentialCreated, CredentialUpdated, CredentialRevoked, PasswordChanged
+MfaEnrolled, MfaVerified, MfaRevoked, MfaChallengeCreated, MfaChallengeFailed
+```
+
+### Authorization Events
+
+```protobuf
+PermissionChecked, AccessDenied
+RoleCreated, RoleUpdated, RoleDeleted, RoleAssigned, RoleRevoked
+PolicyCreated, PolicyUpdated, PolicyDeleted, PolicyActivated, PolicyDeactivated
+```
+
+**Event Metadata:**
+Every event includes: event_id, event_type, aggregate_id, aggregate_type, event_time, event_version, causation_id, correlation_id, actor_id, tenant_id, source
+
+````
 
 ## Standards Compliance
 
@@ -138,7 +436,7 @@ message AuthenticateRequest {
   string tenant_id = 1 [(buf.validate.field).string.min_len = 1];
   // ... other fields
 }
-```
+````
 
 ### Comprehensive Authentication Methods
 
@@ -335,17 +633,6 @@ pip install geniustechspace-protobuf-idp-authn
   <artifactId>idp-authn-v1</artifactId>
 </dependency>
 ```
-
-## Migration from deprecated/idp/v1
-
-The new modular structure separates concerns:
-
-- `deprecated/idp/v1/authentication.proto` → `proto/idp/authn/v1/`
-- `deprecated/idp/v1/audit.proto` → `proto/idp/audit/v1/`
-- Authorization moved to separate `proto/idp/authz/v1/`
-- Identity management in `proto/idp/identity/v1/`
-
-See individual module READMEs for migration guides.
 
 ## Related Modules
 

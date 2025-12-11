@@ -1,0 +1,130 @@
+// Profile Management API Response Messages
+//
+// Response messages for UserProfile domain CRUD operations and management.
+// All responses return full UserProfile entity for consistency and client caching.
+//
+// DOMAIN: Identity - Profile Management
+// VERSION: v1
+// COMPLIANCE: SOC 2 CC6.1, GDPR Articles 5/9/32, ISO 27001 A.9.2
+// PII: Yes - Contains personal identity information
+//
+// For detailed documentation, see README.md in this directory.
+
+syntax = "proto3";
+
+package geniustechspace.idp.identity.profile.api.v1;
+
+import "core/api/pagination/v1/messages.proto";
+import "core/common/v1/common.proto";
+import "idp/identity/profile/v1/profile.proto";
+import "idp/identity/profile/v1/social.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Idp.Identity.Profile.Api.V1";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/idp/identity/profile/api/v1;profileapiv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.idp.identity.profile.api.v1";
+
+// ProfileResponse is the standard response for Create, Get, and Update profile operations.
+// Returns full UserProfile entity for consistency and client caching.
+message ProfileResponse {
+  // Profile data with all fields populated.
+  // REQUIRED: Always present
+  // PII: Yes - contains personal data per GDPR Article 4(1) and Article 9
+  // NOTE: For updates, version field will be incremented
+  geniustechspace.idp.identity.profile.v1.UserProfile data = 1;
+
+  // Reserved for future response fields (metadata, warnings, ETag, etc.).
+  reserved 2 to 9;
+}
+
+// DeleteProfileResponse confirms deletion.
+message DeleteProfileResponse {
+  // Deleted profile ID.
+  // REQUIRED: Always present
+  string profile_id = 1;
+
+  // Profile entity after soft delete (with deleted_at timestamp).
+  // OPTIONAL: Present for soft deletes
+  // PII: Yes - contains personal data with deleted_at timestamp
+  optional geniustechspace.idp.identity.profile.v1.UserProfile profile = 2;
+
+  // Reserved for future response fields.
+  reserved 3 to 9;
+}
+
+// ListProfilesResponse returns paginated profiles.
+message ListProfilesResponse {
+  // Profile entities for current page.
+  // REQUIRED: Empty array if no profiles match filters
+  // PII: Yes - contains personal data per GDPR Article 4(1) and Article 9
+  repeated geniustechspace.idp.identity.profile.v1.UserProfile profiles = 1;
+
+  // Pagination metadata.
+  // REQUIRED: Always present with total_count, page info
+  geniustechspace.core.api.pagination.v1.PaginationResponse pagination = 2;
+
+  // Reserved for future response fields.
+  reserved 3 to 9;
+}
+
+// SearchProfilesResponse returns matching profiles ordered by relevance.
+message SearchProfilesResponse {
+  // Matching profile entities ordered by relevance.
+  // REQUIRED: Empty array if no matches
+  // PII: Yes - contains personal data per GDPR Article 4(1) and Article 9
+  repeated geniustechspace.idp.identity.profile.v1.UserProfile profiles = 1;
+
+  // Pagination metadata.
+  // REQUIRED: Always present with total_count, page info
+  geniustechspace.core.api.pagination.v1.PaginationResponse pagination = 2;
+
+  // Reserved for future response fields.
+  reserved 3 to 9;
+}
+
+// LinkSocialProfileResponse returns linked social profile.
+message LinkSocialProfileResponse {
+  // Created social profile entity.
+  // REQUIRED: Always present
+  // PII: Yes - contains social media identifiers
+  geniustechspace.idp.identity.profile.v1.UserSocialProfile social_profile = 1;
+
+  // Reserved for future response fields.
+  reserved 2 to 9;
+}
+
+// UnlinkSocialProfileResponse confirms unlinking.
+message UnlinkSocialProfileResponse {
+  // Unlinked social profile ID.
+  // REQUIRED: Always present
+  string social_profile_id = 1;
+
+  // Social profile entity before unlinking.
+  // OPTIONAL: Present for audit trail
+  optional geniustechspace.idp.identity.profile.v1.UserSocialProfile social_profile = 2;
+
+  // Reserved for future response fields.
+  reserved 3 to 9;
+}
+
+// VerifySocialProfileResponse returns verified social profile.
+message VerifySocialProfileResponse {
+  // Verified social profile entity with updated verified_at.
+  // REQUIRED: Always present
+  // PII: Yes - contains social media identifiers
+  geniustechspace.idp.identity.profile.v1.UserSocialProfile social_profile = 1;
+
+  // Reserved for future response fields.
+  reserved 2 to 9;
+}
+
+// ListSocialProfilesResponse returns user's social profiles.
+message ListSocialProfilesResponse {
+  // User's social profile entities.
+  // REQUIRED: Empty array if user has no social profiles
+  // PII: Yes - contains social media identifiers
+  repeated geniustechspace.idp.identity.profile.v1.UserSocialProfile social_profiles = 1;
+
+  // Reserved for future response fields.
+  reserved 2 to 9;
+}

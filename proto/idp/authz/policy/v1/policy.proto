@@ -1,0 +1,181 @@
+// DOMAIN: Authorization - Policy Aggregate Root
+// COMPLIANCE: SOC 2 CC6.2, ISO 27001 A.9.4
+// SECURITY: Attribute-Based Access Control (ABAC), Policy-Based Access Control (PBAC)
+// DDD: Aggregate Root - controls authorization policy definition
+
+syntax = "proto3";
+
+package geniustechspace.idp.authz.policy.v1;
+
+import "buf/validate/validate.proto";
+import "core/metadata/v1/metadata.proto";
+import "google/protobuf/timestamp.proto";
+import "idp/authz/role/v1/role.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Idp.Authz.Policy.V1";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/idp/authz/policy/v1;idpauthzpolicyv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.idp.authz.policy.v1";
+
+// Policy aggregate root - authorization policy.
+// INVARIANTS:
+// - Policy name unique within tenant
+// - Effect must be allow or deny
+// - Higher priority policies override lower priority
+// - Explicit deny always wins
+message Policy {
+  // Policy ID. Immutable.
+  string id = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Hierarchical tenant path for nested multi-tenancy. Immutable.
+  // Examples: "acme-corp", "acme-corp/customer-1"
+  string tenant_path = 2 [(buf.validate.field).string.max_len = 512];
+
+  // Policy name. Required. Unique within tenant.
+  string name = 3 [(buf.validate.field).string.max_len = 512];
+
+  // Display name (human-readable).
+  string display_name = 4;
+
+  // Description.
+  string description = 5;
+
+  // Policy type.
+  PolicyType type = 6 [(buf.validate.field).enum.defined_only = true];
+
+  // Policy effect (allow or deny).
+  PolicyEffect effect = 7 [(buf.validate.field).enum.defined_only = true];
+
+  // Policy status.
+  PolicyStatus status = 8 [(buf.validate.field).enum.defined_only = true];
+
+  // Priority (higher number = higher priority). Range: 1-1000.
+  int32 priority = 9 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 1000
+  }];
+
+  // Subjects (users, groups, roles, service accounts).
+  repeated PolicySubject subjects = 10;
+
+  // Actions (permission names or wildcards).
+  // EXAMPLES: users:read, groups:*, *:delete
+  repeated string actions = 11 [(buf.validate.field).repeated.min_items = 1];
+
+  // Resources (resource paths or wildcards).
+  // EXAMPLES: /users/*, /organizations/123/*, *
+  repeated string resources = 12 [(buf.validate.field).repeated.min_items = 1];
+
+  // Conditions (ABAC - attribute-based conditions).
+  repeated PolicyCondition conditions = 13;
+
+  // Is system policy (immutable).
+  bool is_system = 14;
+
+  // Tags for classification.
+  repeated string tags = 15;
+
+  // Created timestamp. IMMUTABLE after creation.
+  // COMPLIANCE: SOC 2 CC6.3, GDPR Article 30 (audit trail)
+  google.protobuf.Timestamp created_at = 16 [(buf.validate.field).required = true];
+
+  // Last updated timestamp.
+  // COMPLIANCE: SOC 2 CC6.3 (change tracking)
+  google.protobuf.Timestamp updated_at = 17;
+
+  // Deletion timestamp. If set, entity is soft deleted.
+  // COMPLIANCE: GDPR Article 17, SOC 2 CC6.3 (deletion audit trail)
+  // QUERY: Use "WHERE deleted_at IS NULL" for active records
+  google.protobuf.Timestamp deleted_at = 18;
+
+  // Optimistic locking version counter. Incremented on each update.
+  // COMPLIANCE: SOC 2 CC6.1 (data integrity, concurrent modification protection)
+  int64 version = 19;
+}
+
+// PolicyType enum.
+enum PolicyType {
+  POLICY_TYPE_UNSPECIFIED = 0;
+  RBAC = 1;
+  ABAC = 2;
+  PBAC = 3;
+  REBAC = 4;
+}
+
+// PolicyEffect enum.
+enum PolicyEffect {
+  POLICY_EFFECT_UNSPECIFIED = 0;
+  ALLOW = 1;
+  DENY = 2;
+}
+
+// PolicyStatus enum.
+enum PolicyStatus {
+  POLICY_STATUS_UNSPECIFIED = 0;
+  ACTIVE = 1;
+  INACTIVE = 2;
+  DRAFT = 3;
+}
+
+// PolicySubject value object - who the policy applies to.
+message PolicySubject {
+  // Subject type.
+  geniustechspace.idp.authz.role.v1.SubjectType type = 1 [(buf.validate.field).enum.defined_only = true];
+
+  // Subject ID or wildcard (*).
+  string id = 2;
+
+  // Subject attributes (for ABAC).
+  map<string, string> attributes = 3;
+}
+
+// PolicyCondition value object - ABAC condition.
+message PolicyCondition {
+  // Condition key (attribute name).
+  // EXAMPLES: ip_address, time_of_day, geo_location, user.department
+  string key = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Condition operator.
+  ConditionOperator operator = 2 [(buf.validate.field).enum.defined_only = true];
+
+  // Condition values.
+  repeated string values = 3 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// ConditionOperator enum.
+enum ConditionOperator {
+  CONDITION_OPERATOR_UNSPECIFIED = 0;
+  EQUALS = 1;
+  NOT_EQUALS = 2;
+  IN = 3;
+  NOT_IN = 4;
+  GREATER_THAN = 5;
+  GREATER_THAN_OR_EQUAL = 6;
+  LESS_THAN = 7;
+  LESS_THAN_OR_EQUAL = 8;
+  CONTAINS = 9;
+  STARTS_WITH = 10;
+  ENDS_WITH = 11;
+  MATCHES = 12;
+}
+
+// AuthorizationDecision value object - result of permission check.
+message AuthorizationDecision {
+  // Decision result.
+  bool allowed = 1;
+
+  // Decision reason.
+  string reason = 2;
+
+  // Matched policies.
+  repeated string matched_policies = 3;
+
+  // Applied effect (allow or deny).
+  PolicyEffect applied_effect = 4;
+
+  // Decision time (milliseconds).
+  int32 decision_time_ms = 5;
+
+  // Evaluation details (for debugging).
+  map<string, string> evaluation_details = 6;
+}

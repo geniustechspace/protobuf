@@ -1,0 +1,211 @@
+// Core API Response Messages - Generic CRUD Response Pattern
+//
+// Provides standardized response structure for all domain CRUD operations.
+// Ensures consistency across all SDKs and simplifies client-side handling.
+//
+// DOMAIN: Core - API Standards
+// VERSION: v1
+// PATTERN: Generic response wrapper with data + metadata
+// USAGE: Import and use with domain-specific data types
+//
+// BENEFITS:
+// - Consistent error handling across all APIs
+// - Standardized success/warning messages
+// - i18n support via message_key
+// - Optional error context for detailed debugging
+// - Reusable across all domains (User, Profile, Group, etc.)
+
+syntax = "proto3";
+
+package geniustechspace.core.api.response.v1;
+
+import "buf/validate/validate.proto";
+import "core/api/error/v1/messages.proto";
+import "google/protobuf/any.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Core.Api.Response.V1";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/core/api/response/v1;responsev1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.core.api.response.v1";
+
+// Response is the generic response wrapper for all CRUD operations.
+// PATTERN: Used for Create, Get, Update operations across all domains.
+// USAGE: Domain services return their specific entity in the 'data' field.
+//
+// NOTE: This uses google.protobuf.Any for the data field to support any entity type.
+// In practice, clients will know the expected type based on the RPC method called.
+//
+// EXAMPLES:
+//   - CreateUser returns Response with User entity in data
+//   - GetProfile returns Response with UserProfile entity in data
+//   - UpdateGroup returns Response with Group entity in data
+message Response {
+  // Success/informational message for the client. OPTIONAL.
+  // EXAMPLES: "User created successfully", "Profile updated", "Email verified"
+  // NOTE: Should be human-readable, suitable for display in UI
+  string message = 1 [(buf.validate.field).string.max_len = 500];
+
+  // i18n message key for localization. OPTIONAL.
+  // EXAMPLES: "user.created", "profile.updated", "email.verified"
+  // CLIENT: Use this key to look up localized message in client's locale
+  string message_key = 2 [(buf.validate.field).string.max_len = 128];
+
+  // The actual response data (entity). REQUIRED for success responses.
+  // TYPE: Domain-specific entity (User, Profile, Group, etc.)
+  // SERIALIZATION: Uses google.protobuf.Any to support any message type
+  // CLIENT: Use TypeUrl to determine the message type, then unpack
+  google.protobuf.Any data = 3;
+
+  // Error context if operation failed. OPTIONAL.
+  // POPULATED: Only on errors (gRPC status != OK)
+  // ENTERPRISE: Includes correlation_id, error codes, retry info
+  geniustechspace.core.api.error.v1.ErrorContext error = 4;
+
+  // Warning messages if operation succeeded with caveats. OPTIONAL.
+  // EXAMPLES: "Some fields were ignored", "Rate limit approaching"
+  // NOTE: Presence of warnings does NOT indicate failure
+  repeated string warnings = 5 [(buf.validate.field).repeated = {
+    max_items: 10
+    items: {
+      string: {
+        min_len: 1
+        max_len: 500
+      }
+    }
+  }];
+
+  // Reserved for future metadata fields (ETag, cache info, etc.).
+  reserved 6 to 9;
+}
+
+// ==================== CRUD RESPONSES ====================
+
+// DeleteResponse confirms entity deletion.
+message DeleteResponse {
+  string message = 1 [(buf.validate.field).string.max_len = 500];
+  string message_key = 2 [(buf.validate.field).string.max_len = 128];
+  bool hard_deleted = 3;
+  google.protobuf.Any data = 4;
+  geniustechspace.core.api.error.v1.ErrorContext error = 5;
+  repeated string warnings = 6;
+  reserved 7 to 9;
+}
+
+// ==================== BATCH RESPONSES ====================
+
+// BatchResponse for batch create/update/delete operations.
+message BatchResponse {
+  string message = 1 [(buf.validate.field).string.max_len = 500];
+  string message_key = 2 [(buf.validate.field).string.max_len = 128];
+  google.protobuf.Any data = 3;
+  int32 total = 4;
+  int32 success_count = 5;
+  int32 failure_count = 6;
+  geniustechspace.core.api.error.v1.ErrorContext error = 7;
+  repeated string warnings = 8;
+  reserved 9;
+}
+
+// ==================== LIST & SEARCH RESPONSES ====================
+
+// ListResponse for paginated list operations.
+message ListResponse {
+  string message = 1 [(buf.validate.field).string.max_len = 500];
+  string message_key = 2 [(buf.validate.field).string.max_len = 128];
+  repeated google.protobuf.Any data = 3;
+  PaginationMetadata pagination = 4;
+  geniustechspace.core.api.error.v1.ErrorContext error = 5;
+  repeated string warnings = 6;
+  reserved 7 to 9;
+}
+
+// SearchResponse for full-text search operations.
+message SearchResponse {
+  string message = 1 [(buf.validate.field).string.max_len = 500];
+  string message_key = 2 [(buf.validate.field).string.max_len = 128];
+  repeated google.protobuf.Any items = 3;
+  PaginationMetadata pagination = 4;
+  geniustechspace.core.api.error.v1.ErrorContext error = 5;
+  repeated string warnings = 6;
+  reserved 7 to 9;
+}
+
+// PaginationMetadata provides pagination information.
+message PaginationMetadata {
+  int32 page = 1;
+  int32 page_size = 2;
+  int64 total_count = 3;
+  int32 total_pages = 4;
+  bool has_next = 5;
+  bool has_previous = 6;
+  reserved 7 to 9;
+}
+
+// ==================== ADVANCED OPERATION RESPONSES ====================
+
+// RestoreResponse confirms entity restoration from soft-delete.
+message RestoreResponse {
+  string message = 1 [(buf.validate.field).string.max_len = 500];
+  string message_key = 2 [(buf.validate.field).string.max_len = 128];
+  google.protobuf.Any data = 3;
+  geniustechspace.core.api.error.v1.ErrorContext error = 4;
+  repeated string warnings = 5;
+  reserved 6 to 9;
+}
+
+// ExportResponse provides export operation result.
+message ExportResponse {
+  string message = 1 [(buf.validate.field).string.max_len = 500];
+  string message_key = 2 [(buf.validate.field).string.max_len = 128];
+  string job_id = 3 [(buf.validate.field).string.max_len = 128];
+  bytes data = 4 [(buf.validate.field).bytes.max_len = 10485760];
+  string download_url = 5 [(buf.validate.field).string.max_len = 2048];
+  int64 count = 6;
+  geniustechspace.core.api.error.v1.ErrorContext error = 7;
+  repeated string warnings = 8;
+  reserved 9;
+}
+
+// ImportResponse provides import operation result.
+message ImportResponse {
+  string message = 1 [(buf.validate.field).string.max_len = 500];
+  string message_key = 2 [(buf.validate.field).string.max_len = 128];
+  string job_id = 3 [(buf.validate.field).string.max_len = 128];
+  int64 total_count = 4;
+  int64 success_count = 5;
+  int64 failure_count = 6;
+  repeated ImportError errors = 7 [(buf.validate.field).repeated.max_items = 100];
+  geniustechspace.core.api.error.v1.ErrorContext error = 8;
+  repeated string warnings = 9;
+}
+
+// ImportError represents a single import failure.
+message ImportError {
+  int32 row = 1;
+  string message = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 500
+  }];
+  string field = 3 [(buf.validate.field).string.max_len = 128];
+  string data = 4 [(buf.validate.field).string.max_len = 1024];
+}
+
+// CountResponse provides entity count result.
+message CountResponse {
+  string message = 1 [(buf.validate.field).string.max_len = 500];
+  string message_key = 2 [(buf.validate.field).string.max_len = 128];
+  int64 count = 3;
+  geniustechspace.core.api.error.v1.ErrorContext error = 4;
+  repeated string warnings = 5;
+  reserved 6 to 9;
+}
+
+// ExistsResponse provides entity existence check result.
+message ExistsResponse {
+  string message = 1 [(buf.validate.field).string.max_len = 500];
+  string message_key = 2 [(buf.validate.field).string.max_len = 128];
+  bool exists = 3;
+  geniustechspace.core.api.error.v1.ErrorContext error = 4;
+  repeated string warnings = 5;
+  reserved 6 to 9;
+}

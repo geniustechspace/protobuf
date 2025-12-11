@@ -88,6 +88,7 @@ Verify that code generation works for all target languages.
 ### 7. Update Documentation
 
 Update relevant documentation:
+
 - Domain README files
 - Main README.md
 - Architecture documentation
@@ -101,6 +102,7 @@ git commit -m "feat: add new domain for XYZ"
 ```
 
 Follow [Conventional Commits](https://www.conventionalcommits.org/) format:
+
 - `feat:` New feature
 - `fix:` Bug fix
 - `docs:` Documentation only
@@ -135,25 +137,33 @@ message Req {
 }
 ```
 
-#### Include Metadata
+#### Include Flattened Audit Fields
 
-All domain entities should include Metadata:
+All domain entities MUST include flattened audit fields (not nested Metadata):
 
 ```protobuf
 message User {
-  core.v1.Metadata metadata = 1;
+  string user_id = 1;
   string tenant_id = 2;
-  // ... other fields
+  // ... domain-specific fields ...
+
+  // Audit fields (flattened for database efficiency)
+  google.protobuf.Timestamp created_at = N [(buf.validate.field).required = true];
+  google.protobuf.Timestamp updated_at = N+1;
+  google.protobuf.Timestamp deleted_at = N+2;  // Soft delete
+  int64 version = N+3;  // Optimistic locking
 }
 ```
+
+**Rationale:** Flattened structure enables efficient database indexing, direct filtering on timestamps, and better ORM mapping. Actor tracking (created_by, updated_by) is maintained in separate audit entity.
 
 #### Use Enums for Fixed Values
 
 ```protobuf
 enum UserStatus {
   USER_STATUS_UNSPECIFIED = 0;  // Always include UNSPECIFIED
-  USER_STATUS_ACTIVE = 1;
-  USER_STATUS_INACTIVE = 2;
+  ACTIVE = 1;
+  INACTIVE = 2;
 }
 ```
 
@@ -180,7 +190,7 @@ service UserService {
 message User {
   reserved 5, 8 to 10;  // Deprecated fields
   reserved "old_field_name";
-  
+
   string id = 1;
   string name = 2;
   // ...
@@ -189,36 +199,65 @@ message User {
 
 ### Import Guidelines
 
-Use module-relative imports:
+Use module-relative imports (no `proto/` prefix):
 
 ```protobuf
-// Good
-import "core/v1/common.proto";
-import "users/v1/users.proto";
+// Good - IDP imports
+import "idp/api/v1/services.proto";  // Top-level IDP services
+import "idp/identity/user/v1/user.proto";
+import "idp/identity/user/events/v1/events.proto";
+import "idp/identity/user/api/v1/request.proto";
+import "core/metadata/v1/metadata.proto";
+
+// Good - Core imports
+import "core/api/pagination/v1/messages.proto";
+import "core/client/v1/messages.proto";
 
 // Bad
-import "proto/core/v1/common.proto";
+import "proto/idp/identity/user/v1/user.proto";
+import "proto/core/api/pagination/v1/messages.proto";
 ```
 
 ### Package Naming
 
+**IDP Domain-First Pattern (current):**
+
 ```protobuf
-// Format: domain.version
-package users.v1;
-package billing.v2;
+// Format: geniustechspace.idp.{domain}.{subdomain}.{layer}.v1
+package geniustechspace.idp.identity.user.v1;           // Entity layer
+package geniustechspace.idp.identity.user.events.v1;    // Events layer
+package geniustechspace.idp.identity.user.api.v1;       // API layer
 ```
 
 ### Go Package Options
 
+**Legacy:**
+
 ```protobuf
 option go_package = "github.com/geniustechspace/protobuf/gen/go/users/v1;usersv1";
 ```
+
+**IDP Domain-First:**
+
+```protobuf
+// Entity layer
+option go_package = "github.com/geniustechspace/protobuf/gen/go/idp/identity/user/v1;idpidentityuserv1";
+
+// Events layer
+option go_package = "github.com/geniustechspace/protobuf/gen/go/idp/identity/user/events/v1;idpidentityusereventsv1";
+
+// API layer
+option go_package = "github.com/geniustechspace/protobuf/gen/go/idp/identity/user/api/v1;userapiv1";
+```
+
+Last segment after `;` should be concise and unique.
 
 ## Versioning Guidelines
 
 ### When to Create a New Version
 
 Create a new version (v2, v3, etc.) when you need to:
+
 - Remove fields
 - Change field types
 - Change field numbers
@@ -228,28 +267,16 @@ Create a new version (v2, v3, etc.) when you need to:
 ### Backward Compatible Changes (Same Version)
 
 You can make these changes in the same version:
+
 - Add new fields (use new field numbers)
 - Add new messages
 - Add new services
 - Add new enum values
 - Add new RPCs to existing services
 
-### Version Directory Structure
+### Field Deprecation
 
-```
-proto/
-├── users/
-│   ├── v1/
-│   │   ├── users.proto
-│   │   └── events.proto
-│   └── v2/
-│       ├── users.proto
-│       └── events.proto
-```
-
-### Deprecation
-
-Mark deprecated fields instead of removing them:
+Mark fields as deprecated instead of removing them:
 
 ```protobuf
 message User {
@@ -313,9 +340,11 @@ cd gen/python && python -c "import users.v1.users_pb2"
 
 ```markdown
 ## Description
+
 Brief description of changes
 
 ## Type of Change
+
 - [ ] New domain
 - [ ] New version
 - [ ] Backward-compatible changes
@@ -323,20 +352,24 @@ Brief description of changes
 - [ ] Bug fix
 
 ## Changes Made
+
 - Added X message
 - Updated Y service
 - Created Z documentation
 
 ## Breaking Changes
+
 List any breaking changes (should be in new version only)
 
 ## Testing
+
 - [ ] Buf lint passes
 - [ ] Buf breaking passes
 - [ ] Code generation succeeds
 - [ ] Documentation updated
 
 ## Related Issues
+
 Closes #123
 ```
 
@@ -357,30 +390,56 @@ Closes #123
 
 ## Adding a New Domain
 
-### Checklist
+### For IDP Subdomains (Recommended)
 
-- [ ] Create domain directory: `proto/newdomain/v1/`
-- [ ] Create main proto file: `newdomain.proto`
-- [ ] Create events file: `events.proto`
-- [ ] Define messages with Metadata
-- [ ] Define gRPC service
-- [ ] Define domain events
-- [ ] Create domain README
-- [ ] Update main README
+**Checklist:**
+
+- [ ] Create subdomain directory: `proto/idp/{domain}/{subdomain}/`
+- [ ] Create domain layer: `v1/{subdomain}.proto` with entity + enums
+- [ ] Add flattened audit fields: created_at, updated_at, deleted_at, version
+- [ ] Create events layer: `events/v1/events.proto` with domain events
+- [ ] Create API layer: `api/v1/` with 4 files:
+  - [ ] `api.proto` - Convenience import
+  - [ ] `request.proto` - Request messages with buf/validate
+  - [ ] `response.proto` - Response messages
+  - [ ] `service.proto` - gRPC service definition
+- [ ] Create README at each layer
+- [ ] Update `proto/idp/README.md`
 - [ ] Run `buf lint`
-- [ ] Run `buf generate`
+- [ ] Run `buf format -w`
+- [ ] Run `buf generate --path proto/idp/{domain}/{subdomain}/`
 - [ ] Test generated code
 - [ ] Submit PR
 
-### Template Structure
+**Three-Layer Structure:**
 
 ```
-proto/newdomain/
-├── v1/
-│   ├── newdomain.proto
-│   └── events.proto
-└── README.md
+proto/idp/{domain}/{subdomain}/
+├── v1/                      # Domain Layer
+│   ├── {subdomain}.proto    # Entity + enums
+│   └── README.md            # Domain documentation
+├── events/v1/               # Events Layer
+│   ├── events.proto         # Domain events
+│   └── README.md            # Events documentation
+└── api/v1/                  # API Layer
+    ├── api.proto            # Convenience import
+    ├── request.proto        # Request messages
+    ├── response.proto       # Response messages
+    ├── service.proto        # gRPC service
+    └── README.md            # API documentation
 ```
+
+### For Top-Level Domains
+
+For domains outside IDP (like contact, hcm, preference):
+
+- [ ] Create domain directory: `proto/{domain}/`
+- [ ] Create subdomain: `proto/{domain}/{subdomain}/v1/`
+- [ ] Add proto files with entities, enums, services
+- [ ] Create README files
+- [ ] Follow same validation and audit field patterns
+- [ ] Run buf lint, format, and generate
+- [ ] Submit PR
 
 ## Code Review Guidelines
 

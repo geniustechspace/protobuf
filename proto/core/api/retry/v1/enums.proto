@@ -1,0 +1,114 @@
+// Core Retry Enumerations - Version 1
+//
+// Defines retry-related enums for resilient distributed systems.
+// COMPLIANCE: SOC 2 CC7.2, CC9.1 | PCI DSS 6.5.10 | ISO 27001 A.12.6.1
+
+syntax = "proto3";
+
+package geniustechspace.core.api.retry.v1;
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Core.Api.Retry.V1";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/core/api/retry/v1;retryv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.core.api.retry.v1";
+
+// RetryCode: Why retry was triggered.
+// BACKWARDS COMPAT: Never reorder. Never reuse numbers. Use reserved ranges for new values.
+enum RetryCode {
+  // Default/unspecified retry
+  RETRY_CODE_UNSPECIFIED = 0;
+
+  // Automatic retry by client library
+  AUTOMATIC = 1;
+
+  // Manual retry by user
+  MANUAL = 2;
+
+  // Retry after network error
+  NETWORK_ERROR = 3;
+
+  // Retry after timeout
+  REQUEST_TIMEOUT = 4;
+
+  // Retry after rate limit (429 Too Many Requests)
+  RATE_LIMIT = 5;
+
+  // Retry after server error (5xx)
+  SERVER_ERROR = 6;
+
+  // Retry with exponential backoff
+  EXPONENTIAL_BACKOFF = 7;
+
+  // Circuit breaker retry
+  CIRCUIT_BREAKER = 8;
+
+  // Retry after transient error
+  TRANSIENT_ERROR = 9;
+
+  // Retry after service unavailable (503)
+  SERVICE_UNAVAILABLE = 10;
+
+  // Retry after gateway timeout (504)
+  GATEWAY_TIMEOUT = 11;
+
+  // Retry after conflict (409)
+  CONFLICT = 12;
+
+  // Retry after connection error
+  CONNECTION_ERROR = 13;
+
+  // Idempotent retry (safe to retry)
+  IDEMPOTENT = 14;
+
+  // Reserved for near-term additions
+  reserved 15 to 99;
+
+  // Reserved for future expansion
+  reserved 100 to 199;
+}
+
+// BackoffStrategy: Delay calculation algorithm.
+// BACKWARDS COMPAT: Never reorder. Never reuse numbers. Use reserved ranges for new values.
+enum BackoffStrategy {
+  BACKOFF_STRATEGY_UNSPECIFIED = 0;
+  CONSTANT = 1; // No backoff (constant delay)
+  LINEAR = 2; // Linear increase
+  EXPONENTIAL = 3; // Exponential growth (most common)
+  FIBONACCI = 4; // Fibonacci sequence
+  DECORRELATED_JITTER = 5; // AWS-recommended jitter
+  FULL_JITTER = 6; // Random between 0 and max
+  EQUAL_JITTER = 7; // Half constant, half random
+  reserved 8 to 99;
+  reserved 100 to 199;
+}
+
+// RetryPolicyType: Policy classification.
+// BACKWARDS COMPAT: Never reorder. Never reuse numbers. Use reserved ranges for new values.
+enum RetryPolicyType {
+  RETRY_POLICY_TYPE_UNSPECIFIED = 0;
+  DEFAULT = 1; // Standard operations
+  AGGRESSIVE = 2; // Critical operations (more retries)
+  CONSERVATIVE = 3; // Non-critical (fewer retries)
+  FAST = 4; // Minimal backoff
+  SLOW = 5; // Extended backoff (rate-limited)
+  CUSTOM = 6; // User-defined
+  NO_RETRY = 7; // Fail immediately
+  reserved 8 to 99;
+  reserved 100 to 199;
+}
+
+// RetryOutcome: Result of retry attempt.
+// BACKWARDS COMPAT: Never reorder. Never reuse numbers. Use reserved ranges for new values.
+enum RetryOutcome {
+  RETRY_OUTCOME_UNSPECIFIED = 0;
+  SUCCESS = 1; // Retry succeeded
+  FAILED_RETRIABLE = 2; // Failed, will retry
+  FAILED_PERMANENT = 3; // Failed, no more retries
+  EXHAUSTED = 4; // Max attempts reached
+  DEADLINE_EXCEEDED = 5; // Timeout exceeded
+  BUDGET_EXHAUSTED = 6; // Retry budget exhausted
+  CANCELLED = 7; // User cancelled
+  CIRCUIT_OPENED = 8; // Circuit breaker opened
+  reserved 9 to 99;
+  reserved 100 to 199;
+}

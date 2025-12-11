@@ -7,17 +7,20 @@ Get started with the Genius Tech Space protobuf schemas in 5 minutes!
 ### Install Buf CLI
 
 **macOS**:
+
 ```bash
 brew install bufbuild/buf/buf
 ```
 
 **Linux**:
+
 ```bash
 curl -sSL https://github.com/bufbuild/buf/releases/download/v1.47.2/buf-Linux-x86_64 -o /usr/local/bin/buf
 chmod +x /usr/local/bin/buf
 ```
 
 **Windows** (Chocolatey):
+
 ```bash
 choco install buf
 ```
@@ -51,29 +54,35 @@ buf generate
 ```
 
 This generates code in `gen/` directory:
+
 ```
 gen/
-├── go/          # Go packages
-├── python/      # Python modules
-├── java/        # Java classes
-├── typescript/  # TypeScript/JavaScript
-├── csharp/      # C# classes
-└── docs/        # Documentation
+├── go/          # Go packages with gRPC
+├── rust/        # Rust with Prost and Tonic
+├── java/        # Java classes with gRPC
+├── kotlin/      # Kotlin classes
+├── swift/       # Swift with gRPC
+├── dart/        # Dart classes
+├── python/      # Python modules with gRPC
+└── typescript/  # TypeScript (Connect, JS, gRPC-Web)
 ```
 
 ### Generate Specific Domain
 
 ```bash
-# Generate only users domain
-buf generate --path proto/users/v1/
+# Generate entire IDP domain (all subdomains)
+buf generate --path proto/idp/
 
-# Generate only auth domain
-buf generate --path proto/auth/v1/
+# Generate specific IDP subdomain
+buf generate --path proto/idp/identity/user/
+
+# Generate other domains
+buf generate --path proto/<domain/subdomain>/v1/
 ```
 
 ## 4. Use Generated Code
 
-### Go Example
+### Go Example - IDP Domain-First
 
 ```go
 package main
@@ -81,30 +90,38 @@ package main
 import (
     "context"
     "log"
-    
+
     "google.golang.org/grpc"
-    usersv1 "github.com/geniustechspace/protobuf/gen/go/users/v1"
+
+    // IDP imports - modular structure
+    userv1 "github.com/geniustechspace/protobuf/gen/go/idp/identity/user/v1"
+    userapiv1 "github.com/geniustechspace/protobuf/gen/go/idp/identity/user/api/v1"
 )
 
 func main() {
     conn, _ := grpc.Dial("localhost:9090", grpc.WithInsecure())
     defer conn.Close()
-    
-    client := usersv1.NewUserServiceClient(conn)
-    
-    resp, err := client.CreateUser(context.Background(), &usersv1.CreateUserRequest{
-        TenantId:  "tenant_123",
-        Email:     "user@example.com",
-        Username:  "johndoe",
-        FirstName: "John",
-        LastName:  "Doe",
+
+    // Use API layer for service
+    client := userapiv1.NewUserServiceClient(conn)
+
+    // Use domain layer types in request
+    resp, err := client.CreateUser(context.Background(), &userapiv1.CreateUserRequest{
+        TenantId: "tenant_123",
+        Email:    "user@example.com",
+        Username: "johndoe",
+        Profile: &userv1.UserProfile{
+            FirstName: "John",
+            LastName:  "Doe",
+        },
     })
-    
+
     if err != nil {
         log.Fatal(err)
     }
-    
-    log.Printf("Created user: %s", resp.User.Metadata.Id)
+
+    // Response contains domain entity
+    log.Printf("Created user: %s", resp.User.UserId)
 }
 ```
 
@@ -112,28 +129,25 @@ func main() {
 
 ```python
 import grpc
-from gen.python.users.v1 import users_pb2, users_pb2_grpc
+from gen.python.idp.identity.user.v1 import user_pb2
+from gen.python.idp.identity.user.api.v1 import service_pb2_grpc
 
 channel = grpc.insecure_channel('localhost:9090')
-client = users_pb2_grpc.UserServiceStub(channel)
+client = service_pb2_grpc.UserServiceStub(channel)
 
-response = client.CreateUser(users_pb2.CreateUserRequest(
-    tenant_id='tenant_123',
-    email='user@example.com',
-    username='johndoe',
-    first_name='John',
-    last_name='Doe'
-))
-
-print(f"Created user: {response.user.metadata.id}")
+# Use generated types
+user = user_pb2.User(user_id='usr_123')
 ```
 
-### TypeScript Example
+### TypeScript Example - IDP Domain-First
 
 ```typescript
 import { createPromiseClient } from "@connectrpc/connect";
 import { createGrpcTransport } from "@connectrpc/connect-node";
-import { UserService } from "./gen/typescript/users/v1/users_connect";
+
+// IDP modular imports
+import { UserService } from "./gen/typescript/idp/identity/user/api/v1/service_connect";
+import type { User } from "./gen/typescript/idp/identity/user/v1/user_pb";
 
 const transport = createGrpcTransport({
   baseUrl: "http://localhost:9090",
@@ -145,55 +159,61 @@ const response = await client.createUser({
   tenantId: "tenant_123",
   email: "user@example.com",
   username: "johndoe",
-  firstName: "John",
-  lastName: "Doe",
+  profile: {
+    firstName: "John",
+    lastName: "Doe",
+  },
 });
 
-console.log(`Created user: ${response.user?.metadata?.id}`);
+console.log(`Created user: ${response.user?.userId}`);
 ```
 
 ## 5. Explore Domains
 
+### IDP Domain (Domain-First Architecture)
+
+Enterprise Identity Provider with three-layer structure
+
+```bash
+# Overview
+cat proto/idp/README.md
+cat proto/idp/ARCHITECTURE.md
+
+# Explore User subdomain (three layers)
+ls proto/idp/identity/user/v1/          # Domain layer - User entity
+ls proto/idp/identity/user/events/v1/   # Events layer - UserCreated, etc.
+ls proto/idp/identity/user/api/v1/      # API layer - UserService (modular)
+
+# View modular API files
+cat proto/idp/identity/user/api/v1/service.proto   # gRPC service
+cat proto/idp/identity/user/api/v1/request.proto   # Request messages
+cat proto/idp/identity/user/api/v1/response.proto  # Response messages
+
+# List all subdomains
+ls proto/idp/identity/  # user, group, organization, profile
+ls proto/idp/authn/     # credential, session, mfa
+ls proto/idp/authz/     # permission, role, policy
+```
+
 ### Core Domain
-Common types, tenant context, events
+
+Common types, API patterns, metadata
+
 ```bash
 cat proto/core/README.md
+ls proto/core/api/      # Pagination, errors, circuit breaker, retry
+ls proto/core/metadata/ # Entity metadata
 ```
 
-### Auth Domain
-Authentication, sessions, tokens
-```bash
-cat proto/auth/README.md
-```
+### Other Domains
 
-### Users Domain
-User management, profiles
-```bash
-ls proto/users/v1/
-```
+Contact, HCM, Preference, Storage
 
-### Tenants Domain
-Multi-tenant management
 ```bash
-cat proto/tenants/README.md
-```
-
-### Billing Domain
-Subscriptions, invoices, payments
-```bash
-ls proto/billing/v1/
-```
-
-### Access Policy Domain
-Roles, permissions, authorization
-```bash
-ls proto/access_policy/v1/
-```
-
-### Notifications Domain
-Multi-channel notifications
-```bash
-ls proto/notifications/v1/
+ls proto/contact/address/v1/  # Address management
+ls proto/contact/phone/v1/    # Phone management
+ls proto/hcm/employee/v1/     # Employee data
+ls proto/preference/user/v1/  # User preferences
 ```
 
 ## 6. Make Changes
@@ -265,7 +285,7 @@ tree proto/
 
 ## 8. CI/CD
 
-The repository uses the **buf-action** GitHub Action for streamlined CI/CD:
+The repository can use the **buf-action** GitHub Action for streamlined CI/CD:
 
 ```yaml
 # .github/workflows/buf.yml
@@ -276,44 +296,52 @@ The repository uses the **buf-action** GitHub Action for streamlined CI/CD:
     format: true
     lint: true
     breaking: true
-    pr_comment: true  # Automatic PR comments
+    pr_comment: true # Automatic PR comments
 ```
 
 Benefits:
+
 - ✅ **Consolidated Action**: Single action replaces multiple setup steps
 - ✅ **Built-in Best Practices**: Automatic configuration
 - ✅ **PR Comments**: Status comments on pull requests
 - ✅ **Git Integration**: Enhanced integration with Git data
 - ✅ **BSR Publishing**: Easy Buf Schema Registry publishing
 
-Workflow runs on:
+Can run on:
+
 - Every push
 - Every pull request
 
 ## 9. Documentation
 
 ### Main Documentation
+
 - [README.md](README.md) - Overview and features
-- [ARCHITECTURE.md](docs/ARCHITECTURE.md) - Design patterns
-- [CLIENT_GENERATION.md](docs/CLIENT_GENERATION.md) - Generate clients
-- [DEPLOYMENT.md](docs/DEPLOYMENT.md) - Deploy services
-- [VALIDATION.md](docs/VALIDATION.md) - Protovalidate guide
 - [CONTRIBUTING.md](CONTRIBUTING.md) - Contribution guide
+- [QUICK_START.md](QUICK_START.md) - This guide
+- [SUMMARY.md](SUMMARY.md) - Implementation summary
+- [VALIDATION.md](docs/VALIDATION.md) - Protovalidate guide
+- [PROTO_DOCUMENTATION_STANDARD.md](docs/PROTO_DOCUMENTATION_STANDARD.md) - Documentation standards
 
 ### Domain Documentation
+
+- [IDP Architecture](proto/idp/ARCHITECTURE.md)
+- [IDP Overview](proto/idp/README.md)
 - [Core](proto/core/README.md)
-- [Auth](proto/auth/README.md)
-- [Tenants](proto/tenants/README.md)
+- Plus 49 README files across all domains
 
 ## 10. Support
 
 ### Issues
+
 Open an issue: https://github.com/geniustechspace/protobuf/issues
 
 ### Questions
+
 Start a discussion: https://github.com/geniustechspace/protobuf/discussions
 
 ### Community
+
 Join Discord: [link]
 
 ## Quick Reference
@@ -333,18 +361,17 @@ buf dep update            # Update dependencies
 ```
 protobuf/
 ├── proto/                 # Protocol buffer definitions
-│   ├── core/             # Common types
-│   ├── auth/             # Authentication
-│   ├── users/            # User management
-│   ├── access_policy/    # Authorization
-│   ├── tenants/          # Multi-tenancy
-│   ├── billing/          # Payments
-│   └── notifications/    # Notifications
+│   ├── core/             # Foundation types
+│   ├── idp/              # Identity Provider (10 subdomains)
+│   ├── contact/          # Contact information
+│   ├── hcm/              # Human Capital Management
+│   ├── preference/       # User preferences
+│   └── storage/          # Storage (reserved)
 ├── gen/                  # Generated code (gitignored)
 ├── docs/                 # Documentation
 ├── buf.yaml              # Buf configuration
 ├── buf.gen.yaml          # Code generation config
-└── .github/workflows/    # CI/CD pipelines
+└── .github/workflows/    # CI/CD pipelines (when configured)
 ```
 
 ### Key Concepts

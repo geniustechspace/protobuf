@@ -1,0 +1,463 @@
+// DOMAIN: Identity Provider - Authentication API
+// COMPLIANCE: SOC 2 CC6.1, NIST 800-63B, FIDO2, WebAuthn Level 2
+// SECURITY: Public endpoints, rate-limited
+// PII: Contains credentials (encrypted/hashed only)
+//
+// ⚠️ DEPRECATED: This consolidated API file is deprecated.
+// Use modular subdomain APIs instead:
+// - proto/idp/authn/credential/api/v1/ for credential operations
+// - proto/idp/authn/session/api/v1/ for session operations
+// - proto/idp/authn/mfa/api/v1/ for MFA operations
+// See proto/idp/api/v1/MIGRATION.md for migration guide.
+
+syntax = "proto3";
+
+package geniustechspace.idp.api.v1;
+
+import "buf/validate/validate.proto";
+import "idp/api/v1/enums.proto";
+import "idp/authn/credential/v1/credential.proto";
+import "idp/authn/mfa/v1/mfa.proto";
+import "idp/authn/session/v1/session.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Idp.Api.V1";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/idp/api/v1;idpapiv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.idp.api.v1";
+
+// =============================================================================
+// AUTHENTICATION API
+// =============================================================================
+
+// AuthenticateRequest authenticates user.
+message AuthenticateRequest {
+  // Tenant path. REQUIRED.
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Credential proof. REQUIRED.
+  oneof credential {
+    // Password authentication.
+    PasswordCredential password = 2;
+
+    // Email magic link.
+    EmailCredential email = 3;
+
+    // SMS OTP.
+    SmsCredential sms = 4;
+
+    // WebAuthn/FIDO2.
+    WebAuthnCredential webauthn = 5;
+
+    // Biometric.
+    BiometricCredential biometric = 6;
+
+    // Social provider.
+    SocialCredential social = 7;
+
+    // API key.
+    ApiKeyCredential api_key = 8;
+
+    // Certificate.
+    CertificateCredential certificate = 9;
+  }
+
+  // Client metadata.
+  ClientContext client_context = 10;
+}
+
+// PasswordCredential for password auth.
+message PasswordCredential {
+  // Username or email. REQUIRED.
+  string identifier = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Password. REQUIRED.
+  // SECURITY: Never logged, hashed immediately
+  string password = 2 [(buf.validate.field).string.max_len = 512];
+}
+
+// EmailCredential for magic link.
+message EmailCredential {
+  // Email address. REQUIRED.
+  string email = 1 [(buf.validate.field).string.email = true];
+
+  // Verification token. REQUIRED.
+  string token = 2 [(buf.validate.field).string.max_len = 512];
+}
+
+// SmsCredential for SMS OTP.
+message SmsCredential {
+  // Phone number. REQUIRED.
+  string phone_number = 1 [(buf.validate.field).string.max_len = 512];
+
+  // OTP code. REQUIRED.
+  string code = 2 [(buf.validate.field).string = {
+    min_len: 4
+    max_len: 8
+  }];
+}
+
+// WebAuthnCredential for FIDO2/WebAuthn.
+message WebAuthnCredential {
+  // Credential ID. REQUIRED.
+  bytes credential_id = 1 [(buf.validate.field).bytes.min_len = 1];
+
+  // Client data JSON. REQUIRED.
+  bytes client_data_json = 2 [(buf.validate.field).bytes.min_len = 1];
+
+  // Authenticator data. REQUIRED.
+  bytes authenticator_data = 3 [(buf.validate.field).bytes.min_len = 1];
+
+  // Signature. REQUIRED.
+  bytes signature = 4 [(buf.validate.field).bytes.min_len = 1];
+
+  // User handle. Optional.
+  bytes user_handle = 5;
+}
+
+// BiometricCredential for biometric auth.
+message BiometricCredential {
+  // Biometric type.
+  string type = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Biometric data (hashed/encrypted).
+  bytes data = 2 [(buf.validate.field).bytes.min_len = 1];
+}
+
+// SocialCredential for social login.
+message SocialCredential {
+  // Provider (google, github, etc.). REQUIRED.
+  string provider = 1 [(buf.validate.field).string.max_len = 512];
+
+  // OAuth/OIDC code. REQUIRED.
+  string code = 2 [(buf.validate.field).string.max_len = 512];
+
+  // Redirect URI. Optional.
+  string redirect_uri = 3;
+}
+
+// ApiKeyCredential for API key auth.
+message ApiKeyCredential {
+  // API key. REQUIRED.
+  string api_key = 1 [(buf.validate.field).string.max_len = 512];
+}
+
+// CertificateCredential for certificate auth.
+message CertificateCredential {
+  // Certificate PEM. REQUIRED.
+  string certificate = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Signature. REQUIRED.
+  bytes signature = 2 [(buf.validate.field).bytes.min_len = 1];
+}
+
+// ClientContext provides client metadata.
+message ClientContext {
+  // IP address.
+  string ip_address = 1;
+
+  // User agent.
+  string user_agent = 2;
+
+  // Device fingerprint.
+  string device_fingerprint = 3;
+
+  // Geolocation.
+  string geolocation = 4;
+}
+
+// AuthenticateResponse returns session or MFA challenge.
+message AuthenticateResponse {
+  // Authentication status.
+  AuthenticationStatus status = 1;
+
+  // Session if authentication complete.
+  geniustechspace.idp.authn.session.v1.Session session = 2;
+
+  // Access token if authentication complete.
+  string access_token = 3;
+
+  // Refresh token if authentication complete.
+  string refresh_token = 4;
+
+  // Token expiry (Unix timestamp).
+  int64 expires_at = 5;
+
+  // MFA challenge if MFA required.
+  MfaChallenge mfa_challenge = 6;
+
+  // Risk assessment.
+  RiskAssessment risk = 7;
+}
+
+// MfaChallenge for MFA step.
+message MfaChallenge {
+  // Challenge ID.
+  string challenge_id = 1;
+
+  // Required MFA methods.
+  repeated string methods = 2;
+
+  // Challenge expires at (Unix timestamp).
+  int64 expires_at = 3;
+}
+
+// RiskAssessment for adaptive auth.
+message RiskAssessment {
+  // Risk level: low, medium, high, critical.
+  string level = 1;
+
+  // Risk score (0-100).
+  int32 score = 2;
+
+  // Risk factors detected.
+  repeated string factors = 3;
+
+  // Recommended actions.
+  repeated string actions = 4;
+}
+
+// =============================================================================
+// MFA API
+// =============================================================================
+
+// VerifyMfaRequest verifies MFA challenge.
+message VerifyMfaRequest {
+  // Tenant path. REQUIRED.
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Challenge ID from AuthenticateResponse. REQUIRED.
+  string challenge_id = 2 [(buf.validate.field).string.max_len = 512];
+
+  // MFA proof. REQUIRED.
+  oneof proof {
+    // TOTP code.
+    TotpProof totp = 3;
+
+    // SMS OTP code.
+    SmsOtpProof sms = 4;
+
+    // Email OTP code.
+    EmailOtpProof email = 5;
+
+    // WebAuthn.
+    WebAuthnProof webauthn = 6;
+
+    // Recovery code.
+    RecoveryCodeProof recovery = 7;
+  }
+}
+
+// TotpProof for TOTP MFA.
+message TotpProof {
+  // TOTP code. REQUIRED.
+  string code = 1 [(buf.validate.field).string = {
+    min_len: 6
+    max_len: 8
+  }];
+}
+
+// SmsOtpProof for SMS OTP MFA.
+message SmsOtpProof {
+  // SMS code. REQUIRED.
+  string code = 1 [(buf.validate.field).string = {
+    min_len: 4
+    max_len: 8
+  }];
+}
+
+// EmailOtpProof for email OTP MFA.
+message EmailOtpProof {
+  // Email code. REQUIRED.
+  string code = 1 [(buf.validate.field).string = {
+    min_len: 4
+    max_len: 8
+  }];
+}
+
+// WebAuthnProof for WebAuthn MFA.
+message WebAuthnProof {
+  // Credential ID. REQUIRED.
+  bytes credential_id = 1 [(buf.validate.field).bytes.min_len = 1];
+
+  // Client data JSON. REQUIRED.
+  bytes client_data_json = 2 [(buf.validate.field).bytes.min_len = 1];
+
+  // Authenticator data. REQUIRED.
+  bytes authenticator_data = 3 [(buf.validate.field).bytes.min_len = 1];
+
+  // Signature. REQUIRED.
+  bytes signature = 4 [(buf.validate.field).bytes.min_len = 1];
+}
+
+// RecoveryCodeProof for recovery code.
+message RecoveryCodeProof {
+  // Recovery code. REQUIRED.
+  string code = 1 [(buf.validate.field).string.max_len = 512];
+}
+
+message VerifyMfaResponse {
+  // Verification status.
+  bool verified = 1;
+
+  // Session if verified.
+  geniustechspace.idp.authn.session.v1.Session session = 2;
+
+  // Access token.
+  string access_token = 3;
+
+  // Refresh token.
+  string refresh_token = 4;
+
+  // Token expiry (Unix timestamp).
+  int64 expires_at = 5;
+}
+
+// =============================================================================
+// SESSION API
+// =============================================================================
+
+// RefreshTokenRequest refreshes access token.
+message RefreshTokenRequest {
+  // Tenant path. REQUIRED.
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Refresh token. REQUIRED.
+  string refresh_token = 2 [(buf.validate.field).string.max_len = 512];
+}
+
+message RefreshTokenResponse {
+  // New access token.
+  string access_token = 1;
+
+  // New refresh token (rotated).
+  string refresh_token = 2;
+
+  // Token expiry (Unix timestamp).
+  int64 expires_at = 3;
+}
+
+// ValidateTokenRequest validates token.
+message ValidateTokenRequest {
+  // Tenant path. REQUIRED.
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Token to validate. REQUIRED.
+  string token = 2 [(buf.validate.field).string.max_len = 512];
+}
+
+message ValidateTokenResponse {
+  // Valid indicator.
+  bool valid = 1;
+
+  // User ID if valid.
+  string user_id = 2;
+
+  // Session ID if valid.
+  string session_id = 3;
+
+  // Expiry (Unix timestamp).
+  int64 expires_at = 4;
+
+  // Scopes granted.
+  repeated string scopes = 5;
+}
+
+// LogoutRequest ends session.
+message LogoutRequest {
+  // Tenant path. REQUIRED.
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Session ID or access token. REQUIRED.
+  string session_id = 2 [(buf.validate.field).string.max_len = 512];
+}
+
+message LogoutResponse {
+  // Success indicator.
+  bool success = 1;
+}
+
+// ListSessionsRequest lists user sessions.
+message ListSessionsRequest {
+  // Tenant path. REQUIRED.
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // User ID. REQUIRED.
+  string user_id = 2 [(buf.validate.field).string.max_len = 512];
+}
+
+message ListSessionsResponse {
+  // Active sessions.
+  repeated geniustechspace.idp.authn.session.v1.Session sessions = 1;
+}
+
+// RevokeSessionRequest revokes session.
+message RevokeSessionRequest {
+  // Tenant path. REQUIRED.
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Session ID. REQUIRED.
+  string session_id = 2 [(buf.validate.field).string.max_len = 512];
+}
+
+message RevokeSessionResponse {
+  // Success indicator.
+  bool success = 1;
+}
+
+// =============================================================================
+// PASSWORD API
+// =============================================================================
+
+// ChangePasswordRequest changes password.
+message ChangePasswordRequest {
+  // Tenant path. REQUIRED.
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // User ID. REQUIRED.
+  string user_id = 2 [(buf.validate.field).string.max_len = 512];
+
+  // Current password. REQUIRED.
+  string current_password = 3 [(buf.validate.field).string.max_len = 512];
+
+  // New password. REQUIRED.
+  string new_password = 4 [(buf.validate.field).string.min_len = 8];
+}
+
+message ChangePasswordResponse {
+  // Success indicator.
+  bool success = 1;
+}
+
+// ResetPasswordRequest initiates password reset.
+message ResetPasswordRequest {
+  // Tenant path. REQUIRED.
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Email or username. REQUIRED.
+  string identifier = 2 [(buf.validate.field).string.max_len = 512];
+}
+
+message ResetPasswordResponse {
+  // Reset token sent.
+  bool sent = 1;
+
+  // Token expiry (Unix timestamp).
+  int64 expires_at = 2;
+}
+
+// ConfirmPasswordResetRequest confirms password reset.
+message ConfirmPasswordResetRequest {
+  // Tenant path. REQUIRED.
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Reset token. REQUIRED.
+  string token = 2 [(buf.validate.field).string.max_len = 512];
+
+  // New password. REQUIRED.
+  string new_password = 3 [(buf.validate.field).string.min_len = 8];
+}
+
+message ConfirmPasswordResetResponse {
+  // Success indicator.
+  bool success = 1;
+}

@@ -21,13 +21,13 @@ option java_package = "com.geniustechspace.protobuf.idp.api.v1";
 // AuthContext provides authentication context for requests.
 // SECURITY: Includes authentication proof and session binding.
 message AuthContext {
-  // Tenant ID. REQUIRED.
+  // Tenant path. REQUIRED.
   // PII: No - organizational identifier
-  string tenant_id = 1 [(buf.validate.field).string.min_len = 1];
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
 
   // User ID. REQUIRED.
   // PII: Yes - GDPR Article 4(1) personal identifier
-  string user_id = 2 [(buf.validate.field).string.min_len = 1];
+  string user_id = 2 [(buf.validate.field).string.max_len = 512];
 
   // Session ID. OPTIONAL.
   // Links request to active session for tracking.
@@ -66,7 +66,7 @@ message AuthContext {
 message Principal {
   // Principal ID. REQUIRED.
   // PII: Yes - GDPR Article 4(1) personal identifier
-  string id = 1 [(buf.validate.field).string.min_len = 1];
+  string id = 1 [(buf.validate.field).string.max_len = 512];
 
   // Principal type. REQUIRED.
   PrincipalType type = 2 [(buf.validate.field).enum.defined_only = true];
@@ -79,8 +79,8 @@ message Principal {
   // PII: Yes - GDPR Article 4(1) personal identifier
   string email = 4 [(buf.validate.field).string.email = true];
 
-  // Tenant ID. REQUIRED.
-  string tenant_id = 5 [(buf.validate.field).string.min_len = 1];
+  // Tenant path. REQUIRED.
+  string tenant_path = 5 [(buf.validate.field).string.max_len = 512];
 
   // Roles assigned. OPTIONAL.
   repeated string roles = 6;
@@ -95,10 +95,10 @@ message Principal {
 // PrincipalType represents entity type.
 enum PrincipalType {
   PRINCIPAL_TYPE_UNSPECIFIED = 0;
-  USER = 1; // Human user
-  SERVICE_ACCOUNT = 2; // Service/application account
-  API_CLIENT = 3; // API client
-  DEVICE = 4; // IoT device
+  PRINCIPAL_USER = 1; // Human user
+  PRINCIPAL_SERVICE_ACCOUNT = 2; // Service/application account
+  PRINCIPAL_API_CLIENT = 3; // API client
+  PRINCIPAL_DEVICE = 4; // IoT device
   reserved 5 to 20;
 }
 
@@ -106,17 +106,17 @@ enum PrincipalType {
 // SECURITY: Never include actual credential values (passwords, keys, secrets).
 message Credential {
   // Credential ID. REQUIRED.
-  string id = 1 [(buf.validate.field).string.min_len = 1];
+  string id = 1 [(buf.validate.field).string.max_len = 512];
 
   // Credential type. REQUIRED.
   CredentialType type = 2 [(buf.validate.field).enum.defined_only = true];
 
   // User ID. REQUIRED.
   // PII: Yes - GDPR Article 4(1) personal identifier
-  string user_id = 3 [(buf.validate.field).string.min_len = 1];
+  string user_id = 3 [(buf.validate.field).string.max_len = 512];
 
-  // Tenant ID. REQUIRED.
-  string tenant_id = 4 [(buf.validate.field).string.min_len = 1];
+  // Tenant path. REQUIRED.
+  string tenant_path = 4 [(buf.validate.field).string.max_len = 512];
 
   // Display name. OPTIONAL.
   // E.g., "YubiKey 5C", "Touch ID", "Work Phone"
@@ -153,42 +153,42 @@ message Credential {
 // CredentialType represents credential mechanism.
 enum CredentialType {
   CREDENTIAL_TYPE_UNSPECIFIED = 0;
-  PASSWORD = 1; // Password (hashed)
-  WEBAUTHN = 2; // WebAuthn/FIDO2 credential
-  TOTP = 3; // TOTP secret
-  EMAIL = 4; // Email address (for magic link)
-  PHONE = 5; // Phone number (for SMS)
-  BIOMETRIC = 6; // Biometric template
-  API_KEY = 7; // API key
-  CERTIFICATE = 8; // X.509 certificate
-  SOCIAL = 9; // Social provider link
-  BACKUP_CODE = 10; // Backup recovery code
+  CREDENTIAL_PASSWORD = 1; // Password (hashed)
+  CREDENTIAL_WEBAUTHN = 2; // WebAuthn/FIDO2 credential
+  CREDENTIAL_TOTP = 3; // TOTP secret
+  CREDENTIAL_EMAIL = 4; // Email address (for magic link)
+  CREDENTIAL_PHONE = 5; // Phone number (for SMS)
+  CREDENTIAL_BIOMETRIC = 6; // Biometric template
+  CREDENTIAL_API_KEY = 7; // API key
+  CREDENTIAL_CERTIFICATE = 8; // X.509 certificate
+  CREDENTIAL_SOCIAL = 9; // Social provider link
+  CREDENTIAL_BACKUP_CODE = 10; // Backup recovery code
   reserved 11 to 30;
 }
 
 // CredentialStatus represents credential state.
 enum CredentialStatus {
   CREDENTIAL_STATUS_UNSPECIFIED = 0;
-  ACTIVE = 1; // Active and usable
-  INACTIVE = 2; // Temporarily inactive
-  SUSPENDED = 3; // Suspended (security concern)
-  EXPIRED = 4; // Expired (time-based)
-  REVOKED = 5; // Permanently revoked
-  PENDING_VERIFICATION = 6; // Awaiting verification
+  CREDENTIAL_ACTIVE = 1; // Active and usable
+  CREDENTIAL_INACTIVE = 2; // Temporarily inactive
+  CREDENTIAL_SUSPENDED = 3; // Suspended (security concern)
+  CREDENTIAL_EXPIRED = 4; // Expired (time-based)
+  CREDENTIAL_REVOKED = 5; // Permanently revoked
+  CREDENTIAL_PENDING_VERIFICATION = 6; // Awaiting verification
   reserved 7 to 20;
 }
 
 // PolicyViolation represents a policy constraint violation.
 message PolicyViolation {
   // Policy ID. REQUIRED.
-  string policy_id = 1 [(buf.validate.field).string.min_len = 1];
+  string policy_id = 1 [(buf.validate.field).string.max_len = 512];
 
   // Violation type. REQUIRED.
-  string violation_type = 2 [(buf.validate.field).string.min_len = 1];
+  string violation_type = 2 [(buf.validate.field).string.max_len = 512];
 
   // Message. REQUIRED.
   // Human-readable description.
-  string message = 3 [(buf.validate.field).string.min_len = 1];
+  string message = 3 [(buf.validate.field).string.max_len = 512];
 
   // Field. OPTIONAL.
   // Field that violated the policy.
@@ -201,9 +201,9 @@ message PolicyViolation {
 // PolicyViolationSeverity represents violation severity.
 enum PolicyViolationSeverity {
   POLICY_VIOLATION_SEVERITY_UNSPECIFIED = 0;
-  INFO = 1; // Informational
-  WARNING = 2; // Warning (allowed but discouraged)
-  ERROR = 3; // Error (blocked)
-  CRITICAL = 4; // Critical (security threat)
+  POLICY_INFO = 1; // Informational
+  POLICY_WARNING = 2; // Warning (allowed but discouraged)
+  POLICY_ERROR = 3; // Error (blocked)
+  POLICY_CRITICAL = 4; // Critical (security threat)
   reserved 5 to 10;
 }

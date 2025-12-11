@@ -1,0 +1,77 @@
+// DOMAIN: Contact - Phone Numbers
+// COMPLIANCE: GDPR Article 5, SOC 2 CC6.1
+// SECURITY: PII data - encryption at rest required
+// PII: Yes - phone number is personal identifier
+
+syntax = "proto3";
+
+package geniustechspace.contact.phone.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/timestamp.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Contact.Phone.V1";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/contact/phone/v1;contactphonev1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.contact.phone.v1";
+
+// UserPhoneNumber - user's phone numbers.
+// PII: Yes - GDPR Article 4(1) personal identifier.
+// MULTI-RECORD: Users can have multiple phone numbers (mobile, home, work, fax).
+// USAGE: Contact, 2FA/MFA, SMS notifications, voice calls, verification.
+message UserPhoneNumber {
+  // Phone number ID. Primary key.
+  string phone_id = 1 [(buf.validate.field).string.max_len = 512];
+
+  // User ID. Foreign key to identity system.
+  string user_id = 2 [(buf.validate.field).string.max_len = 512];
+
+  // Hierarchical tenant path for nested multi-tenancy.
+  // Examples: "acme-corp", "acme-corp/customer-1", "acme-corp/customer-1/sub-org"
+  // ISOLATION: Supports unlimited nesting levels for complex B2B2B... scenarios.
+  string tenant_path = 3 [(buf.validate.field).string.max_len = 512];
+
+  // Phone number type (mobile, home, work, fax, etc.).
+  string phone_type = 4 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 50
+  }];
+
+  // Phone number in E.164 format (+1234567890).
+  // VALIDATION: Must start with + followed by country code and number.
+  string number = 5 [(buf.validate.field).string.pattern = "^\\+[1-9]\\d{1,14}$"];
+
+  // Country code (extracted from E.164).
+  string country_code = 6;
+
+  // Extension (for business phones).
+  string extension = 7 [(buf.validate.field).string.max_len = 10];
+
+  // Verified flag.
+  // COMPLIANCE: Required for 2FA/MFA usage.
+  bool verified = 8;
+
+  // Verification timestamp.
+  google.protobuf.Timestamp verified_at = 9;
+
+  // Primary phone flag (one primary per type per user).
+  bool is_primary = 10;
+
+  reserved 11 to 19;
+
+  // Created timestamp.
+  google.protobuf.Timestamp created_at = 20 [(buf.validate.field).required = true];
+
+  // Last updated timestamp.
+  google.protobuf.Timestamp updated_at = 21;
+
+  // Deletion timestamp (soft delete).
+  google.protobuf.Timestamp deleted_at = 22;
+
+  reserved 23 to 29;
+
+  // Optimistic locking version.
+  int64 version = 30 [(buf.validate.field).int64.gte = 1];
+
+  reserved 31 to 39;
+}

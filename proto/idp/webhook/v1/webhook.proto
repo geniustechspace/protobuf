@@ -1,0 +1,154 @@
+// DOMAIN: IDP - Webhooks
+// PURPOSE: Event-driven integrations and notifications
+// SECURITY: HMAC signature verification for webhook authenticity
+
+syntax = "proto3";
+
+package geniustechspace.idp.webhook.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/timestamp.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Idp.Webhook.V1";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/idp/webhook/v1;idpwebhookv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.idp.webhook.v1";
+
+// WebhookSubscription - webhook endpoint configuration.
+message WebhookSubscription {
+  // Webhook subscription ID. REQUIRED.
+  string id = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Tenant path. REQUIRED.
+  string tenant_path = 2 [(buf.validate.field).string.max_len = 512];
+
+  // Webhook endpoint URL. REQUIRED.
+  // VALIDATION: Must be valid HTTPS URL for production environments
+  string url = 3 [(buf.validate.field).string = {
+    uri: true
+    min_len: 1
+    max_len: 2048
+  }];
+
+  // Event types to subscribe to. REQUIRED. At least one event type must be specified.
+  // Example: ["user.created", "user.updated", "user.deleted"]
+  repeated string event_types = 4 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 100
+    items: {
+      string: {
+        min_len: 1
+        max_len: 128
+        pattern: "^[a-z][a-z0-9_.]*$"
+      }
+    }
+  }];
+
+  // Webhook status. REQUIRED.
+  WebhookStatus status = 5 [(buf.validate.field).enum.defined_only = true];
+
+  // HMAC secret for signature verification. REQUIRED.
+  // SECURITY: Used to sign webhook payloads for authenticity verification
+  string secret = 6 [(buf.validate.field).string = {
+    min_len: 32
+    max_len: 512
+  }];
+
+  // Maximum number of retry attempts. Optional, defaults to 3.
+  // VALIDATION: Must be between 0 and 10
+  int32 max_retries = 7 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 10
+  }];
+
+  // Timeout in seconds for webhook delivery. Optional, defaults to 30.
+  // VALIDATION: Must be between 1 and 300 seconds (5 minutes)
+  int32 timeout_seconds = 8 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 300
+  }];
+
+  // Custom HTTP headers to include in webhook requests. Optional.
+  // Format: "Header-Name: Header-Value"
+  repeated string custom_headers = 9 [(buf.validate.field).repeated = {
+    max_items: 20
+    items: {
+      string: {
+        max_len: 512
+        pattern: "^[A-Za-z0-9-]+:\\s*.+$"
+      }
+    }
+  }];
+
+  // Created timestamp. IMMUTABLE after creation.
+  // COMPLIANCE: SOC 2 CC6.3, GDPR Article 30 (audit trail)
+  google.protobuf.Timestamp created_at = 10 [(buf.validate.field).required = true];
+
+  // Last updated timestamp.
+  // COMPLIANCE: SOC 2 CC6.3 (change tracking)
+  google.protobuf.Timestamp updated_at = 11;
+
+  // Deletion timestamp. If set, entity is soft deleted.
+  // COMPLIANCE: GDPR Article 17, SOC 2 CC6.3 (deletion audit trail)
+  // QUERY: Use "WHERE deleted_at IS NULL" for active records
+  google.protobuf.Timestamp deleted_at = 12;
+
+  // Optimistic locking version counter. Incremented on each update.
+  // COMPLIANCE: SOC 2 CC6.1 (data integrity, concurrent modification protection)
+  int64 version = 13;
+}
+
+enum WebhookStatus {
+  WEBHOOK_STATUS_UNSPECIFIED = 0;
+  ACTIVE = 1;
+  PAUSED = 2;
+  FAILED = 3;
+  DISABLED = 4;
+}
+
+// WebhookDelivery - record of webhook delivery attempt.
+message WebhookDelivery {
+  // Delivery attempt ID. REQUIRED.
+  string id = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Webhook subscription ID. REQUIRED.
+  string subscription_id = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 512
+  }];
+
+  // Event type that triggered the webhook. REQUIRED.
+  string event_type = 3 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 128
+    pattern: "^[a-z][a-z0-9_.]*$"
+  }];
+
+  // Attempt number (1-indexed). REQUIRED.
+  int32 attempt_number = 4 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 100
+  }];
+
+  // Delivery status. REQUIRED.
+  WebhookDeliveryStatus status = 5 [(buf.validate.field).enum.defined_only = true];
+
+  // HTTP status code from webhook endpoint. Optional.
+  int32 http_status_code = 6 [(buf.validate.field).int32 = {
+    gte: 100
+    lte: 599
+  }];
+
+  // Response body from webhook endpoint. Optional, truncated to 10KB.
+  string response_body = 7 [(buf.validate.field).string.max_len = 10240];
+
+  // Error message if delivery failed. Optional.
+  string error_message = 8 [(buf.validate.field).string.max_len = 1024];
+}
+
+enum WebhookDeliveryStatus {
+  WEBHOOK_DELIVERY_STATUS_UNSPECIFIED = 0;
+  SUCCESS = 1;
+  FAILURE = 2;
+  RETRYING = 3;
+}

@@ -30,72 +30,56 @@ This repository contains Protocol Buffer (protobuf) schemas organized by domain 
 ```
 proto/
 ├── core/                    # Foundation types
-│   └── v1/
-│       ├── metadata.proto   # Metadata, TenantContext, Pagination
-│       ├── types.proto      # Address, Money, ContactInfo, Errors
-│       └── common.proto     # Convenience re-export
+│   ├── api/                # API patterns (pagination, error, circuit breaker, retry)
+│   ├── client/             # Client information
+│   ├── common/             # Common reusable types
+│   ├── device/             # Device information
+│   ├── geo/                # Geographic data
+│   ├── metadata/           # Entity metadata
+│   ├── network/            # Network information
+│   ├── session/            # Session data
+│   └── token/              # Token types
 │
-├── idp/                     # Identity Provider (Standard IDP)
-│   └── v1/
-│       ├── enums.proto      # Core IDP enums
-│       ├── authentication.proto # Authentication operations
-│       ├── tokens.proto     # Token management
-│       ├── password.proto   # Password operations
-│       ├── session.proto    # Session management
-│       └── services.proto   # IdentityService definition
+├── idp/                     # Identity Provider (Domain-First Architecture)
+│   ├── api/v1/             # Top-level IDP services
+│   │   └── services.proto  # IdentityService, AuthenticationService, AuthorizationService
+│   ├── identity/           # Identity Bounded Context
+│   │   ├── user/
+│   │   │   ├── v1/         # User entity + UserStatus enum
+│   │   │   ├── events/v1/  # UserCreated, UserUpdated, etc.
+│   │   │   └── api/v1/     # UserService with 9 RPCs
+│   │   │       ├── api.proto      # Convenience import
+│   │   │       ├── request.proto  # Request messages
+│   │   │       ├── response.proto # Response messages
+│   │   │       └── service.proto  # gRPC service
+│   │   ├── group/          # Group subdomain (3 layers)
+│   │   ├── organization/   # Organization subdomain (3 layers)
+│   │   └── profile/        # Profile subdomain (3 layers)
+│   ├── authn/              # Authentication Bounded Context
+│   │   ├── credential/     # Credential subdomain (3 layers)
+│   │   ├── session/        # Session subdomain (3 layers)
+│   │   └── mfa/            # MFA subdomain (3 layers)
+│   ├── authz/              # Authorization Bounded Context
+│   │   ├── permission/     # Permission subdomain (3 layers)
+│   │   ├── role/           # Role subdomain (3 layers)
+│   │   └── policy/         # Policy subdomain (3 layers)
+│   ├── audit/              # Audit logging
+│   ├── connectors/         # External identity connectors
+│   ├── protocols/          # Protocol implementations
+│   ├── provisioning/       # User provisioning
+│   └── webhook/            # Webhook management
 │
-├── auth/                    # Authentication & Sessions [DEPRECATED - use idp/v1]
-│   └── v1/
-│       ├── enums.proto      # Status enums
-│       ├── authentication.proto # Authentication messages
-│       ├── password.proto   # Password management
-│       ├── session.proto    # Session management
-│       ├── tokens.proto     # Token messages
-│       ├── proofs.proto     # Auth proof types
-│       ├── webauthn.proto   # WebAuthn/FIDO2
-│       ├── events.proto     # Auth events
-│       └── services.proto   # Auth services
+├── contact/                 # Contact Information
+│   ├── address/v1/         # Address management
+│   └── phone/v1/           # Phone number management
 │
-├── users/                   # User Management
-│   └── v1/
-│       ├── enums.proto      # UserStatus enum
-│       ├── messages.proto   # User, UserPreferences
-│       ├── requests.proto   # CreateUserRequest, etc.
-│       ├── service.proto    # UserService
-│       ├── events.proto     # UserCreated, etc.
-│       └── users.proto      # Convenience re-export
+├── hcm/                     # Human Capital Management
+│   └── employee/v1/        # Employee data
 │
-├── access_policy/           # RBAC & ABAC
-│   └── v1/
-│       ├── enums.proto      # PolicyEffect, ConditionOperator
-│       ├── messages.proto   # Role, Permission, Policy
-│       ├── requests.proto   # CreateRoleRequest, etc.
-│       ├── service.proto    # AccessPolicyService
-│       └── events.proto     # RoleCreated, etc.
+├── preference/              # User Preferences
+│   └── user/v1/            # User preference management
 │
-├── tenants/                 # Multi-Tenant Management
-│   └── v1/
-│       ├── enums.proto      # TenantStatus, TenantTier
-│       ├── messages.proto   # Tenant, TenantSettings
-│       ├── requests.proto   # CreateTenantRequest, etc.
-│       ├── service.proto    # TenantService
-│       └── events.proto     # TenantCreated, etc.
-│
-├── billing/                 # Subscriptions & Payments
-│   └── v1/
-│       ├── enums.proto      # SubscriptionStatus, InvoiceStatus
-│       ├── messages.proto   # Subscription, Invoice, Plan
-│       ├── requests.proto   # CreateSubscriptionRequest, etc.
-│       ├── service.proto    # BillingService
-│       └── events.proto     # SubscriptionCreated, etc.
-│
-└── notifications/           # Multi-Channel Notifications
-    └── v1/
-        ├── enums.proto      # NotificationType, Priority, Channel
-        ├── messages.proto   # Notification, Preferences
-        ├── requests.proto   # SendNotificationRequest, etc.
-        ├── service.proto    # NotificationService
-        └── events.proto     # NotificationSent, etc.
+└── storage/                 # Storage (reserved for future)
 ```
 
 ### Modular File Structure Benefits
@@ -107,16 +91,16 @@ proto/
 
 ## Features
 
-✅ **Domain-Driven Design**: Clear separation of concerns with dedicated domains  
+✅ **Domain-Driven Design**: Clear separation of concerns with 6 dedicated domains  
+✅ **IDP Domain-First Architecture**: 10 subdomains with three-layer structure  
 ✅ **Multi-Tenancy**: Built-in tenant context for secure data isolation  
 ✅ **Versioning**: Support for v1, v2, etc. with backward compatibility  
-✅ **Event-Driven**: Domain events for each aggregate  
-✅ **gRPC Services**: Well-defined service interfaces  
+✅ **Event-Driven**: Domain events for key aggregates  
+✅ **gRPC Services**: 6 well-defined service interfaces  
 ✅ **Buf Integration**: Linting, breaking change detection, and code generation  
 ✅ **Protovalidate**: Runtime validation with declarative rules  
-✅ **CI/CD Pipeline**: Automated validation and client generation with buf-action  
-✅ **Multi-Language**: Generate clients for Go, Python, Java, TypeScript, C#  
-✅ **Documentation**: Auto-generated API documentation
+✅ **Multi-Language**: Generate clients for 8 languages (Go, Rust, Java, Kotlin, Swift, Dart, Python, TypeScript)  
+✅ **Comprehensive Documentation**: 49 README files across all domains
 
 ## Quick Start
 
@@ -170,17 +154,26 @@ buf breaking --against '.git#branch=main'
 # Generate code for all languages
 buf generate
 
-# Generate for specific path
+# Generate entire IDP domain
+buf generate --path proto/idp/
+
+# Generate specific IDP subdomain
+buf generate --path proto/idp/identity/user/
+
+# Generate specific domains
 buf generate --path proto/users/v1/
 ```
 
 Generated code will be placed in the `gen/` directory:
-- `gen/go/` - Go code
-- `gen/python/` - Python code
-- `gen/java/` - Java code
-- `gen/typescript/` - TypeScript code
-- `gen/csharp/` - C# code
-- `gen/docs/` - Documentation
+
+- `gen/go/` - Go code with gRPC
+- `gen/rust/` - Rust code with Prost and Tonic
+- `gen/java/` - Java code with gRPC
+- `gen/kotlin/` - Kotlin code
+- `gen/swift/` - Swift code with gRPC
+- `gen/dart/` - Dart code
+- `gen/python/` - Python code with gRPC
+- `gen/typescript/` - TypeScript code (Connect, JS, gRPC-Web)
 
 ## Domain Documentation
 
@@ -188,72 +181,84 @@ Generated code will be placed in the `gen/` directory:
 
 The core domain provides foundational types used across all domains:
 
-- **TenantContext**: Multi-tenant isolation context
+- **API Patterns**: Pagination, error handling, circuit breaker, retry, request/response wrappers
+- **Client Info**: Browser, device, network context
+- **Common Types**: Reusable value objects
+- **Device Info**: Device identification and metadata
+- **Geo**: Geographic and location data
 - **Metadata**: Common entity metadata (ID, timestamps, audit info)
-- **Pagination**: Request/response types for paginated lists
-- **Address, ContactInfo, Money**: Common value objects
-- **ErrorResponse**: Standardized error responses
-- **BaseEvent**: Foundation for all domain events
+- **Network**: Network connection information
+- **Session**: Session tracking data
+- **Token**: Token types and metadata
 
-### Auth Domain
+### IDP Domain
 
-Authentication and session management:
+Enterprise Identity Provider with domain-first, three-layer architecture:
 
-- **Services**: AuthService
-- **Key Operations**: Authenticate, RefreshToken, ValidateToken, Logout, PasswordReset
-- **Events**: UserAuthenticated, UserLoggedOut, PasswordResetRequested
+**Architecture Pattern:** `geniustechspace.idp.{domain}.{subdomain}.{layer}.v1`
 
-### Users Domain
+**Three Layers:**
 
-User management and profiles:
+- **Domain (v1/)**: Pure entities and enums
+- **Events (events/v1/)**: Domain events for state changes
+- **API (api/v1/)**: gRPC services split into modular files (request.proto, response.proto, service.proto)
 
-- **Services**: UserService
-- **Key Operations**: CreateUser, GetUser, UpdateUser, DeleteUser, ListUsers
-- **Events**: UserCreated, UserUpdated, UserDeleted, UserStatusChanged
+**Top-Level Services:**
 
-### Access Policy Domain
+- **IdentityService**: Core identity operations
+- **AuthenticationService**: Authentication workflows
+- **AuthorizationService**: Authorization checks
 
-Role-based access control (RBAC):
+**Bounded Contexts:**
 
-- **Services**: AccessPolicyService
-- **Key Operations**: CreateRole, AssignRole, CheckPermission
-- **Events**: RoleCreated, RoleAssigned, PermissionChecked
+- **Identity**: user, group, organization, profile (4 subdomains)
+- **Authentication (authn)**: credential, session, mfa (3 subdomains)
+- **Authorization (authz)**: permission, role, policy (3 subdomains)
 
-### Tenants Domain
+**Example: User Subdomain**
 
-Multi-tenant organization management:
+- **Entity**: User with 18+ fields, UserStatus enum (8 states)
+- **Events**: UserCreated, UserUpdated, UserDeleted, UserStatusChanged, UserEmailVerified, UserPhoneVerified
+- **API**: UserService with 9 RPCs (Create, Get, Update, Delete, List, Search, UpdateStatus, VerifyEmail, VerifyPhone)
 
-- **Services**: TenantService
-- **Key Operations**: CreateTenant, UpdateTenant, UpdateTenantStatus, GetTenantUsage
-- **Events**: TenantCreated, TenantStatusChanged, TenantTierChanged
+**Status:** UserService fully implemented with modular API files. Other subdomains scaffolded.
 
-### Billing Domain
+See [proto/idp/README.md](proto/idp/README.md) and [proto/idp/ARCHITECTURE.md](proto/idp/ARCHITECTURE.md) for details.
 
-Subscription and billing management:
+### Contact Domain
 
-- **Services**: BillingService
-- **Key Operations**: CreateSubscription, CancelSubscription, PayInvoice
-- **Events**: SubscriptionCreated, InvoicePaid, PaymentFailed
+Contact information management:
 
-### Notifications Domain
+- **Address**: Structured address data with validation
+- **Phone**: Phone number management with E.164 format
 
-Multi-channel notification system:
+### HCM Domain
 
-- **Services**: NotificationService
-- **Key Operations**: SendNotification, ListNotifications, MarkNotificationRead
-- **Events**: NotificationSent, NotificationDelivered, NotificationRead
+Human Capital Management:
+
+- **Employee**: Employee data and management
+
+### Preference Domain
+
+User preference management:
+
+- **User Preferences**: User-specific settings and preferences
+
+### Storage Domain
+
+Reserved for future file and object storage features.
 
 ## CI/CD Pipeline
 
-The GitHub Actions workflow (`.github/workflows/buf.yml`) automatically:
+The GitHub Actions workflow can be configured to automatically:
 
-1. **Lints** proto files on every push and pull request
-2. **Detects breaking changes** in pull requests
-3. **Generates code** for all supported languages
-4. **Lists schemas** and creates an inventory
-5. **Pushes to Buf Schema Registry** (when configured)
-6. **Generates domain-specific clients** for independent deployment
-7. **Generates documentation** and deploys to GitHub Pages
+1. **Lint** proto files on every push and pull request
+2. **Detect breaking changes** in pull requests
+3. **Generate code** for all supported languages
+4. **Push to Buf Schema Registry** (when configured)
+5. **Deploy documentation** to GitHub Pages
+
+To enable, create `.github/workflows/buf.yml` with appropriate workflow configuration.
 
 ## Using Generated Clients
 
@@ -261,35 +266,58 @@ The GitHub Actions workflow (`.github/workflows/buf.yml`) automatically:
 
 ```go
 import (
-    usersv1 "github.com/geniustechspace/protobuf/gen/go/users/v1"
+    // IDP - Domain-first imports
+    userv1 "github.com/geniustechspace/protobuf/gen/go/idp/identity/user/v1"
+    userapiv1 "github.com/geniustechspace/protobuf/gen/go/idp/identity/user/api/v1"
+    usereventsv1 "github.com/geniustechspace/protobuf/gen/go/idp/identity/user/events/v1"
+    
+    // Core types
+    coreclientv1 "github.com/geniustechspace/protobuf/gen/go/core/client/v1"
 )
 
-// Use the generated types and services
+// Use IDP generated types
+client := userapiv1.NewUserServiceClient(conn)
+user := &userv1.User{UserId: "usr_123"}
+event := &usereventsv1.UserCreated{...}
 ```
 
 ### Python
 
 ```python
-from gen.python.users.v1 import users_pb2, users_pb2_grpc
+import grpc
+from gen.python.idp.identity.user.v1 import user_pb2
+from gen.python.idp.identity.user.api.v1 import service_pb2_grpc
 
-# Use the generated types and services
-```
+channel = grpc.insecure_channel('localhost:9090')
+client = service_pb2_grpc.UserServiceStub(channel)
 
-### Java
-
-```java
-import com.geniustechspace.protobuf.users.v1.UsersProto;
-import com.geniustechspace.protobuf.users.v1.UserServiceGrpc;
-
-// Use the generated types and services
+# Use generated types
+user = user_pb2.User(user_id='usr_123')
 ```
 
 ### TypeScript
 
 ```typescript
-import { User, UserService } from './gen/typescript/users/v1';
+import { createPromiseClient } from "@connectrpc/connect";
+import { createGrpcTransport } from "@connectrpc/connect-node";
 
-// Use the generated types and services
+// IDP modular imports
+import { UserService } from "./gen/typescript/idp/identity/user/api/v1/service_connect";
+import type { User } from "./gen/typescript/idp/identity/user/v1/user_pb";
+
+const transport = createGrpcTransport({
+  baseUrl: "http://localhost:9090",
+});
+
+const client = createPromiseClient(UserService, transport);
+
+const response = await client.createUser({
+  tenantPath: "tenants/tenant_123",
+  email: "user@example.com",
+  username: "johndoe",
+});
+
+console.log(`Created user: ${response.user?.userId}`);
 ```
 
 ## Schema Evolution
@@ -300,7 +328,7 @@ We follow strict backward compatibility rules:
 2. **Never** change field types
 3. **Never** change field numbers
 4. **Always** add new fields with new field numbers
-5. **Use** reserved fields for deprecated fields
+5. **Use** reserved fields for removed fields
 6. **Version** your packages (v1, v2) for major breaking changes
 
 Example of evolving from v1 to v2:

@@ -1,0 +1,137 @@
+// DOMAIN: IDP - Audit
+// COMPLIANCE: SOC 2 CC6.1, GDPR Article 30, ISO 27001 A.12.4
+// SECURITY: Immutable audit trail for compliance and forensics
+// PURPOSE: Record all IDP operations for security, compliance, and troubleshooting
+
+syntax = "proto3";
+
+package geniustechspace.idp.audit.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Idp.Audit.V1";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/idp/audit/v1;idpauditv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.idp.audit.v1";
+
+// AuditLog - immutable record of IDP operation.
+// COMPLIANCE: Required for SOC 2 CC6.1 (audit logs), GDPR Article 30.
+// RETENTION: Typically 90 days to 7 years based on compliance requirements.
+// IMMUTABILITY: Once written, audit logs cannot be modified or deleted.
+message AuditLog {
+  // Audit log ID. Immutable unique identifier.
+  string id = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Tenant path. Required for multi-tenant data isolation.
+  string tenant_path = 2 [(buf.validate.field).string.max_len = 512];
+
+  // Timestamp of the audited operation.
+  google.protobuf.Timestamp timestamp = 3 [(buf.validate.field).required = true];
+
+  // Actor - who performed the action.
+  Actor actor = 4 [(buf.validate.field).required = true];
+
+  // Action performed (user.create, user.delete, role.assign, etc.).
+  string action = 5 [(buf.validate.field).string.max_len = 512];
+
+  // Resource type (user, group, role, policy, etc.).
+  string resource_type = 6 [(buf.validate.field).string.max_len = 512];
+
+  // Resource ID (UUID or identifier of affected resource).
+  string resource_id = 7;
+
+  // Result of the operation.
+  AuditResult result = 8 [(buf.validate.field).enum.defined_only = true];
+
+  // Error message if result is FAILURE.
+  string error_message = 9;
+
+  // Request context (IP, user agent, etc.).
+  RequestContext context = 10;
+
+  // Changes made (before/after state for updates).
+  repeated Change changes = 11;
+
+  // Additional metadata (flexible for extensibility).
+  google.protobuf.Struct metadata = 12;
+
+  // Severity level for filtering and alerting.
+  AuditSeverity severity = 13 [(buf.validate.field).enum.defined_only = true];
+
+  // Compliance tags (soc2, gdpr, hipaa, etc.).
+  repeated string compliance_tags = 14;
+}
+
+// Actor - entity that performed the audited action.
+message Actor {
+  // Actor ID (user ID, service account ID, etc.).
+  string id = 1;
+
+  // Actor type.
+  ActorType type = 2 [(buf.validate.field).enum.defined_only = true];
+
+  // Actor name/email for human readability.
+  string name = 3;
+
+  // Session ID if applicable.
+  string session_id = 4;
+}
+
+// ActorType - type of entity performing action.
+enum ActorType {
+  ACTOR_TYPE_UNSPECIFIED = 0;
+  USER = 1;
+  SERVICE_ACCOUNT = 2;
+  SYSTEM = 3;
+  API_KEY = 4;
+  ANONYMOUS = 5;
+}
+
+// AuditResult - outcome of audited operation.
+enum AuditResult {
+  AUDIT_RESULT_UNSPECIFIED = 0;
+  SUCCESS = 1;
+  FAILURE = 2;
+  PARTIAL_SUCCESS = 3;
+}
+
+// AuditSeverity - importance level for filtering and alerting.
+enum AuditSeverity {
+  AUDIT_SEVERITY_UNSPECIFIED = 0;
+  INFO = 1;
+  WARNING = 2;
+  ERROR = 3;
+  CRITICAL = 4;
+}
+
+// RequestContext - contextual information about the request.
+message RequestContext {
+  // Client IP address.
+  string ip_address = 1;
+
+  // User agent string.
+  string user_agent = 2;
+
+  // Request ID for correlation.
+  string request_id = 3;
+
+  // Geographic location (country, region).
+  string geo_location = 4;
+
+  // Device fingerprint.
+  string device_fingerprint = 5;
+}
+
+// Change - represents a state change in the audited operation.
+message Change {
+  // Field name that changed.
+  string field = 1;
+
+  // Previous value (JSON serialized).
+  string old_value = 2;
+
+  // New value (JSON serialized).
+  string new_value = 3;
+}

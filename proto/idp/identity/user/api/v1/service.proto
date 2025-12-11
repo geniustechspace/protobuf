@@ -1,0 +1,89 @@
+// User Management gRPC Service
+//
+// Provides gRPC API for user lifecycle management including CRUD operations,
+// status management, and verification workflows.
+//
+// DOMAIN: Identity - User Management
+// VERSION: v1
+// COMPLIANCE: SOC 2 CC6.1, GDPR Articles 5/15-17, ISO 27001 A.9.2
+// PII: Yes - Contains personal identifiers and user data
+//
+// For detailed documentation, see README.md in this directory.
+// For license information, see LICENSE in this directory.
+
+syntax = "proto3";
+
+package geniustechspace.idp.identity.user.api.v1;
+
+import "idp/identity/user/api/v1/request.proto";
+import "idp/identity/user/api/v1/response.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Idp.Identity.User.Api.V1";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/idp/identity/user/api/v1;userapiv1";
+option java_multiple_files = true;
+option java_outer_classname = "UserServiceProto";
+option java_package = "com.geniustechspace.protobuf.idp.identity.user.api.v1";
+
+// UserService manages user lifecycle operations.
+//
+// All RPCs require authentication (Bearer token) and authorization (RBAC permissions).
+// Mutations publish domain events. Rate limits enforced per-tenant.
+// See README.md for detailed documentation on authentication, authorization, and rate limits.
+service UserService {
+  // CreateUser creates a new user account.
+  // AUTH: Requires 'idp:users:create' permission
+  // EVENTS: Publishes UserCreated
+  // RATE LIMIT: 20/min per tenant
+  rpc CreateUser(CreateUserRequest) returns (UserResponse);
+
+  // GetUser retrieves user by ID.
+  // AUTH: Requires 'idp:users:read' permission OR self-access
+  // RATE LIMIT: 100/min per tenant
+  rpc GetUser(GetUserRequest) returns (UserResponse);
+
+  // UpdateUser modifies existing user (partial update).
+  // AUTH: Requires 'idp:users:update' permission OR self-access (limited fields)
+  // NOTE: Uses optimistic locking via version field
+  // EVENTS: Publishes UserUpdated with before/after snapshots
+  // RATE LIMIT: 50/min per tenant
+  rpc UpdateUser(UpdateUserRequest) returns (UserResponse);
+
+  // DeleteUser soft-deletes or hard-deletes user account.
+  // AUTH: Requires 'idp:users:delete' (soft) or 'idp:users:hard_delete' (hard)
+  // NOTE: Hard delete is irreversible, revokes all sessions
+  // EVENTS: Publishes UserDeleted
+  // RATE LIMIT: 20/min per tenant
+  rpc DeleteUser(DeleteUserRequest) returns (DeleteUserResponse);
+
+  // ListUsers retrieves paginated list of users.
+  // AUTH: Requires 'idp:users:list' permission
+  // NOTE: Ordered by created_at DESC, max 100 items per page
+  // RATE LIMIT: 50/min per tenant
+  rpc ListUsers(ListUsersRequest) returns (ListUsersResponse);
+
+  // SearchUsers performs full-text search across users.
+  // AUTH: Requires 'idp:users:search' permission
+  // NOTE: Searches email, username, names (min 2 chars, ordered by relevance)
+  // RATE LIMIT: 30/min per tenant
+  rpc SearchUsers(SearchUsersRequest) returns (SearchUsersResponse);
+
+  // UpdateUserStatus changes user account status.
+  // AUTH: Requires 'idp:users:status:update' permission
+  // NOTE: SUSPENDED/LOCKED revokes all active sessions
+  // EVENTS: Publishes UserStatusChanged
+  // RATE LIMIT: 50/min per tenant
+  rpc UpdateUserStatus(UpdateUserStatusRequest) returns (UpdateUserStatusResponse);
+
+  // VerifyUserEmail marks email as verified.
+  // AUTH: Verification token (expires 24h) OR 'idp:users:email:verify' permission
+  // EVENTS: Publishes UserEmailVerified
+  // RATE LIMIT: 10/min per user
+  rpc VerifyUserEmail(VerifyUserEmailRequest) returns (VerifyUserEmailResponse);
+
+  // VerifyUserPhone marks phone as verified.
+  // AUTH: OTP code (expires 10min, max 3 attempts) OR 'idp:users:phone:verify' permission
+  // NOTE: Enables SMS MFA and account recovery
+  // EVENTS: Publishes UserPhoneVerified
+  // RATE LIMIT: 10/min per user
+  rpc VerifyUserPhone(VerifyUserPhoneRequest) returns (VerifyUserPhoneResponse);
+}

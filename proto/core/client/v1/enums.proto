@@ -100,12 +100,12 @@ enum Browser {
 enum RenderingEngine {
   RENDERING_ENGINE_UNSPECIFIED = 0;
   BLINK = 1; // Chromium Blink (Chrome, Edge, Opera)
-  WEBKIT = 2; // Apple WebKit (Safari)
+  RENDERING_ENGINE_WEBKIT = 2; // Apple WebKit (Safari)
   GECKO = 3; // Mozilla Gecko (Firefox)
   TRIDENT = 4; // Microsoft Trident (IE, deprecated)
   EDGE_HTML = 5; // Microsoft EdgeHTML (legacy Edge)
   PRESTO = 6; // Opera Presto (legacy)
-  OTHER = 7; // Other/custom engine
+  RENDERING_ENGINE_OTHER = 7; // Other/custom engine
   reserved 8 to 20;
 }
 
@@ -144,7 +144,7 @@ enum Framework {
   UNITY = 18; // Unity (game engine)
   UNREAL = 19; // Unreal Engine (game engine)
   GODOT = 20; // Godot (game engine)
-  OTHER = 21; // Other/custom framework
+  FRAMEWORK_OTHER = 21; // Other/custom framework
   reserved 22 to 50;
 }
 

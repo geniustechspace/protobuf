@@ -1,0 +1,589 @@
+// DOMAIN: Identity - User Events
+// COMPLIANCE: SOC 2 CC6.1 (audit trail), GDPR Article 30
+// SECURITY: Event sourcing for audit and compliance
+
+syntax = "proto3";
+
+package geniustechspace.idp.identity.user.events.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/timestamp.proto";
+import "idp/identity/user/v1/user.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Idp.Identity.User.Events.V1";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/idp/identity/user/events/v1;idpidentityusereventsv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.idp.identity.user.events.v1";
+
+// UserCreated - emitted when user account is created.
+message UserCreated {
+  // Event ID. Unique identifier for event tracing.
+  string event_id = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Tenant path. Multi-tenant isolation.
+  string tenant_path = 2 [(buf.validate.field).string.max_len = 512];
+
+  // Event timestamp. When the event occurred.
+  google.protobuf.Timestamp event_timestamp = 3 [(buf.validate.field).required = true];
+
+  // User ID. Created user identifier.
+  string user_id = 4 [(buf.validate.field).string.max_len = 512];
+
+  // Email address. User's email at creation.
+  string email = 5 [(buf.validate.field).string.email = true];
+
+  // Username. User's username if provided.
+  string username = 6;
+
+  // Display name. User's display name if provided.
+  string display_name = 7;
+
+  // Initial status. UserStatus at creation (typically PENDING_VERIFICATION or ACTIVE).
+  geniustechspace.idp.identity.user.v1.UserStatus initial_status = 8 [(buf.validate.field).enum.defined_only = true];
+
+  // Created by. Actor who created the user (user_id for self-registration, admin_id for admin creation).
+  string created_by = 9;
+
+  // Source. Creation source (web, mobile, api, admin, migration).
+  string source = 10;
+
+  // Password set. Whether password was set during creation.
+  bool password_set = 11;
+
+  // Email verified. Whether email was pre-verified (e.g., SSO).
+  bool email_verified = 12;
+
+  // Phone number. User's phone if provided.
+  string phone_number = 13;
+
+  // External IDP. External identity provider if federated.
+  string external_provider = 14;
+
+  // Correlation ID. For distributed tracing across services.
+  string correlation_id = 15;
+
+  // Metadata. Additional context (IP, user-agent, etc.).
+  map<string, string> metadata = 16;
+
+  reserved 17 to 19;
+
+  // User snapshot. Complete User entity state after creation.
+  // EVENT SOURCING: Used to reconstruct entity state from event stream.
+  geniustechspace.idp.identity.user.v1.User user_snapshot = 20;
+
+  reserved 21 to 29;
+
+  // Session ID. User session that triggered this event.
+  // SECURITY: Session-based anomaly detection, session hijacking.
+  // ANALYTICS: User journey analysis across session.
+  string session_id = 30 [(buf.validate.field).string = {max_len: 128}];
+
+  // Device ID. Reference to device entity for full context lookup.
+  // SECURITY: Fraud detection, device reputation tracking.
+  // COMPLIANCE: SOC 2 CC6.1, GDPR Article 30 audit trail.
+  string device_id = 31 [(buf.validate.field).string = {max_len: 128}];
+
+  // Client ID. Reference to client entity for full context lookup.
+  // SECURITY: API abuse detection, rate limiting, bot detection.
+  // COMPLIANCE: SOC 2 CC6.1, GDPR Article 30 audit trail.
+  string client_id = 32 [(buf.validate.field).string = {max_len: 128}];
+
+  // Network ID. Reference to network/request context.
+  // SECURITY: IP reputation, geographic anomaly detection.
+  // COMPLIANCE: SOC 2 CC6.1, GDPR Article 30 audit trail.
+  string network_id = 33 [(buf.validate.field).string = {max_len: 128}];
+}
+
+// UserUpdated - emitted when user account is updated.
+message UserUpdated {
+  // Event ID. Unique identifier for event tracing.
+  string event_id = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Tenant path. Multi-tenant isolation.
+  string tenant_path = 2 [(buf.validate.field).string.max_len = 512];
+
+  // Event timestamp. When the event occurred.
+  google.protobuf.Timestamp event_timestamp = 3 [(buf.validate.field).required = true];
+
+  // User ID. Updated user identifier.
+  string user_id = 4 [(buf.validate.field).string.max_len = 512];
+
+  // Updated by. Actor who performed the update.
+  string updated_by = 5;
+
+  // Changed fields. List of field names that changed.
+  repeated string changed_fields = 6;
+
+  // Previous values. Field values before update (JSON-serialized for complex types).
+  map<string, string> previous_values = 7;
+
+  // New values. Field values after update (JSON-serialized for complex types).
+  map<string, string> new_values = 8;
+
+  // Reason. Optional reason for the update.
+  string reason = 9;
+
+  // Correlation ID. For distributed tracing.
+  string correlation_id = 10;
+
+  // Metadata. Additional context.
+  map<string, string> metadata = 11;
+
+  reserved 12 to 19;
+
+  // User snapshot before. Complete User entity state before update.
+  // EVENT SOURCING: Used to reconstruct entity state from event stream.
+  geniustechspace.idp.identity.user.v1.User user_snapshot_before = 20;
+
+  // User snapshot after. Complete User entity state after update.
+  // EVENT SOURCING: Used to reconstruct entity state from event stream.
+  geniustechspace.idp.identity.user.v1.User user_snapshot_after = 21;
+
+  reserved 22 to 29;
+
+  // Session ID. User session that triggered this event.
+  // SECURITY: Track which session performed update.
+  string session_id = 30 [(buf.validate.field).string = {max_len: 128}];
+
+  // Device ID. Reference to device entity for full context lookup.
+  // SECURITY: Detect suspicious updates from new/untrusted devices.
+  // COMPLIANCE: SOC 2 CC6.1, GDPR Article 30 audit trail.
+  string device_id = 31 [(buf.validate.field).string = {max_len: 128}];
+
+  // Client ID. Reference to client entity for full context lookup.
+  // SECURITY: Track which client performed update for audit.
+  // COMPLIANCE: SOC 2 CC6.1, GDPR Article 30 audit trail.
+  string client_id = 32 [(buf.validate.field).string = {max_len: 128}];
+
+  // Network ID. Reference to network/request context.
+  // SECURITY: Detect update from suspicious IP/location.
+  // COMPLIANCE: SOC 2 CC6.1, GDPR Article 30 audit trail.
+  string network_id = 33 [(buf.validate.field).string = {max_len: 128}];
+}
+
+// UserDeleted - emitted when user is soft deleted.
+message UserDeleted {
+  // Event ID. Unique identifier for event tracing.
+  string event_id = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Tenant path. Multi-tenant isolation.
+  string tenant_path = 2 [(buf.validate.field).string.max_len = 512];
+
+  // Event timestamp. When the event occurred.
+  google.protobuf.Timestamp event_timestamp = 3 [(buf.validate.field).required = true];
+
+  // User ID. Deleted user identifier.
+  string user_id = 4 [(buf.validate.field).string.max_len = 512];
+
+  // Deleted by. Actor who performed the deletion.
+  string deleted_by = 5;
+
+  // Deletion type. Soft delete or hard delete scheduled.
+  DeletionType deletion_type = 6 [(buf.validate.field).enum.defined_only = true];
+
+  // Reason. Reason for deletion (GDPR request, policy violation, user request).
+  string reason = 7;
+
+  // Hard delete scheduled. Whether permanent deletion is scheduled.
+  bool hard_delete_scheduled = 8;
+
+  // Hard delete at. When permanent deletion will occur (retention period).
+  google.protobuf.Timestamp hard_delete_at = 9;
+
+  // Compliance flag. GDPR Article 17 Right to Erasure flag.
+  bool gdpr_erasure_request = 10;
+
+  // Correlation ID. For distributed tracing.
+  string correlation_id = 11;
+
+  // Metadata. Additional context.
+  map<string, string> metadata = 12;
+
+  reserved 13 to 19;
+
+  // User snapshot before. Complete User entity state before deletion.
+  // EVENT SOURCING: Final state before soft/hard delete.
+  // COMPLIANCE: Required for GDPR audit trail.
+  geniustechspace.idp.identity.user.v1.User user_snapshot_before = 20;
+
+  reserved 21 to 29;
+
+  // Session ID. User session that triggered this event.
+  // SECURITY: Track which session performed deletion.
+  // COMPLIANCE: Critical for GDPR Article 17 audit.
+  string session_id = 30 [(buf.validate.field).string = {max_len: 128}];
+
+  // Device ID. Reference to device entity for full context lookup.
+  // SECURITY: Verify deletion from authorized device.
+  // COMPLIANCE: SOC 2 CC6.1, GDPR Article 17, Article 30 audit trail.
+  string device_id = 31 [(buf.validate.field).string = {max_len: 128}];
+
+  // Client ID. Reference to client entity for full context lookup.
+  // SECURITY: Verify deletion from authorized client.
+  // COMPLIANCE: SOC 2 CC6.1, GDPR Article 17, Article 30 audit trail.
+  string client_id = 32 [(buf.validate.field).string = {max_len: 128}];
+
+  // Network ID. Reference to network/request context.
+  // SECURITY: Track deletion request origin.
+  // COMPLIANCE: SOC 2 CC6.1, GDPR Article 17, Article 30 audit trail.
+  string network_id = 33 [(buf.validate.field).string = {max_len: 128}];
+}
+
+// UserStatusChanged - emitted when user status transitions.
+message UserStatusChanged {
+  // Event ID. Unique identifier for event tracing.
+  string event_id = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Tenant path. Multi-tenant isolation.
+  string tenant_path = 2 [(buf.validate.field).string.max_len = 512];
+
+  // Event timestamp. When the event occurred.
+  google.protobuf.Timestamp event_timestamp = 3 [(buf.validate.field).required = true];
+
+  // User ID. User whose status changed.
+  string user_id = 4 [(buf.validate.field).string.max_len = 512];
+
+  // Changed by. Actor who triggered the status change.
+  string changed_by = 5;
+
+  // Previous status. Status before transition.
+  geniustechspace.idp.identity.user.v1.UserStatus previous_status = 6 [(buf.validate.field).enum.defined_only = true];
+
+  // New status. Status after transition.
+  geniustechspace.idp.identity.user.v1.UserStatus new_status = 7 [(buf.validate.field).enum.defined_only = true];
+
+  // Reason. Reason for status change.
+  string reason = 8;
+
+  // Automatic. Whether change was automatic (policy) or manual (admin).
+  bool automatic = 9;
+
+  // Correlation ID. For distributed tracing.
+  string correlation_id = 10;
+
+  // Metadata. Additional context.
+  map<string, string> metadata = 11;
+
+  reserved 12 to 19;
+
+  // User snapshot after. Complete User entity state after status change.
+  // EVENT SOURCING: Used to reconstruct entity state from event stream.
+  geniustechspace.idp.identity.user.v1.User user_snapshot_after = 20;
+
+  reserved 21 to 29;
+
+  // Session ID. User session that triggered this event.
+  // SECURITY: Track which session changed status.
+  string session_id = 30 [(buf.validate.field).string = {max_len: 128}];
+
+  // Device ID. Reference to device entity for full context lookup.
+  // SECURITY: Detect suspicious status changes from untrusted devices.
+  // COMPLIANCE: SOC 2 CC6.1, GDPR Article 30 audit trail.
+  string device_id = 31 [(buf.validate.field).string = {max_len: 128}];
+
+  // Client ID. Reference to client entity for full context lookup.
+  // SECURITY: Track which client performed status change.
+  // COMPLIANCE: SOC 2 CC6.1, GDPR Article 30 audit trail.
+  string client_id = 32 [(buf.validate.field).string = {max_len: 128}];
+
+  // Network ID. Reference to network/request context.
+  // SECURITY: Track status change request origin.
+  // COMPLIANCE: SOC 2 CC6.1, GDPR Article 30 audit trail.
+  string network_id = 33 [(buf.validate.field).string = {max_len: 128}];
+}
+
+// UserEmailVerified - emitted when user email is verified.
+message UserEmailVerified {
+  // Event ID. Unique identifier for event tracing.
+  string event_id = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Tenant path. Multi-tenant isolation.
+  string tenant_path = 2 [(buf.validate.field).string.max_len = 512];
+
+  // Event timestamp. When the event occurred.
+  google.protobuf.Timestamp event_timestamp = 3 [(buf.validate.field).required = true];
+
+  // User ID. User whose email was verified.
+  string user_id = 4 [(buf.validate.field).string.max_len = 512];
+
+  // Email. Verified email address.
+  string email = 5 [(buf.validate.field).string.email = true];
+
+  // Verification method. How email was verified (link, code, admin).
+  string verification_method = 6;
+
+  // Correlation ID. For distributed tracing.
+  string correlation_id = 7;
+
+  // Metadata. Additional context.
+  map<string, string> metadata = 8;
+
+  reserved 9 to 19;
+
+  // User snapshot after. Complete User entity state after email verification.
+  // EVENT SOURCING: State reconstruction with verified email.
+  geniustechspace.idp.identity.user.v1.User user_snapshot_after = 20;
+
+  reserved 21 to 29;
+
+  // Session ID. User session that triggered this event.
+  // SECURITY: Track email verification within session context.
+  string session_id = 30 [(buf.validate.field).string = {max_len: 128}];
+
+  // Device ID. Reference to device entity for full context lookup.
+  // SECURITY: Detect email verification from unexpected device (account takeover).
+  // COMPLIANCE: SOC 2 CC6.1, GDPR Article 30 audit trail.
+  string device_id = 31 [(buf.validate.field).string = {max_len: 128}];
+
+  // Client ID. Reference to client entity for full context lookup.
+  // SECURITY: Track verification source for fraud detection.
+  // COMPLIANCE: SOC 2 CC6.1, GDPR Article 30 audit trail.
+  string client_id = 32 [(buf.validate.field).string = {max_len: 128}];
+
+  // Network ID. Reference to network/request context.
+  // SECURITY: Track verification request origin for fraud detection.
+  // COMPLIANCE: SOC 2 CC6.1, GDPR Article 30 audit trail.
+  string network_id = 33 [(buf.validate.field).string = {max_len: 128}];
+}
+
+// UserPhoneVerified - emitted when user phone is verified.
+message UserPhoneVerified {
+  // Event ID. Unique identifier for event tracing.
+  string event_id = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Tenant path. Multi-tenant isolation.
+  string tenant_path = 2 [(buf.validate.field).string.max_len = 512];
+
+  // Event timestamp. When the event occurred.
+  google.protobuf.Timestamp event_timestamp = 3 [(buf.validate.field).required = true];
+
+  // User ID. User whose phone was verified.
+  string user_id = 4 [(buf.validate.field).string.max_len = 512];
+
+  // Phone number. Verified phone number (E.164 format).
+  string phone_number = 5;
+
+  // Verification method. How phone was verified (sms, call, admin).
+  string verification_method = 6;
+
+  // Correlation ID. For distributed tracing.
+  string correlation_id = 7;
+
+  // Metadata. Additional context.
+  map<string, string> metadata = 8;
+
+  reserved 9 to 19;
+
+  // User snapshot after. Complete User entity state after phone verification.
+  // EVENT SOURCING: State reconstruction with verified phone.
+  geniustechspace.idp.identity.user.v1.User user_snapshot_after = 20;
+
+  reserved 21 to 29;
+
+  // Session ID. User session that triggered this event.
+  // SECURITY: Track phone verification within session context.
+  string session_id = 30 [(buf.validate.field).string = {max_len: 128}];
+
+  // Device ID. Reference to device entity for full context lookup.
+  // SECURITY: Detect phone verification from unexpected device (SIM swap fraud).
+  // COMPLIANCE: SOC 2 CC6.1, GDPR Article 30 audit trail.
+  string device_id = 31 [(buf.validate.field).string = {max_len: 128}];
+
+  // Client ID. Reference to client entity for full context lookup.
+  // SECURITY: Track verification source for fraud detection.
+  // COMPLIANCE: SOC 2 CC6.1, GDPR Article 30 audit trail.
+  string client_id = 32 [(buf.validate.field).string = {max_len: 128}];
+
+  // Network ID. Reference to network/request context.
+  // SECURITY: Track verification request origin for SIM swap detection.
+  // COMPLIANCE: SOC 2 CC6.1, GDPR Article 30 audit trail.
+  string network_id = 33 [(buf.validate.field).string = {max_len: 128}];
+}
+
+// UserPasswordChanged - emitted when user password is changed.
+message UserPasswordChanged {
+  // Event ID. Unique identifier for event tracing.
+  string event_id = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Tenant path. Multi-tenant isolation.
+  string tenant_path = 2 [(buf.validate.field).string.max_len = 512];
+
+  // Event timestamp. When the event occurred.
+  google.protobuf.Timestamp event_timestamp = 3 [(buf.validate.field).required = true];
+
+  // User ID. User whose password changed.
+  string user_id = 4 [(buf.validate.field).string.max_len = 512];
+
+  // Changed by. Actor who changed password (user_id or admin_id).
+  string changed_by = 5;
+
+  // Change type. Type of password change (user_initiated, admin_reset, forced_reset, expired).
+  string change_type = 6;
+
+  // Password reset. Whether this was a password reset flow.
+  bool password_reset = 7;
+
+  // Force change next login. Whether user must change password on next login.
+  bool force_change_next_login = 8;
+
+  // Correlation ID. For distributed tracing.
+  string correlation_id = 9;
+
+  // Metadata. Additional context (IP, user-agent for security).
+  map<string, string> metadata = 10;
+
+  reserved 11 to 19;
+
+  // User snapshot after. Complete User entity state after password change.
+  // EVENT SOURCING: State reconstruction with updated password_changed_at.
+  geniustechspace.idp.identity.user.v1.User user_snapshot_after = 20;
+
+  reserved 21 to 29;
+
+  // Session ID. User session that triggered this event.
+  // SECURITY: Critical - track which session changed password.
+  string session_id = 30 [(buf.validate.field).string = {max_len: 128}];
+
+  // Device ID. Reference to device entity for full context lookup.
+  // SECURITY: Critical - detect unauthorized password changes from new devices.
+  // COMPLIANCE: SOC 2 CC6.1, GDPR Article 30 audit trail.
+  string device_id = 31 [(buf.validate.field).string = {max_len: 128}];
+
+  // Client ID. Reference to client entity for full context lookup.
+  // SECURITY: Track which client performed password change.
+  // COMPLIANCE: SOC 2 CC6.1, GDPR Article 30 audit trail.
+  string client_id = 32 [(buf.validate.field).string = {max_len: 128}];
+
+  // Network ID. Reference to network/request context.
+  // SECURITY: Critical - track password change origin for security alerts.
+  // COMPLIANCE: SOC 2 CC6.1, GDPR Article 30 audit trail.
+  string network_id = 33 [(buf.validate.field).string = {max_len: 128}];
+}
+
+// UserLocked - emitted when user account is locked.
+message UserLocked {
+  // Event ID. Unique identifier for event tracing.
+  string event_id = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Tenant path. Multi-tenant isolation.
+  string tenant_path = 2 [(buf.validate.field).string.max_len = 512];
+
+  // Event timestamp. When the event occurred.
+  google.protobuf.Timestamp event_timestamp = 3 [(buf.validate.field).required = true];
+
+  // User ID. Locked user identifier.
+  string user_id = 4 [(buf.validate.field).string.max_len = 512];
+
+  // Locked by. Actor who locked the account (system or admin_id).
+  string locked_by = 5;
+
+  // Lock reason. Reason for lock (brute_force, suspicious_activity, policy_violation, admin_action).
+  string lock_reason = 6;
+
+  // Locked until. When the lock expires (NULL for indefinite).
+  google.protobuf.Timestamp locked_until = 7;
+
+  // Automatic lock. Whether lock was automatic (security policy) or manual (admin).
+  bool automatic_lock = 8;
+
+  // Failed attempts. Number of failed login attempts if applicable.
+  int32 failed_attempts = 9;
+
+  // Correlation ID. For distributed tracing.
+  string correlation_id = 10;
+
+  // Metadata. Additional context (IP, location for security).
+  map<string, string> metadata = 11;
+
+  reserved 12 to 19;
+
+  // User snapshot after. Complete User entity state after lock.
+  // EVENT SOURCING: State reconstruction with locked_until set.
+  geniustechspace.idp.identity.user.v1.User user_snapshot_after = 20;
+
+  reserved 21 to 29;
+
+  // Session ID. Session that triggered account lock.
+  // SECURITY: Track which session caused lock (failed attempts).
+  string session_id = 30 [(buf.validate.field).string = {max_len: 128}];
+
+  // Device ID. Reference to device entity for full context lookup.
+  // SECURITY: Track device that triggered lock (failed attempts, brute force).
+  // COMPLIANCE: SOC 2 CC6.1, GDPR Article 30 audit trail.
+  string device_id = 31 [(buf.validate.field).string = {max_len: 128}];
+
+  // Client ID. Reference to client entity for full context lookup.
+  // SECURITY: Track client that triggered lock for investigation.
+  // COMPLIANCE: SOC 2 CC6.1, GDPR Article 30 audit trail.
+  string client_id = 32 [(buf.validate.field).string = {max_len: 128}];
+
+  // Network ID. Reference to network/request context.
+  // SECURITY: Track IP/location that triggered account lock.
+  // COMPLIANCE: SOC 2 CC6.1, GDPR Article 30 audit trail.
+  string network_id = 33 [(buf.validate.field).string = {max_len: 128}];
+}
+
+// UserUnlocked - emitted when user account is unlocked.
+message UserUnlocked {
+  // Event ID. Unique identifier for event tracing.
+  string event_id = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Tenant path. Multi-tenant isolation.
+  string tenant_path = 2 [(buf.validate.field).string.max_len = 512];
+
+  // Event timestamp. When the event occurred.
+  google.protobuf.Timestamp event_timestamp = 3 [(buf.validate.field).required = true];
+
+  // User ID. Unlocked user identifier.
+  string user_id = 4 [(buf.validate.field).string.max_len = 512];
+
+  // Unlocked by. Actor who unlocked the account (system or admin_id).
+  string unlocked_by = 5;
+
+  // Unlock reason. Reason for unlock (timeout_expired, admin_action, user_verification).
+  string unlock_reason = 6;
+
+  // Automatic unlock. Whether unlock was automatic (timeout) or manual (admin).
+  bool automatic_unlock = 7;
+
+  // Correlation ID. For distributed tracing.
+  string correlation_id = 8;
+
+  // Metadata. Additional context.
+  map<string, string> metadata = 9;
+
+  reserved 10 to 19;
+
+  // User snapshot after. Complete User entity state after unlock.
+  // EVENT SOURCING: State reconstruction with locked_until cleared.
+  geniustechspace.idp.identity.user.v1.User user_snapshot_after = 20;
+
+  reserved 21 to 29;
+
+  // Session ID. Admin session that unlocked account.
+  // SECURITY: Track which admin session performed unlock.
+  string session_id = 30 [(buf.validate.field).string = {max_len: 128}];
+
+  // Device ID. Reference to device entity for full context lookup.
+  // SECURITY: Verify unlock from authorized device.
+  // COMPLIANCE: SOC 2 CC6.1, GDPR Article 30 audit trail.
+  string device_id = 31 [(buf.validate.field).string = {max_len: 128}];
+
+  // Client ID. Reference to client entity for full context lookup.
+  // SECURITY: Track which admin/client performed unlock.
+  // COMPLIANCE: SOC 2 CC6.1, GDPR Article 30 audit trail.
+  string client_id = 32 [(buf.validate.field).string = {max_len: 128}];
+
+  // Network ID. Reference to network/request context.
+  // SECURITY: Track unlock request origin.
+  // COMPLIANCE: SOC 2 CC6.1, GDPR Article 30 audit trail.
+  string network_id = 33 [(buf.validate.field).string = {max_len: 128}];
+}
+
+// DeletionType - type of deletion operation.
+enum DeletionType {
+  DELETION_TYPE_UNSPECIFIED = 0;
+  SOFT_DELETE = 1; // User marked as deleted, data retained
+  HARD_DELETE = 2; // Permanent deletion, data purged
+  GDPR_ERASURE = 3; // GDPR Article 17 Right to Erasure
+}

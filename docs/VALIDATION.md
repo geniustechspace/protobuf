@@ -10,7 +10,7 @@ This repository uses [protovalidate](https://github.com/bufbuild/protovalidate) 
 ✅ **Runtime Validation**: Automatic validation in generated code  
 ✅ **Multi-Language**: Consistent validation across Go, Python, Java, and more  
 ✅ **Declarative**: Simple annotation-based validation rules  
-✅ **Composable**: Build complex validation logic from simple rules  
+✅ **Composable**: Build complex validation logic from simple rules
 
 ## Installation
 
@@ -32,6 +32,7 @@ plugins:
 ### String Validation
 
 #### Email Validation
+
 ```protobuf
 import "buf/validate/validate.proto";
 
@@ -41,13 +42,14 @@ message CreateUserRequest {
 ```
 
 #### Length Constraints
+
 ```protobuf
 message User {
   string username = 1 [(buf.validate.field).string = {
     min_len: 3
     max_len: 50
   }];
-  
+
   string first_name = 2 [(buf.validate.field).string = {
     min_len: 1
     max_len: 100
@@ -56,6 +58,7 @@ message User {
 ```
 
 #### Pattern Matching
+
 ```protobuf
 message CreateTenantRequest {
   // Only lowercase alphanumeric and hyphens
@@ -64,7 +67,7 @@ message CreateTenantRequest {
     max_len: 50
     pattern: "^[a-z0-9-]+$"
   }];
-  
+
   // Username: alphanumeric, underscore, hyphen
   string username = 2 [(buf.validate.field).string = {
     min_len: 3
@@ -75,6 +78,7 @@ message CreateTenantRequest {
 ```
 
 #### URI Validation
+
 ```protobuf
 message User {
   string avatar_url = 1 [(buf.validate.field).string.uri = true];
@@ -85,13 +89,14 @@ message User {
 ### Numeric Validation
 
 #### Range Constraints
+
 ```protobuf
 message TenantSettings {
   int32 max_users = 1 [(buf.validate.field).int32 = {
     gte: 1
     lte: 10000
   }];
-  
+
   int32 max_storage_gb = 2 [(buf.validate.field).int32 = {
     gte: 1
     lte: 10000
@@ -100,6 +105,7 @@ message TenantSettings {
 ```
 
 #### Positive Numbers
+
 ```protobuf
 message Money {
   int64 amount = 1 [(buf.validate.field).int64.gte = 0];
@@ -161,10 +167,10 @@ message UserPreferences {
 message CreateUserRequest {
   // tenant_id is required (cannot be empty)
   string tenant_id = 1 [(buf.validate.field).string.min_len = 1];
-  
+
   // email is required and must be valid
   string email = 2 [(buf.validate.field).string.email = true];
-  
+
   // password is required with minimum length
   string password = 3 [(buf.validate.field).string.min_len = 8];
 }
@@ -179,7 +185,7 @@ message Subscription {
   google.protobuf.Timestamp start_date = 1 [(buf.validate.field).timestamp = {
     required: true
   }];
-  
+
   // End date must be after start date
   google.protobuf.Timestamp end_date = 2 [(buf.validate.field).timestamp = {
     required: true
@@ -197,7 +203,7 @@ message DateRange {
     message: "end_date must be after start_date"
     expression: "this.end_date > this.start_date"
   };
-  
+
   google.protobuf.Timestamp start_date = 1;
   google.protobuf.Timestamp end_date = 2;
 }
@@ -219,12 +225,12 @@ func CreateUser(ctx context.Context, req *usersv1.CreateUserRequest) error {
     if err != nil {
         return fmt.Errorf("failed to create validator: %w", err)
     }
-    
+
     // Validate the request
     if err := v.Validate(req); err != nil {
         return fmt.Errorf("validation failed: %w", err)
     }
-    
+
     // Request is valid, proceed with creation
     // ...
 }
@@ -243,7 +249,7 @@ def create_user(request: users_pb2.CreateUserRequest):
         validate(request)
     except Exception as e:
         raise ValueError(f"Validation failed: {e}")
-    
+
     # Request is valid, proceed with creation
     # ...
 ```
@@ -258,10 +264,10 @@ import com.geniustechspace.protobuf.users.v1.UsersProto.CreateUserRequest;
 public void createUser(CreateUserRequest request) throws ValidationException {
     // Create validator
     Validator validator = new Validator();
-    
+
     // Validate the request
     validator.validate(request);
-    
+
     // Request is valid, proceed with creation
     // ...
 }
@@ -337,7 +343,7 @@ message CreateUserRequest {
     max_len: 50
     pattern: "^[a-zA-Z0-9_-]+$"
   }];
-  
+
   // Password must be at least 8 characters
   string password = 2 [(buf.validate.field).string.min_len = 8];
 }
@@ -383,9 +389,9 @@ func TestCreateUserValidation(t *testing.T) {
             wantErr: true,
         },
     }
-    
+
     v, _ := protovalidate.New()
-    
+
     for _, tt := range tests {
         t.Run(tt.name, func(t *testing.T) {
             err := v.Validate(tt.req)
@@ -400,36 +406,43 @@ func TestCreateUserValidation(t *testing.T) {
 ## Common Validation Patterns
 
 ### Email Validation
+
 ```protobuf
 string email = 1 [(buf.validate.field).string.email = true];
 ```
 
 ### UUID Validation
+
 ```protobuf
 string user_id = 1 [(buf.validate.field).string.uuid = true];
 ```
 
 ### Phone Number (Basic)
+
 ```protobuf
 string phone = 1 [(buf.validate.field).string.pattern = "^\\+?[1-9]\\d{1,14}$"];
 ```
 
 ### URL Validation
+
 ```protobuf
 string website = 1 [(buf.validate.field).string.uri = true];
 ```
 
 ### Slug Validation
+
 ```protobuf
 string slug = 1 [(buf.validate.field).string.pattern = "^[a-z0-9-]+$"];
 ```
 
 ### Money Amount (Cents)
+
 ```protobuf
 int64 amount_cents = 1 [(buf.validate.field).int64.gte = 0];
 ```
 
 ### Percentage
+
 ```protobuf
 int32 discount_percent = 1 [(buf.validate.field).int32 = {
   gte: 0
@@ -457,8 +470,8 @@ if err := v.Validate(req); err != nil {
     // Parse validation error
     if validationErr, ok := err.(*protovalidate.ValidationError); ok {
         for _, violation := range validationErr.Violations {
-            log.Printf("Field: %s, Constraint: %s, Message: %s", 
-                violation.FieldPath, 
+            log.Printf("Field: %s, Constraint: %s, Message: %s",
+                violation.FieldPath,
                 violation.ConstraintId,
                 violation.Message)
         }
@@ -479,17 +492,19 @@ if err := v.Validate(req); err != nil {
 ### Adding Validation to Existing Schemas
 
 1. Add protovalidate import:
+
 ```protobuf
 import "buf/validate/validate.proto";
 ```
 
 2. Add validation rules incrementally:
+
 ```protobuf
 // Start with critical fields
 message CreateUserRequest {
   string tenant_id = 1 [(buf.validate.field).string.min_len = 1];
   string email = 2 [(buf.validate.field).string.email = true];
-  
+
   // Add more rules gradually
   string username = 3;  // Add validation later
 }
@@ -509,6 +524,7 @@ message CreateUserRequest {
 ## Support
 
 For issues with validation:
+
 1. Check the [protovalidate documentation](https://github.com/bufbuild/protovalidate)
 2. Review [validation examples](https://github.com/bufbuild/protovalidate/tree/main/examples)
 3. Open an issue in this repository

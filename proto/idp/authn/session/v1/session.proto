@@ -1,0 +1,171 @@
+// DOMAIN: Authentication - Session Aggregate Root
+// COMPLIANCE: SOC 2 CC6.1, NIST 800-63B
+// SECURITY: Session token security, refresh token rotation
+// DDD: Aggregate Root - controls session lifecycle
+
+syntax = "proto3";
+
+package geniustechspace.idp.authn.session.v1;
+
+import "buf/validate/validate.proto";
+import "core/metadata/v1/metadata.proto";
+import "google/protobuf/timestamp.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Idp.Authn.Session.V1";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/idp/authn/session/v1;idpauthnsessionv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.idp.authn.session.v1";
+
+// Session aggregate root - represents authenticated session.
+// INVARIANTS:
+// - One session per device/client
+// - Sessions expire after inactivity
+// - Refresh tokens are single-use (rotation)
+// - Sessions can be revoked at any time
+message Session {
+  // Session ID. Immutable.
+  string id = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Tenant path. Immutable.
+  string tenant_path = 2 [(buf.validate.field).string.max_len = 512];
+
+  // User ID. Immutable.
+  string user_id = 3 [(buf.validate.field).string.max_len = 512];
+
+  // Session status.
+  SessionStatus status = 4 [(buf.validate.field).enum.defined_only = true];
+
+  // Authentication method used.
+  string authentication_method = 5;
+
+  // Authentication level (AAL1, AAL2, AAL3 per NIST 800-63B).
+  string authentication_level = 6;
+
+  // Access token hash (never store plaintext).
+  string access_token_hash = 7;
+
+  // Refresh token hash (never store plaintext).
+  string refresh_token_hash = 8;
+
+  // Token type (Bearer, etc.).
+  string token_type = 9;
+
+  // Scopes granted.
+  repeated string scopes = 10;
+
+  // Session context.
+  SessionContext context = 11;
+
+  // Last activity at.
+  google.protobuf.Timestamp last_activity_at = 12;
+
+  // Expires at.
+  google.protobuf.Timestamp expires_at = 13;
+
+  // Refresh token expires at.
+  google.protobuf.Timestamp refresh_expires_at = 14;
+
+  // Idle timeout (seconds).
+  int32 idle_timeout = 15;
+
+  // Absolute timeout (seconds).
+  int32 absolute_timeout = 16;
+
+  // Refresh count (for token rotation).
+  int32 refresh_count = 17;
+
+  // Created timestamp. IMMUTABLE after creation.
+  // COMPLIANCE: SOC 2 CC6.3, GDPR Article 30 (audit trail)
+  google.protobuf.Timestamp created_at = 18 [(buf.validate.field).required = true];
+
+  // Last updated timestamp.
+  // COMPLIANCE: SOC 2 CC6.3 (change tracking)
+  google.protobuf.Timestamp updated_at = 19;
+
+  // Deletion timestamp. If set, entity is soft deleted.
+  // COMPLIANCE: GDPR Article 17, SOC 2 CC6.3 (deletion audit trail)
+  // QUERY: Use "WHERE deleted_at IS NULL" for active records
+  google.protobuf.Timestamp deleted_at = 20;
+
+  // Optimistic locking version counter. Incremented on each update.
+  // COMPLIANCE: SOC 2 CC6.1 (data integrity, concurrent modification protection)
+  int64 version = 21;
+}
+
+// SessionStatus enum.
+enum SessionStatus {
+  SESSION_STATUS_UNSPECIFIED = 0;
+  ACTIVE = 1;
+  EXPIRED = 2;
+  REVOKED = 3;
+  INVALIDATED = 4;
+}
+
+// SessionContext value object - session metadata.
+message SessionContext {
+  // IP address.
+  string ip_address = 1;
+
+  // User agent string.
+  string user_agent = 2;
+
+  // Device fingerprint.
+  string device_fingerprint = 3;
+
+  // Device type (desktop, mobile, tablet).
+  string device_type = 4;
+
+  // Device name (user-friendly).
+  string device_name = 5;
+
+  // Browser name.
+  string browser_name = 6;
+
+  // Browser version.
+  string browser_version = 7;
+
+  // OS name.
+  string os_name = 8;
+
+  // OS version.
+  string os_version = 9;
+
+  // Geolocation (city, country).
+  GeoLocation geo_location = 10;
+
+  // Is trusted device.
+  bool is_trusted_device = 11;
+
+  // MFA verified in session.
+  bool mfa_verified = 12;
+
+  // MFA method used.
+  string mfa_method = 13;
+
+  // Risk level (low, medium, high).
+  string risk_level = 14;
+
+  // Risk score (0-100).
+  int32 risk_score = 15;
+}
+
+// GeoLocation value object.
+message GeoLocation {
+  // Country code (ISO 3166-1 alpha-2).
+  string country = 1;
+
+  // Region/state.
+  string region = 2;
+
+  // City.
+  string city = 3;
+
+  // Latitude.
+  double latitude = 4;
+
+  // Longitude.
+  double longitude = 5;
+
+  // Timezone (IANA).
+  string timezone = 6;
+}

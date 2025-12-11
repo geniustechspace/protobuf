@@ -1,0 +1,212 @@
+// DOMAIN: Authentication - MFA Value Objects
+// COMPLIANCE: NIST 800-63B AAL2/AAL3
+// SECURITY: Multi-factor authentication configurations
+// DDD: Value Objects - MFA enrollment and verification
+
+syntax = "proto3";
+
+package geniustechspace.idp.authn.mfa.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/timestamp.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Idp.Authn.Mfa.V1";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/idp/authn/mfa/v1;idpauthnmfav1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.idp.authn.mfa.v1";
+
+// MfaEnrollment value object - MFA method enrollment.
+message MfaEnrollment {
+  // Enrollment ID.
+  string id = 1 [(buf.validate.field).string.max_len = 512];
+
+  // User ID.
+  string user_id = 2 [(buf.validate.field).string.max_len = 512];
+
+  // Tenant path.
+  string tenant_path = 3 [(buf.validate.field).string.max_len = 512];
+
+  // MFA method type.
+  MfaMethod method = 4 [(buf.validate.field).enum.defined_only = true];
+
+  // Enrollment status.
+  MfaEnrollmentStatus status = 5 [(buf.validate.field).enum.defined_only = true];
+
+  // Method-specific data.
+  oneof method_data {
+    // TOTP enrollment.
+    TotpEnrollment totp = 6;
+
+    // SMS enrollment.
+    SmsEnrollment sms = 7;
+
+    // Email enrollment.
+    EmailEnrollment email = 8;
+
+    // WebAuthn enrollment.
+    WebAuthnEnrollment webauthn = 9;
+  }
+
+  // Is primary MFA method.
+  bool is_primary = 10;
+
+  // Nickname (user-friendly).
+  string nickname = 11;
+
+  // Enrolled at.
+  google.protobuf.Timestamp enrolled_at = 12;
+
+  // Last used at.
+  google.protobuf.Timestamp last_used_at = 13;
+
+  // Use count.
+  int64 use_count = 14;
+
+  // Created timestamp. IMMUTABLE after creation.
+  // COMPLIANCE: SOC 2 CC6.3, GDPR Article 30 (audit trail)
+  google.protobuf.Timestamp created_at = 15 [(buf.validate.field).required = true];
+
+  // Last updated timestamp.
+  // COMPLIANCE: SOC 2 CC6.3 (change tracking)
+  google.protobuf.Timestamp updated_at = 16;
+
+  // Deletion timestamp. If set, entity is soft deleted.
+  // COMPLIANCE: GDPR Article 17, SOC 2 CC6.3 (deletion audit trail)
+  // QUERY: Use "WHERE deleted_at IS NULL" for active records
+  google.protobuf.Timestamp deleted_at = 17;
+
+  // Optimistic locking version counter. Incremented on each update.
+  // COMPLIANCE: SOC 2 CC6.1 (data integrity, concurrent modification protection)
+  int64 version = 18;
+}
+
+// MfaMethod enum.
+enum MfaMethod {
+  MFA_METHOD_UNSPECIFIED = 0;
+  TOTP = 1;
+  SMS = 2;
+  EMAIL = 3;
+  WEBAUTHN = 4;
+  VOICE = 5;
+  PUSH = 6;
+  BACKUP_CODES = 7;
+}
+
+// MfaEnrollmentStatus enum.
+enum MfaEnrollmentStatus {
+  MFA_ENROLLMENT_STATUS_UNSPECIFIED = 0;
+  ENROLLMENT_PENDING = 1;
+  ENROLLMENT_ACTIVE = 2;
+  ENROLLMENT_INACTIVE = 3;
+  ENROLLMENT_REVOKED = 4;
+}
+
+// TotpEnrollment value object.
+message TotpEnrollment {
+  // Secret key (base32 encoded, encrypted).
+  string secret = 1;
+
+  // Algorithm (SHA1, SHA256, SHA512).
+  string algorithm = 2;
+
+  // Digits (6, 7, 8).
+  int32 digits = 3;
+
+  // Period (seconds).
+  int32 period = 4;
+
+  // Provisioning URI (for QR code).
+  string provisioning_uri = 5;
+
+  // Verified flag.
+  bool verified = 6;
+}
+
+// SmsEnrollment value object.
+message SmsEnrollment {
+  // Phone number (E.164 format).
+  string phone_number = 1 [(buf.validate.field).string.pattern = "^\\+[1-9]\\d{1,14}$"];
+
+  // Verified flag.
+  bool verified = 2;
+
+  // Last sent at.
+  google.protobuf.Timestamp last_sent_at = 3;
+}
+
+// EmailEnrollment value object.
+message EmailEnrollment {
+  // Email address.
+  string email = 1 [(buf.validate.field).string.email = true];
+
+  // Verified flag.
+  bool verified = 2;
+
+  // Last sent at.
+  google.protobuf.Timestamp last_sent_at = 3;
+}
+
+// WebAuthnEnrollment value object.
+message WebAuthnEnrollment {
+  // Credential ID.
+  bytes credential_id = 1;
+
+  // Public key (COSE format).
+  bytes public_key = 2;
+
+  // Authenticator AAGUID.
+  bytes aaguid = 3;
+
+  // Sign count.
+  uint32 sign_count = 4;
+
+  // Transports (usb, nfc, ble, internal).
+  repeated string transports = 5;
+
+  // Verified flag.
+  bool verified = 6;
+}
+
+// MfaChallenge value object - MFA verification challenge.
+message MfaChallenge {
+  // Challenge ID.
+  string id = 1 [(buf.validate.field).string.max_len = 512];
+
+  // User ID.
+  string user_id = 2 [(buf.validate.field).string.max_len = 512];
+
+  // Tenant path.
+  string tenant_path = 3 [(buf.validate.field).string.max_len = 512];
+
+  // Required MFA methods.
+  repeated MfaMethod required_methods = 4;
+
+  // Challenge created at.
+  google.protobuf.Timestamp created_at = 5;
+
+  // Challenge expires at.
+  google.protobuf.Timestamp expires_at = 6;
+
+  // Attempts remaining.
+  int32 attempts_remaining = 7;
+
+  // Challenge status.
+  MfaChallengeStatus status = 8;
+
+  // Session ID for challenge.
+  string session_id = 9;
+}
+
+// MfaChallengeStatus enum.
+enum MfaChallengeStatus {
+  MFA_CHALLENGE_STATUS_UNSPECIFIED = 0;
+  CHALLENGE_PENDING = 1;
+  CHALLENGE_VERIFIED = 2;
+  CHALLENGE_FAILED = 3;
+
+  // Expired challenge.
+  MFA_CHALLENGE_STATUS_EXPIRED = 4;
+
+  // Cancelled challenge.
+  MFA_CHALLENGE_STATUS_CANCELLED = 5;
+}

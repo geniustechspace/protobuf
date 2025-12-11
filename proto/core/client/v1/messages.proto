@@ -70,29 +70,19 @@ message ClientContext {
   }];
 
   // Human-readable client name (e.g., "My App", "Chrome Browser")
-  string client_name = 2 [(buf.validate.field).string = {
-    max_len: 100
-    ignore_empty: true
-  }];
+  string client_name = 2 [(buf.validate.field).string = {max_len: 100}];
 
   // Client application version (semver recommended: 1.2.3)
-  string client_version = 3 [(buf.validate.field).string = {
-    max_len: 50
-    ignore_empty: true
-  }];
+  string client_version = 3 [(buf.validate.field).string = {max_len: 50}];
 
   // Build number or commit hash (for debugging)
-  string build_number = 4 [(buf.validate.field).string = {
-    max_len: 100
-    ignore_empty: true
-  }];
+  string build_number = 4 [(buf.validate.field).string = {max_len: 100}];
 
   // Full user agent string (RFC 7231 Section 5.5.3)
   // PRIVACY: Contains browser/OS version info (quasi-identifier)
   // SECURITY: Parse carefully to prevent injection attacks
   string user_agent = 5 [(buf.validate.field).string = {
     max_len: 2000 // Typical max user agent length
-    ignore_empty: true
   }];
 
   // ========== CLIENT TYPE & PLATFORM ==========
@@ -105,10 +95,7 @@ message ClientContext {
   ClientPlatform platform = 7;
 
   // Platform OS version (e.g., "17.0", "14", "11")
-  string platform_version = 8 [(buf.validate.field).string = {
-    max_len: 50
-    ignore_empty: true
-  }];
+  string platform_version = 8 [(buf.validate.field).string = {max_len: 50}];
 
   // ========== APPLICATION DETAILS ==========
 
@@ -117,20 +104,13 @@ message ClientContext {
   string app_id = 9 [(buf.validate.field).string = {
     max_len: 255
     pattern: "^[a-z0-9._-]+$" // Typical package ID format
-    ignore_empty: true
   }];
 
   // Application display name
-  string app_name = 10 [(buf.validate.field).string = {
-    max_len: 100
-    ignore_empty: true
-  }];
+  string app_name = 10 [(buf.validate.field).string = {max_len: 100}];
 
   // Application version (semver recommended)
-  string app_version = 11 [(buf.validate.field).string = {
-    max_len: 50
-    ignore_empty: true
-  }];
+  string app_version = 11 [(buf.validate.field).string = {max_len: 50}];
 
   // Application rendering engine (Blink, WebKit, Gecko)
   RenderingEngine rendering_engine = 14;
@@ -153,7 +133,6 @@ message ClientContext {
   // SECURITY: Validate server-side, never trust client-provided values
   string attestation = 24 [(buf.validate.field).string = {
     max_len: 10240 // 10KB max for attestation
-    ignore_empty: true
   }];
 
   // ========== CAPABILITIES & FEATURES ==========
@@ -170,19 +149,13 @@ message ClientContext {
   // ========== SDK & FRAMEWORK INFO ==========
 
   // SDK version used by client (e.g., "1.2.3")
-  string sdk_version = 27 [(buf.validate.field).string = {
-    max_len: 50
-    ignore_empty: true
-  }];
+  string sdk_version = 27 [(buf.validate.field).string = {max_len: 50}];
 
   // Development framework (React, Flutter, React Native, etc.)
   Framework framework = 28;
 
   // Framework version (e.g., "18.2.0" for React)
-  string framework_version = 29 [(buf.validate.field).string = {
-    max_len: 50
-    ignore_empty: true
-  }];
+  string framework_version = 29 [(buf.validate.field).string = {max_len: 50}];
 
   // ========== LANGUAGE & LOCALE ==========
   // PRIVACY: Quasi-identifier - combined with other data may enable tracking
@@ -191,22 +164,17 @@ message ClientContext {
   string locale = 30 [(buf.validate.field).string = {
     max_len: 35 // RFC 5646 max length
     pattern: "^[a-z]{2}(-[A-Z]{2})?(-[a-z]+)?$"
-    ignore_empty: true
   }];
 
   // Primary language (ISO 639-1 two-letter code: "en", "fr", "es")
   string language = 31 [(buf.validate.field).string = {
     len: 2 // ISO 639-1 is always 2 characters
     pattern: "^[a-z]{2}$"
-    ignore_empty: true
   }];
 
   // IANA timezone (e.g., "America/New_York", "Europe/Paris")
   // PRIVACY: Timezone reveals approximate geographic location
-  string timezone = 32 [(buf.validate.field).string = {
-    max_len: 100
-    ignore_empty: true
-  }];
+  string timezone = 32 [(buf.validate.field).string = {max_len: 100}];
 
   // UI theme preference (light, dark, auto)
   // Used for theme selection and accessibility
@@ -222,10 +190,7 @@ message ClientContext {
   google.protobuf.Timestamp last_updated_at = 41;
 
   // Total app launches (for engagement metrics)
-  int64 launch_count = 42 [(buf.validate.field).int64 = {
-    gte: 0
-    ignore_empty: true
-  }];
+  int64 launch_count = 42 [(buf.validate.field).int64 = {gte: 0}];
 
   // ========== ADDITIONAL METADATA ==========
   // Flexible key-value storage for custom client properties
@@ -277,31 +242,19 @@ message ClientFingerprint {
   // PRIVACY: Each component reveals information about user's device
 
   // User agent string (browser identification)
-  string user_agent = 2 [(buf.validate.field).string = {
-    max_len: 2000
-    ignore_empty: true
-  }];
+  string user_agent = 2 [(buf.validate.field).string = {max_len: 2000}];
 
   // Canvas fingerprint (unique rendering characteristics)
   // Technique: Render text/graphics, hash pixel data
-  string canvas_fingerprint = 3 [(buf.validate.field).string = {
-    max_len: 128
-    ignore_empty: true
-  }];
+  string canvas_fingerprint = 3 [(buf.validate.field).string = {max_len: 128}];
 
   // WebGL fingerprint (GPU rendering characteristics)
   // Technique: Query WebGL parameters, hash result
-  string webgl_fingerprint = 4 [(buf.validate.field).string = {
-    max_len: 128
-    ignore_empty: true
-  }];
+  string webgl_fingerprint = 4 [(buf.validate.field).string = {max_len: 128}];
 
   // Audio fingerprint (audio context characteristics)
   // Technique: Generate audio signal, analyze waveform
-  string audio_fingerprint = 5 [(buf.validate.field).string = {
-    max_len: 128
-    ignore_empty: true
-  }];
+  string audio_fingerprint = 5 [(buf.validate.field).string = {max_len: 128}];
 
   // Installed fonts list (font enumeration)
   // PRIVACY: Font list highly unique, strong fingerprint signal
@@ -314,17 +267,11 @@ message ClientFingerprint {
   // ========== BROWSER/ENVIRONMENT DETAILS ==========
 
   // GPU vendor (e.g., "NVIDIA Corporation")
-  string vendor = 8 [(buf.validate.field).string = {
-    max_len: 100
-    ignore_empty: true
-  }];
+  string vendor = 8 [(buf.validate.field).string = {max_len: 100}];
 
   // GPU renderer (e.g., "ANGLE (NVIDIA GeForce GTX 1080)")
   // PRIVACY: Reveals specific GPU model
-  string renderer = 9 [(buf.validate.field).string = {
-    max_len: 200
-    ignore_empty: true
-  }];
+  string renderer = 9 [(buf.validate.field).string = {max_len: 200}];
 
   // ========== TIMESTAMPS ==========
 

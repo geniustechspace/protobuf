@@ -1,0 +1,66 @@
+// DOMAIN: IDP - Connectors
+// PURPOSE: Identity federation and external identity provider integration
+// PROTOCOLS: SAML 2.0, OIDC, LDAP, Active Directory, Social (Google, GitHub, etc.)
+
+syntax = "proto3";
+
+package geniustechspace.idp.connectors.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/timestamp.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Idp.Connectors.V1";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/idp/connectors/v1;idpconnectorsv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.idp.connectors.v1";
+
+// IdentityConnector - external identity provider configuration.
+message IdentityConnector {
+  string id = 1 [(buf.validate.field).string.max_len = 512];
+  string tenant_path = 2 [(buf.validate.field).string.max_len = 512];
+  string name = 3 [(buf.validate.field).string.max_len = 512];
+  ConnectorType type = 4 [(buf.validate.field).enum.defined_only = true];
+  ConnectorStatus status = 5 [(buf.validate.field).enum.defined_only = true];
+  map<string, string> configuration = 6;
+  repeated string allowed_domains = 7;
+  bool auto_provision = 8;
+
+  // Created timestamp. IMMUTABLE after creation.
+  // COMPLIANCE: SOC 2 CC6.3, GDPR Article 30 (audit trail)
+  google.protobuf.Timestamp created_at = 9 [(buf.validate.field).required = true];
+
+  // Last updated timestamp.
+  // COMPLIANCE: SOC 2 CC6.3 (change tracking)
+  google.protobuf.Timestamp updated_at = 10;
+
+  // Deletion timestamp. If set, entity is soft deleted.
+  // COMPLIANCE: GDPR Article 17, SOC 2 CC6.3 (deletion audit trail)
+  // QUERY: Use "WHERE deleted_at IS NULL" for active records
+  google.protobuf.Timestamp deleted_at = 11;
+
+  // Optimistic locking version counter. Incremented on each update.
+  // COMPLIANCE: SOC 2 CC6.1 (data integrity, concurrent modification protection)
+  int64 version = 12;
+}
+
+enum ConnectorType {
+  CONNECTOR_TYPE_UNSPECIFIED = 0;
+  SAML = 1;
+  OIDC = 2;
+  LDAP = 3;
+  ACTIVE_DIRECTORY = 4;
+  GOOGLE_WORKSPACE = 5;
+  MICROSOFT_365 = 6;
+  OKTA = 7;
+  AUTH0 = 8;
+  GITHUB = 9;
+  GITLAB = 10;
+}
+
+enum ConnectorStatus {
+  CONNECTOR_STATUS_UNSPECIFIED = 0;
+  ACTIVE = 1;
+  INACTIVE = 2;
+  TESTING = 3;
+  ERROR = 4;
+}

@@ -1,0 +1,141 @@
+// User Management API Response Messages
+//
+// Response messages for User domain CRUD operations and status management.
+// All responses return full User entity for consistency and client caching.
+//
+// DOMAIN: Identity - User Management
+// VERSION: v1
+// COMPLIANCE: SOC 2 CC6.1, GDPR Articles 5/32, ISO 27001 A.9.2
+// PII: Yes - Contains personal identifiers and user data
+//
+// For detailed documentation, see README.md in this directory.
+// For license information, see LICENSE in this directory.
+
+syntax = "proto3";
+
+package geniustechspace.idp.identity.user.api.v1;
+
+import "buf/validate/validate.proto";
+import "core/api/pagination/v1/messages.proto";
+import "core/common/v1/common.proto";
+import "core/api/error/v1/messages.proto";
+import "idp/identity/user/v1/user.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Idp.Identity.User.Api.V1";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/idp/identity/user/api/v1;userapiv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.idp.identity.user.api.v1";
+
+// UserResponse is the standard response for Create, Get, and Update operations.
+// Returns full User entity for consistency and client caching.
+message UserResponse {
+  // High-level error/success message. OPTIONAL.
+  string message = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 500
+  }];
+
+  // i18n message key for i18n. OPTIONAL.
+  string message_key = 2 [(buf.validate.field).string.max_len = 128];
+
+  // User data with all fields populated.
+  // REQUIRED: Always present
+  // PII: Yes - contains personal data per GDPR Article 4(1)
+  // NOTE: For updates, version field will be incremented
+  geniustechspace.idp.identity.user.v1.User data = 3;
+
+  // Error context if operation failed. OPTIONAL.
+  // POPULATED: Only on errors (gRPC status != OK)
+  geniustechspace.core.api.error.v1.ErrorContext error = 4;
+
+  // Warning messages, if any. OPTIONAL.
+  repeated string warnings = 5 [(buf.validate.field).repeated = {
+    max_items: 10
+    items: {
+      string: {
+        min_len: 1
+        max_len: 500
+      }
+    }
+  }];
+
+  // Reserved for future response fields (ETag, cache info, etc.).
+  reserved 6 to 9;
+}
+
+// DeleteUserResponse confirms deletion.
+message DeleteUserResponse {
+  // Deleted user ID.
+  // REQUIRED: Always present
+  string user_id = 1;
+
+  // Hard delete performed flag.
+  // REQUIRED: Always present
+  // If true: User data permanently removed (GDPR erasure)
+  // If false: Soft deleted (deleted_at set, user entity included)
+  bool hard_deleted = 2;
+
+  // User entity after soft delete (only present if hard_deleted=false).
+  // OPTIONAL: Present only for soft deletes
+  // PII: Yes - contains personal data with deleted_at timestamp
+  // NOTE: Check deleted_at field to confirm soft deletion
+  optional geniustechspace.idp.identity.user.v1.User user = 3;
+
+  // Reserved for future response fields (deletion metadata, cascade info, etc.).
+  reserved 4 to 9;
+}
+
+// ListUsersResponse returns paginated users.
+message ListUsersResponse {
+  // User entities for current page.
+  // REQUIRED: Empty array if no users match filters
+  // PII: Yes - contains personal data per GDPR Article 4(1)
+  // NOTE: Excludes soft-deleted users unless explicitly requested
+  repeated geniustechspace.idp.identity.user.v1.User users = 1;
+
+  // Pagination metadata.
+  // REQUIRED: Always present with total_count, page info
+  geniustechspace.core.api.pagination.v1.PaginationResponse pagination = 2;
+
+  // Reserved for future response fields (aggregations, facets, etc.).
+  reserved 3 to 9;
+}
+
+// SearchUsersResponse returns matching users ordered by relevance.
+message SearchUsersResponse {
+  // Matching user entities ordered by relevance.
+  // REQUIRED: Empty array if no matches found
+  // PII: Yes - contains personal data per GDPR Article 4(1)
+  repeated geniustechspace.idp.identity.user.v1.User users = 1;
+
+  // Pagination metadata.
+  // REQUIRED: Always present with total_count, page info
+  geniustechspace.core.api.pagination.v1.PaginationResponse pagination = 2;
+
+  // Reserved for future response fields (relevance scores, highlights, etc.).
+  reserved 3 to 9;
+}
+
+// UpdateUserStatusResponse returns user with updated status.
+// Reuses UserResponse - check status field for new value.
+message UpdateUserStatusResponse {
+  // Updated user entity with new status.
+  geniustechspace.idp.identity.user.v1.User data = 1;
+  reserved 2 to 9;
+}
+
+// VerifyUserEmailResponse confirms email verification.
+// Reuses UserResponse - check email_verified_at field (non-null = verified).
+message VerifyUserEmailResponse {
+  // Updated user entity with email_verified_at timestamp.
+  geniustechspace.idp.identity.user.v1.User data = 1;
+  reserved 2 to 9;
+}
+
+// VerifyUserPhoneResponse confirms phone verification.
+// Reuses UserResponse - check phone_verified_at field (non-null = verified).
+message VerifyUserPhoneResponse {
+  // Updated user entity with phone_verified_at timestamp.
+  geniustechspace.idp.identity.user.v1.User data = 1;
+  reserved 2 to 9;
+}

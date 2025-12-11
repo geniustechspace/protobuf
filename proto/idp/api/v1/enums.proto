@@ -57,14 +57,14 @@ enum AuthenticationMethod {
 // COMPLIANCE: NIST 800-63B Section 4.3 (Multi-Factor Authenticators)
 enum MFAType {
   MFA_TYPE_UNSPECIFIED = 0;
-  TOTP = 1; // Time-based OTP (RFC 6238) - Google Authenticator, Authy
-  SMS = 2; // SMS code (not recommended by NIST, but widely used)
-  EMAIL = 3; // Email code
-  WEBAUTHN = 4; // WebAuthn/FIDO2 security key
-  BIOMETRIC = 5; // Biometric verification
-  PUSH_NOTIFICATION = 6; // Push notification approval (Duo, Okta Verify)
-  BACKUP_CODE = 7; // Single-use backup recovery code
-  VOICE_CALL = 8; // Voice call with code
+  MFA_TOTP = 1; // Time-based OTP (RFC 6238) - Google Authenticator, Authy
+  MFA_SMS = 2; // SMS code (not recommended by NIST, but widely used)
+  MFA_EMAIL = 3; // Email code
+  MFA_WEBAUTHN = 4; // WebAuthn/FIDO2 security key
+  MFA_BIOMETRIC = 5; // Biometric verification
+  MFA_PUSH_NOTIFICATION = 6; // Push notification approval (Duo, Okta Verify)
+  MFA_BACKUP_CODE = 7; // Single-use backup recovery code
+  MFA_VOICE_CALL = 8; // Voice call with code
   reserved 9 to 30;
 }
 
@@ -118,7 +118,7 @@ enum TokenType {
   REFRESH_TOKEN = 2; // OAuth 2.0 refresh token (long-lived, 30-90 days)
   ID_TOKEN = 3; // OpenID Connect ID token (identity assertion)
   SESSION_TOKEN = 4; // Session identifier
-  API_KEY = 5; // Long-lived API key for service accounts
+  TOKEN_API_KEY = 5; // Long-lived API key for service accounts
   AUTHORIZATION_CODE = 6; // OAuth 2.0 authorization code (single-use)
   DEVICE_CODE = 7; // OAuth 2.0 device authorization (RFC 8628)
   PASSWORD_RESET_TOKEN = 8; // Password reset token (short-lived, single-use)
@@ -135,7 +135,7 @@ enum SessionState {
   IDLE = 2; // Idle but not expired
   MFA_PENDING = 3; // Awaiting MFA verification
   STEP_UP_PENDING = 4; // Awaiting step-up authentication
-  EXPIRED = 5; // Session expired (idle or absolute timeout)
+  SESSION_EXPIRED = 5; // Session expired (idle or absolute timeout)
   REVOKED = 6; // Explicitly revoked by user or admin
   TERMINATED = 7; // Terminated by system (logout, security event)
   reserved 8 to 30;

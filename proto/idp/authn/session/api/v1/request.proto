@@ -1,0 +1,46 @@
+// DOMAIN: Authentication - Session Management APIRequests
+// COMPLIANCE: NIST 800-63B, SOC 2 CC6.7, ISO 27001 A.9.4
+// SECURITY: Session token security, concurrent session limits
+// PII: Yes - Session metadata may contain IP addresses
+
+syntax = "proto3";
+
+package geniustechspace.idp.authn.session.api.v1;
+
+import "buf/validate/validate.proto";
+import "core/api/pagination/v1/messages.proto";
+import "core/common/v1/common.proto";
+import "idp/authn/session/v1/session.proto";
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/idp/authn/session/api/v1;sessionapiv1";
+
+message CreateSessionRequest {
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+  string user_id = 2 [(buf.validate.field).string.max_len = 512];
+  string ip_address = 3 [(buf.validate.field).string.ip = true];
+  string user_agent = 4 [(buf.validate.field).string.max_len = 512];
+  map<string, string> metadata = 5;
+}
+message GetSessionRequest {
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+  string session_id = 2 [(buf.validate.field).string.max_len = 512];
+}
+message RefreshSessionRequest {
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+  string refresh_token = 2 [(buf.validate.field).string.max_len = 512];
+}
+message InvalidateSessionRequest {
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+  string session_id = 2 [(buf.validate.field).string.max_len = 512];
+}
+message ListSessionsRequest {
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+  string user_id = 2 [(buf.validate.field).string.max_len = 512];
+  geniustechspace.core.api.pagination.v1.PaginationRequest pagination = 3;
+  optional geniustechspace.idp.authn.session.v1.SessionStatus status = 4;
+}
+message InvalidateAllSessionsRequest {
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+  string user_id = 2 [(buf.validate.field).string.max_len = 512];
+  optional string exclude_session_id = 3 [(buf.validate.field).string.max_len = 512];
+}

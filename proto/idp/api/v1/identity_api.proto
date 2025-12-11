@@ -1,0 +1,639 @@
+// DOMAIN: Identity Provider - Identity API
+// COMPLIANCE: SOC 2 CC6.1, GDPR Article 5, ISO 27001 A.9.2
+// SECURITY: Authentication required, tenant isolation enforced
+// PII: Contains user personal data
+//
+// ⚠️ DEPRECATED: This consolidated API file is deprecated.
+// Use modular subdomain APIs instead:
+// - proto/idp/identity/user/api/v1/ for user operations
+// - proto/idp/identity/group/api/v1/ for group operations
+// - proto/idp/identity/organization/api/v1/ for organization operations
+// - proto/idp/identity/profile/api/v1/ for profile operations
+// See proto/idp/api/v1/MIGRATION.md for migration guide.
+
+syntax = "proto3";
+
+package geniustechspace.idp.api.v1;
+
+import "buf/validate/validate.proto";
+import "core/common/v1/common.proto";
+import "core/metadata/v1/metadata.proto";
+import "idp/identity/group/v1/group.proto";
+import "idp/identity/organization/v1/organization.proto";
+import "idp/identity/profile/v1/profile.proto";
+import "idp/identity/user/v1/user.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Idp.Api.V1";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/idp/api/v1;idpapiv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.idp.api.v1";
+
+// =============================================================================
+// USER API
+// =============================================================================
+
+// CreateUserRequest creates new user.
+message CreateUserRequest {
+  // Tenant path for multi-tenancy. REQUIRED.
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Username. REQUIRED.
+  // VALIDATION: 3-64 chars, alphanumeric + underscore/dash
+  string username = 2 [(buf.validate.field).string = {
+    min_len: 3
+    max_len: 64
+    pattern: "^[a-zA-Z0-9_-]+$"
+  }];
+
+  // Email address. REQUIRED.
+  // PII: Yes - GDPR Article 4(1)
+  string email = 3 [(buf.validate.field).string.email = true];
+
+  // Phone number. Optional.
+  // PII: Yes - GDPR Article 4(1)
+  string phone_number = 4;
+
+  // Given name. Optional.
+  // PII: Yes - GDPR Article 4(1)
+  string given_name = 5;
+
+  // Family name. Optional.
+  // PII: Yes - GDPR Article 4(1)
+  string family_name = 6;
+
+  // External ID from source system. Optional.
+  string external_id = 7;
+
+  // Organization IDs. Optional.
+  repeated string organization_ids = 8;
+
+  // Group IDs. Optional.
+  repeated string group_ids = 9;
+
+  // Custom attributes. Optional.
+  map<string, string> custom_attributes = 10;
+}
+
+message CreateUserResponse {
+  // Created user.
+  geniustechspace.idp.identity.user.v1.User user = 1;
+}
+
+// GetUserRequest retrieves user by ID.
+message GetUserRequest {
+  // Tenant path. REQUIRED.
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // User ID. REQUIRED.
+  string user_id = 2 [(buf.validate.field).string.max_len = 512];
+}
+
+message GetUserResponse {
+  // User entity.
+  geniustechspace.idp.identity.user.v1.User user = 1;
+}
+
+// UpdateUserRequest updates user.
+message UpdateUserRequest {
+  // Tenant path. REQUIRED.
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // User ID. REQUIRED.
+  string user_id = 2 [(buf.validate.field).string.max_len = 512];
+
+  // Username. Optional.
+  optional string username = 3 [(buf.validate.field).string = {
+    min_len: 3
+    max_len: 64
+    pattern: "^[a-zA-Z0-9_-]+$"
+  }];
+
+  // Email. Optional.
+  optional string email = 4 [(buf.validate.field).string.email = true];
+
+  // Phone number. Optional.
+  optional string phone_number = 5;
+
+  // Status. Optional.
+  optional geniustechspace.idp.identity.user.v1.UserStatus status = 6;
+
+  // Custom attributes. Optional.
+  map<string, string> custom_attributes = 7;
+}
+
+message UpdateUserResponse {
+  // Updated user.
+  geniustechspace.idp.identity.user.v1.User user = 1;
+}
+
+// DeleteUserRequest deletes user.
+message DeleteUserRequest {
+  // Tenant path. REQUIRED.
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // User ID. REQUIRED.
+  string user_id = 2 [(buf.validate.field).string.max_len = 512];
+}
+
+message DeleteUserResponse {
+  // Success indicator.
+  bool success = 1;
+}
+
+// ListUsersRequest lists users.
+message ListUsersRequest {
+  // Tenant path. REQUIRED.
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Page token for pagination. Optional.
+  string page_token = 2;
+
+  // Page size. Optional. Default: 50, Max: 100.
+  int32 page_size = 3 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 100
+  }];
+
+  // Filter by status. Optional.
+  optional geniustechspace.idp.identity.user.v1.UserStatus status = 4;
+
+  // Filter by organization ID. Optional.
+  string organization_id = 5;
+
+  // Filter by group ID. Optional.
+  string group_id = 6;
+}
+
+message ListUsersResponse {
+  // Users.
+  repeated geniustechspace.idp.identity.user.v1.User users = 1;
+
+  // Next page token.
+  string next_page_token = 2;
+
+  // Total count.
+  int32 total_count = 3;
+}
+
+// =============================================================================
+// PROFILE API
+// =============================================================================
+
+// GetUserProfileRequest retrieves profile.
+message GetUserProfileRequest {
+  // Tenant path. REQUIRED.
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // User ID. REQUIRED.
+  string user_id = 2 [(buf.validate.field).string.max_len = 512];
+}
+
+message GetUserProfileResponse {
+  // User profile.
+  geniustechspace.idp.identity.profile.v1.UserProfile profile = 1;
+}
+
+// UpdateUserProfileRequest updates profile.
+message UpdateUserProfileRequest {
+  // Tenant path. REQUIRED.
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // User ID. REQUIRED.
+  string user_id = 2 [(buf.validate.field).string.max_len = 512];
+
+  // Given name. Optional.
+  optional string given_name = 3;
+
+  // Family name. Optional.
+  optional string family_name = 4;
+
+  // Middle name. Optional.
+  optional string middle_name = 5;
+
+  // Display name. Optional.
+  optional string display_name = 6;
+
+  // Preferred language. Optional.
+  optional string preferred_language = 7;
+
+  // Timezone. Optional.
+  optional string timezone = 8;
+
+  // Address. Optional.
+  optional core.common.v1.Address address = 9;
+
+  // Custom attributes. Optional.
+  map<string, string> custom_attributes = 10;
+}
+
+message UpdateUserProfileResponse {
+  // Updated profile.
+  geniustechspace.idp.identity.profile.v1.UserProfile profile = 1;
+}
+
+// =============================================================================
+// VERIFICATION API
+// =============================================================================
+
+// VerifyEmailRequest initiates email verification.
+message VerifyEmailRequest {
+  // Tenant path. REQUIRED.
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // User ID. REQUIRED.
+  string user_id = 2 [(buf.validate.field).string.max_len = 512];
+
+  // Email to verify. REQUIRED.
+  string email = 3 [(buf.validate.field).string.email = true];
+}
+
+message VerifyEmailResponse {
+  // Verification token sent.
+  bool sent = 1;
+
+  // Token expiry (Unix timestamp).
+  int64 expires_at = 2;
+}
+
+// ConfirmEmailVerificationRequest confirms email.
+message ConfirmEmailVerificationRequest {
+  // Tenant path. REQUIRED.
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // User ID. REQUIRED.
+  string user_id = 2 [(buf.validate.field).string.max_len = 512];
+
+  // Verification token. REQUIRED.
+  string token = 3 [(buf.validate.field).string.max_len = 512];
+}
+
+message ConfirmEmailVerificationResponse {
+  // Verification success.
+  bool verified = 1;
+}
+
+// VerifyPhoneRequest initiates phone verification.
+message VerifyPhoneRequest {
+  // Tenant path. REQUIRED.
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // User ID. REQUIRED.
+  string user_id = 2 [(buf.validate.field).string.max_len = 512];
+
+  // Phone number to verify. REQUIRED.
+  string phone_number = 3 [(buf.validate.field).string.max_len = 512];
+}
+
+message VerifyPhoneResponse {
+  // Verification code sent.
+  bool sent = 1;
+
+  // Code expiry (Unix timestamp).
+  int64 expires_at = 2;
+}
+
+// ConfirmPhoneVerificationRequest confirms phone.
+message ConfirmPhoneVerificationRequest {
+  // Tenant path. REQUIRED.
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // User ID. REQUIRED.
+  string user_id = 2 [(buf.validate.field).string.max_len = 512];
+
+  // Verification code. REQUIRED.
+  string code = 3 [(buf.validate.field).string = {
+    min_len: 4
+    max_len: 8
+  }];
+}
+
+message ConfirmPhoneVerificationResponse {
+  // Verification success.
+  bool verified = 1;
+}
+
+// =============================================================================
+// GROUP API
+// =============================================================================
+
+// CreateGroupRequest creates group.
+message CreateGroupRequest {
+  // Tenant path. REQUIRED.
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Group name. REQUIRED.
+  string name = 2 [(buf.validate.field).string.max_len = 512];
+
+  // Description. Optional.
+  string description = 3;
+
+  // Group type. REQUIRED.
+  geniustechspace.idp.identity.group.v1.GroupType type = 4 [(buf.validate.field).enum.defined_only = true];
+
+  // Parent group ID. Optional.
+  string parent_id = 5;
+
+  // Organization ID. Optional.
+  string organization_id = 6;
+
+  // Custom attributes. Optional.
+  map<string, string> custom_attributes = 7;
+}
+
+message CreateGroupResponse {
+  // Created group.
+  geniustechspace.idp.identity.group.v1.Group group = 1;
+}
+
+// GetGroupRequest retrieves group.
+message GetGroupRequest {
+  // Tenant path. REQUIRED.
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Group ID. REQUIRED.
+  string group_id = 2 [(buf.validate.field).string.max_len = 512];
+}
+
+message GetGroupResponse {
+  // Group entity.
+  geniustechspace.idp.identity.group.v1.Group group = 1;
+}
+
+// UpdateGroupRequest updates group.
+message UpdateGroupRequest {
+  // Tenant path. REQUIRED.
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Group ID. REQUIRED.
+  string group_id = 2 [(buf.validate.field).string.max_len = 512];
+
+  // Name. Optional.
+  optional string name = 3;
+
+  // Description. Optional.
+  optional string description = 4;
+
+  // Custom attributes. Optional.
+  map<string, string> custom_attributes = 5;
+}
+
+message UpdateGroupResponse {
+  // Updated group.
+  geniustechspace.idp.identity.group.v1.Group group = 1;
+}
+
+// DeleteGroupRequest deletes group.
+message DeleteGroupRequest {
+  // Tenant path. REQUIRED.
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Group ID. REQUIRED.
+  string group_id = 2 [(buf.validate.field).string.max_len = 512];
+}
+
+message DeleteGroupResponse {
+  // Success indicator.
+  bool success = 1;
+}
+
+// AddGroupMemberRequest adds member to group.
+message AddGroupMemberRequest {
+  // Tenant path. REQUIRED.
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Group ID. REQUIRED.
+  string group_id = 2 [(buf.validate.field).string.max_len = 512];
+
+  // User ID to add. REQUIRED.
+  string user_id = 3 [(buf.validate.field).string.max_len = 512];
+}
+
+message AddGroupMemberResponse {
+  // Success indicator.
+  bool success = 1;
+}
+
+// RemoveGroupMemberRequest removes member from group.
+message RemoveGroupMemberRequest {
+  // Tenant path. REQUIRED.
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Group ID. REQUIRED.
+  string group_id = 2 [(buf.validate.field).string.max_len = 512];
+
+  // User ID to remove. REQUIRED.
+  string user_id = 3 [(buf.validate.field).string.max_len = 512];
+}
+
+message RemoveGroupMemberResponse {
+  // Success indicator.
+  bool success = 1;
+}
+
+// ListGroupsRequest lists groups.
+message ListGroupsRequest {
+  // Tenant path. REQUIRED.
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Page token. Optional.
+  string page_token = 2;
+
+  // Page size. Optional. Default: 50, Max: 100.
+  int32 page_size = 3 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 100
+  }];
+
+  // Filter by type. Optional.
+  optional geniustechspace.idp.identity.group.v1.GroupType type = 4;
+
+  // Filter by organization ID. Optional.
+  string organization_id = 5;
+}
+
+message ListGroupsResponse {
+  // Groups.
+  repeated geniustechspace.idp.identity.group.v1.Group groups = 1;
+
+  // Next page token.
+  string next_page_token = 2;
+
+  // Total count.
+  int32 total_count = 3;
+}
+
+// =============================================================================
+// ORGANIZATION API
+// =============================================================================
+
+// CreateOrganizationRequest creates organization.
+message CreateOrganizationRequest {
+  // Tenant path. REQUIRED.
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Organization name. REQUIRED.
+  string name = 2 [(buf.validate.field).string.max_len = 512];
+
+  // Display name. Optional.
+  string display_name = 3;
+
+  // Organization type. REQUIRED.
+  geniustechspace.idp.identity.organization.v1.OrganizationType type = 4 [(buf.validate.field).enum.defined_only = true];
+
+  // Organization size. Optional.
+  geniustechspace.idp.identity.organization.v1.OrganizationSize size = 5;
+
+  // Parent organization ID. Optional.
+  string parent_id = 6;
+
+  // Domains owned. Optional.
+  repeated string domains = 7;
+
+  // Custom attributes. Optional.
+  map<string, string> custom_attributes = 8;
+}
+
+message CreateOrganizationResponse {
+  // Created organization.
+  geniustechspace.idp.identity.organization.v1.Organization organization = 1;
+}
+
+// GetOrganizationRequest retrieves organization.
+message GetOrganizationRequest {
+  // Tenant path. REQUIRED.
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Organization ID. REQUIRED.
+  string organization_id = 2 [(buf.validate.field).string.max_len = 512];
+}
+
+message GetOrganizationResponse {
+  // Organization entity.
+  geniustechspace.idp.identity.organization.v1.Organization organization = 1;
+}
+
+// UpdateOrganizationRequest updates organization.
+message UpdateOrganizationRequest {
+  // Tenant path. REQUIRED.
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Organization ID. REQUIRED.
+  string organization_id = 2 [(buf.validate.field).string.max_len = 512];
+
+  // Name. Optional.
+  optional string name = 3;
+
+  // Display name. Optional.
+  optional string display_name = 4;
+
+  // Status. Optional.
+  optional geniustechspace.idp.identity.organization.v1.OrganizationStatus status = 5;
+
+  // Custom attributes. Optional.
+  map<string, string> custom_attributes = 6;
+}
+
+message UpdateOrganizationResponse {
+  // Updated organization.
+  geniustechspace.idp.identity.organization.v1.Organization organization = 1;
+}
+
+// DeleteOrganizationRequest deletes organization.
+message DeleteOrganizationRequest {
+  // Tenant path. REQUIRED.
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Organization ID. REQUIRED.
+  string organization_id = 2 [(buf.validate.field).string.max_len = 512];
+}
+
+message DeleteOrganizationResponse {
+  // Success indicator.
+  bool success = 1;
+}
+
+// ListOrganizationsRequest lists organizations.
+message ListOrganizationsRequest {
+  // Tenant path. REQUIRED.
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Page token. Optional.
+  string page_token = 2;
+
+  // Page size. Optional. Default: 50, Max: 100.
+  int32 page_size = 3 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 100
+  }];
+
+  // Filter by type. Optional.
+  optional geniustechspace.idp.identity.organization.v1.OrganizationType type = 4;
+
+  // Filter by parent ID. Optional.
+  string parent_id = 5;
+}
+
+message ListOrganizationsResponse {
+  // Organizations.
+  repeated geniustechspace.idp.identity.organization.v1.Organization organizations = 1;
+
+  // Next page token.
+  string next_page_token = 2;
+
+  // Total count.
+  int32 total_count = 3;
+}
+
+// =============================================================================
+// SEARCH API
+// =============================================================================
+
+// SearchIdentitiesRequest searches across entities.
+message SearchIdentitiesRequest {
+  // Tenant path. REQUIRED.
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Search query. REQUIRED.
+  string query = 2 [(buf.validate.field).string.max_len = 512];
+
+  // Entity types to search. Optional. Default: all.
+  repeated string types = 3;
+
+  // Page token. Optional.
+  string page_token = 4;
+
+  // Page size. Optional. Default: 50, Max: 100.
+  int32 page_size = 5 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 100
+  }];
+}
+
+// IdentitySearchResult single search result.
+message IdentitySearchResult {
+  // Entity type.
+  string type = 1;
+
+  // Entity ID.
+  string id = 2;
+
+  // Display name.
+  string display_name = 3;
+
+  // Email (users only).
+  string email = 4;
+
+  // Relevance score.
+  float score = 5;
+}
+
+message SearchIdentitiesResponse {
+  // Search results.
+  repeated IdentitySearchResult results = 1;
+
+  // Next page token.
+  string next_page_token = 2;
+
+  // Total count.
+  int32 total_count = 3;
+}

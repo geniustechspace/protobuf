@@ -24,38 +24,23 @@ message Address {
   // Street address line 1. REQUIRED for complete addresses.
   // VALIDATION: Must not be empty if address is provided
   // Example: "123 Main Street", "Suite 400"
-  string street_line1 = 1 [(buf.validate.field).string = {
-    max_len: 255
-    ignore_empty: true
-  }];
+  string street_line1 = 1 [(buf.validate.field).string = {max_len: 255}];
 
   // Street address line 2 (apartment, suite, building). Optional.
   // Example: "Apt 5B", "Building C"
-  string street_line2 = 2 [(buf.validate.field).string = {
-    max_len: 255
-    ignore_empty: true
-  }];
+  string street_line2 = 2 [(buf.validate.field).string = {max_len: 255}];
 
   // City or municipality name. REQUIRED for complete addresses.
   // Example: "San Francisco", "London"
-  string city = 3 [(buf.validate.field).string = {
-    max_len: 100
-    ignore_empty: true
-  }];
+  string city = 3 [(buf.validate.field).string = {max_len: 100}];
 
   // State, province, or region. REQUIRED for countries with states/provinces.
   // Example: "California", "Ontario", "England"
-  string state = 4 [(buf.validate.field).string = {
-    max_len: 100
-    ignore_empty: true
-  }];
+  string state = 4 [(buf.validate.field).string = {max_len: 100}];
 
   // Postal code or ZIP code. REQUIRED for most countries.
   // Format varies by country: "94102" (US), "SW1A 1AA" (UK), "M5H 2N2" (CA)
-  string postal_code = 5 [(buf.validate.field).string = {
-    max_len: 20
-    ignore_empty: true
-  }];
+  string postal_code = 5 [(buf.validate.field).string = {max_len: 20}];
 
   // Country name or ISO 3166-1 alpha-2/alpha-3 code. REQUIRED.
   // VALIDATION: Prefer ISO codes for consistency
@@ -63,7 +48,6 @@ message Address {
   string country = 6 [(buf.validate.field).string = {
     min_len: 2
     max_len: 100
-    ignore_empty: true
   }];
 }
 
@@ -81,34 +65,24 @@ message ContactInfo {
   string email = 1 [(buf.validate.field).string = {
     email: true
     max_len: 255
-    ignore_empty: true
   }];
 
   // Primary phone number with country code. Optional.
   // FORMAT: E.164 format recommended: "+1234567890"
   // COMPLIANCE: PII - May be used for multi-factor authentication
   // Example: "+1-415-555-0123"
-  string phone = 2 [(buf.validate.field).string = {
-    max_len: 20
-    ignore_empty: true
-  }];
+  string phone = 2 [(buf.validate.field).string = {max_len: 20}];
 
   // Mobile phone number with country code. Optional.
   // PURPOSE: Preferred for SMS notifications and MFA
   // FORMAT: E.164 format recommended
   // Example: "+1-415-555-0124"
-  string mobile = 3 [(buf.validate.field).string = {
-    max_len: 20
-    ignore_empty: true
-  }];
+  string mobile = 3 [(buf.validate.field).string = {max_len: 20}];
 
   // Fax number with country code. Optional, legacy systems.
   // FORMAT: E.164 format recommended
   // Example: "+1-415-555-0125"
-  string fax = 4 [(buf.validate.field).string = {
-    max_len: 20
-    ignore_empty: true
-  }];
+  string fax = 4 [(buf.validate.field).string = {max_len: 20}];
 }
 
 // Money represents monetary values with currency information.

@@ -9,50 +9,60 @@ managed:
     - file_option: csharp_namespace_prefix
       value: GeniusTechSpace.Protobuf
 plugins:
-  # Go generation with validation
-  - remote: buf.build/protocolbuffers/go:latest
+  # Go generation
+  - remote: buf.build/protocolbuffers/go:v1.35.2
     out: gen/go
     opt:
       - paths=source_relative
-  - remote: buf.build/grpc/go:latest
-    out: gen/go
-    opt:
-      - paths=source_relative
-  - remote: buf.build/bufbuild/protovalidate-go:latest
+  - remote: buf.build/grpc/go:v1.5.1
     out: gen/go
     opt:
       - paths=source_relative
   
-  # Java generation with validation
-  - remote: buf.build/protocolbuffers/java:latest
+  # Rust generation
+  - remote: buf.build/community/neoeinstein-prost:v0.4.0
+    out: gen/rust
+  - remote: buf.build/community/neoeinstein-tonic:v0.4.1
+    out: gen/rust
+  
+  # Java generation
+  - remote: buf.build/protocolbuffers/java:v28.3
     out: gen/java
-  - remote: buf.build/grpc/java:latest
+  - remote: buf.build/grpc/java:v1.68.2
     out: gen/java
   
-  # Python generation with validation
-  - remote: buf.build/protocolbuffers/python:latest
+  # Kotlin generation
+  - remote: buf.build/protocolbuffers/kotlin:v28.3
+    out: gen/kotlin
+  
+  # Swift generation
+  - remote: buf.build/apple/swift:v1.28.2
+    out: gen/swift
+  - remote: buf.build/grpc/swift:v1.24.2
+    out: gen/swift
+  
+  # Dart generation
+  - remote: buf.build/protocolbuffers/dart:v25.0.0
+    out: gen/dart
+  
+  # Python generation
+  - remote: buf.build/protocolbuffers/python:v28.3
     out: gen/python
-  - remote: buf.build/grpc/python:latest
-    out: gen/python
-  - remote: buf.build/bufbuild/protovalidate-python:latest
+  - remote: buf.build/grpc/python:v1.68.1
     out: gen/python
   
-  # TypeScript generation
-  - remote: buf.build/connectrpc/es:latest
-    out: gen/typescript
+  # TypeScript generation (enhanced with gRPC-Web)
+  - remote: buf.build/connectrpc/es:v1.6.1
+    out: gen/typescript/connect
     opt:
       - target=ts
-  
-  # C# generation
-  - remote: buf.build/protocolbuffers/csharp:latest
-    out: gen/csharp
-  - remote: buf.build/grpc/csharp:latest
-    out: gen/csharp
-  
-  # Documentation generation
-  - remote: buf.build/bufbuild/buf-plugin-doc:latest
-    out: gen/docs
+      - import_extension=none
+  - remote: buf.build/protocolbuffers/js:v3.21.2
+    out: gen/typescript/js
+  - remote: buf.build/grpc/web:v1.5.0
+    out: gen/typescript/grpc-web
     opt:
-      - markdown,index.md
+      - import_style=typescript
+      - mode=grpcwebtext
 inputs:
   - directory: proto

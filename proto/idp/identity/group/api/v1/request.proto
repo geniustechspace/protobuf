@@ -1,0 +1,74 @@
+// DOMAIN: Identity - Group Management APIRequests
+// COMPLIANCE: SOC 2 CC6.1 (Access Control), ISO 27001 A.9.2
+// SECURITY: Authentication required, tenant isolation enforced
+// PII: No - Group data is not personal information
+
+syntax = "proto3";
+
+package geniustechspace.idp.identity.group.api.v1;
+
+import "buf/validate/validate.proto";
+import "core/api/pagination/v1/messages.proto";
+import "core/common/v1/common.proto";
+import "google/protobuf/field_mask.proto";
+import "idp/identity/group/v1/group.proto";
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/idp/identity/group/api/v1;groupapiv1";
+
+// OFFLINE SUPPORT: group_id can be pre-generated (any string format (UUID, ULID, custom)).
+message CreateGroupRequest {
+  // Group data to create.
+  // OFFLINE: group_id can be pre-generated; if omitted, server generates it
+  geniustechspace.idp.identity.group.v1.Group data = 1;
+
+  reserved 2 to 9;
+}
+message GetGroupRequest {
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  oneof identifier {
+    string group_id = 2 [(buf.validate.field).string.max_len = 512];
+    string name = 3 [(buf.validate.field).string.max_len = 512];
+  }
+
+  reserved 4 to 9;
+}
+message UpdateGroupRequest {
+  // Group data with fields to update. Must include tenant_path and identifier.
+  // REQUIRED: Must contain tenant_path + (group_id OR name) for lookup
+  // PARTIAL UPDATE: Only fields listed in update_mask are modified
+  geniustechspace.idp.identity.group.v1.Group data = 1;
+
+  // Field mask specifying which fields to update.
+  // REQUIRED: Yes - explicit intent required
+  // EXAMPLES: paths: ["name", "description", "metadata.key1"]
+  google.protobuf.FieldMask update_mask = 2 [(buf.validate.field).required = true];
+
+  reserved 3 to 9;
+}
+message DeleteGroupRequest {
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+  string group_id = 2 [(buf.validate.field).string.max_len = 512];
+  bool cascade = 3; // Delete child groups if true
+}
+message ListGroupsRequest {
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+  geniustechspace.core.api.pagination.v1.PaginationRequest pagination = 2;
+  optional string organization_id = 3 [(buf.validate.field).string.max_len = 512];
+  optional string parent_group_id = 4 [(buf.validate.field).string.max_len = 512];
+}
+message AddMemberRequest {
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+  string group_id = 2 [(buf.validate.field).string.max_len = 512];
+  string user_id = 3 [(buf.validate.field).string.max_len = 512];
+}
+message RemoveMemberRequest {
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+  string group_id = 2 [(buf.validate.field).string.max_len = 512];
+  string user_id = 3 [(buf.validate.field).string.max_len = 512];
+}
+message ListMembersRequest {
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+  string group_id = 2 [(buf.validate.field).string.max_len = 512];
+  geniustechspace.core.api.pagination.v1.PaginationRequest pagination = 3;
+}

@@ -8,6 +8,7 @@ syntax = "proto3";
 
 package geniustechspace.core.network.v1;
 
+import "buf/validate/validate.proto";
 import "core/network/v1/enums.proto";
 import "google/protobuf/timestamp.proto";
 
@@ -21,51 +22,127 @@ message NetworkContext {
   reserved 20 to 30;
 
   // IP and addressing
-  string ip_address = 1; // Client IP address (IPv4 or IPv6)
+
+  // Client IP address (IPv4 or IPv6). REQUIRED.
+  // PRIVACY: IP addresses are PII under GDPR
+  string ip_address = 1 [(buf.validate.field).string = {
+    ip: true
+    min_len: 1
+  }];
+
   IPVersion ip_version = 2;
-  string proxy_ip = 3; // Proxy/VPN IP if detected
-  repeated string x_forwarded_for = 4; // X-Forwarded-For chain
+
+  // Proxy/VPN IP if detected. Optional.
+  string proxy_ip = 3 [(buf.validate.field).string = {ip: true}];
+
+  // X-Forwarded-For chain. Optional.
+  repeated string x_forwarded_for = 4 [(buf.validate.field).repeated = {
+    max_items: 10
+    items: {
+      string: {ip: true}
+    }
+  }];
 
   // Network type and connectivity
   ConnectionType connection_type = 5;
-  string network_operator = 6; // ISP or mobile operator
-  string network_name = 7; // Network SSID or name
+
+  // ISP or mobile operator. Optional.
+  string network_operator = 6 [(buf.validate.field).string.max_len = 128];
+
+  // Network SSID or name. Optional.
+  string network_name = 7 [(buf.validate.field).string.max_len = 128];
 
   // Protocol details
   Protocol protocol = 8;
   TLSVersion tls_version = 9;
-  string cipher_suite = 10; // TLS cipher suite used
+
+  // TLS cipher suite used. Optional.
+  string cipher_suite = 10 [(buf.validate.field).string.max_len = 256];
 
   // Request headers (protocol-level only; app headers in ClientContext)
-  string referer = 11; // Referer/Origin
-  string accept_language = 12; // Accept-Language header
-  map<string, string> headers = 13; // Additional protocol headers
+
+  // Referer/Origin. Optional.
+  string referer = 11 [(buf.validate.field).string = {
+    uri_ref: true
+    max_len: 2048
+  }];
+
+  // Accept-Language header. Optional.
+  string accept_language = 12 [(buf.validate.field).string.max_len = 128];
+
+  // Additional protocol headers. Optional.
+  map<string, string> headers = 13 [(buf.validate.field).map = {
+    max_pairs: 50
+    keys: {
+      string: {max_len: 128}
+    }
+    values: {
+      string: {max_len: 1024}
+    }
+  }];
 
   // Network characteristics
-  int32 latency_ms = 14; // Round-trip latency
-  float bandwidth_mbps = 15; // Available bandwidth
+
+  // Round-trip latency in milliseconds. Optional.
+  int32 latency_ms = 14 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 60000 // 60 seconds max
+  }];
+
+  // Available bandwidth in Mbps. Optional.
+  float bandwidth_mbps = 15 [(buf.validate.field).float = {
+    gte: 0.0
+    lte: 100000.0 // 100 Gbps max
+  }];
+
   NetworkQuality quality = 16;
 
-  // Geographic location ID (IP-derived, reference only)
-  string geo_location_id = 17;
+  // Geographic location ID (IP-derived, reference only). Optional.
+  string geo_location_id = 17 [(buf.validate.field).string.max_len = 128];
 
   // Security indicators
   SecurityIndicators security = 18;
 
   // Autonomous System info
-  string asn = 31; // Autonomous System Number
-  string as_organization = 32; // AS organization name
+
+  // Autonomous System Number. Optional.
+  string asn = 31 [(buf.validate.field).string = {pattern: "^AS[0-9]{1,10}$"}];
+
+  // AS organization name. Optional.
+  string as_organization = 32 [(buf.validate.field).string.max_len = 256];
 
   // Risk and reputation
-  int32 threat_score = 37; // 0-100 threat score
-  repeated string threat_types = 38; // spam, proxy, bot, etc.
-  bool blacklisted = 39; // IP on blacklist
+
+  // 0-100 threat score (0=safe, 100=high risk). Optional.
+  int32 threat_score = 37 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 100
+  }];
+
+  // Threat types (spam, proxy, bot, etc.). Optional.
+  repeated string threat_types = 38 [(buf.validate.field).repeated = {
+    max_items: 20
+    items: {
+      string: {max_len: 64}
+    }
+  }];
+
+  // IP on blacklist. Optional.
+  bool blacklisted = 39;
 
   // Timestamps
   google.protobuf.Timestamp detected_at = 40;
 
-  // Additional metadata
-  map<string, string> metadata = 41;
+  // Additional metadata. Optional.
+  map<string, string> metadata = 41 [(buf.validate.field).map = {
+    max_pairs: 20
+    keys: {
+      string: {max_len: 128}
+    }
+    values: {
+      string: {max_len: 512}
+    }
+  }];
 }
 
 // SecurityIndicators groups network security detection flags

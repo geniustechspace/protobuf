@@ -1,0 +1,148 @@
+// DOMAIN: Identity - User
+// COMPLIANCE: GDPR Article 5, ISO 27001 A.9.2, SOC 2 CC6.1
+// SECURITY: PII data - encryption at rest required
+// PII: Yes - contains personal identifiers
+
+syntax = "proto3";
+
+package geniustechspace.idp.identity.user.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/timestamp.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Idp.Identity.User.V1";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/idp/identity/user/v1;idpidentityuserv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.idp.identity.user.v1";
+
+// User entity - represents a user account in the system.
+// MULTI-TENANCY: All users belong to a tenant for data isolation.
+// AUTHENTICATION: Users authenticate via credentials (password, WebAuthn, etc.).
+// AUTHORIZATION: Users gain permissions through roles and group memberships.
+message User {
+  // User ID. Optional - server generates if omitted. Can be any string format (UUID, ULID, custom).
+  string user_id = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Hierarchical tenant path for nested multi-tenancy. Optional - defaults to root if omitted.
+  // Examples: "acme-corp", "acme-corp/customer-1", "acme-corp/customer-1/sub-org"
+  // ISOLATION: Supports unlimited nesting levels for complex B2B2B... scenarios.
+  string tenant_path = 2 [(buf.validate.field).string.max_len = 512];
+
+  // Username. Optional. Unique within tenant.
+  string username = 3 [(buf.validate.field).string = {
+    min_len: 3
+    max_len: 64
+    pattern: "^[a-zA-Z0-9_-]+$"
+  }];
+
+  // Email address. Required. Unique within tenant when verified.
+  // PII: Yes - GDPR Article 4(1). Encryption required at rest.
+  string email = 4 [(buf.validate.field).string.email = true];
+
+  // Email verification timestamp. NULL = not verified.
+  google.protobuf.Timestamp email_verified_at = 5;
+
+  // Phone number (E.164 format). Optional.
+  // PII: Yes - GDPR Article 4(1). Encryption required at rest.
+  string phone_number = 6;
+
+  // Phone verification timestamp. NULL = not verified.
+  google.protobuf.Timestamp phone_verified_at = 7;
+
+  // Display name. Cached from Profile for performance.
+  string display_name = 8 [(buf.validate.field).string = {max_len: 100}];
+
+  // Account status. See UserStatus enum.
+  UserStatus status = 9 [(buf.validate.field).enum.defined_only = true];
+
+  // External IDP user ID (federated identity).
+  string external_id = 10;
+
+  // External IDP name (google, okta, azure-ad).
+  string external_provider = 11;
+
+  // Last successful authentication timestamp.
+  google.protobuf.Timestamp last_login_at = 12;
+
+  // Last activity timestamp.
+  google.protobuf.Timestamp last_activity_at = 13;
+
+  // Password last changed timestamp.
+  google.protobuf.Timestamp password_changed_at = 14;
+
+  // Account lock expiry timestamp. NULL = not locked.
+  google.protobuf.Timestamp locked_until = 15;
+
+  reserved 16 to 19;
+
+  // Custom tags for classification and filtering.
+  repeated string tags = 20 [(buf.validate.field).repeated = {
+    min_items: 0
+    max_items: 50
+    items: {
+      string: {
+        max_len: 30
+        pattern: "^[a-zA-Z0-9_-]+$"
+      }
+    }
+  }];
+
+  // Created timestamp. IMMUTABLE after creation.
+  // COMPLIANCE: SOC 2 CC6.3, GDPR Article 30 (audit trail)
+  google.protobuf.Timestamp created_at = 21 [(buf.validate.field).required = true];
+  // Last updated timestamp.
+  // COMPLIANCE: SOC 2 CC6.3 (change tracking)
+  google.protobuf.Timestamp updated_at = 22 [(buf.validate.field).required = false];
+
+  // Deletion timestamp. If set, entity is soft deleted.
+  // COMPLIANCE: GDPR Article 17, SOC 2 CC6.3 (deletion audit trail)
+  // QUERY: Use "WHERE deleted_at IS NULL" for active records
+  google.protobuf.Timestamp deleted_at = 23 [(buf.validate.field).required = false];
+
+  reserved 24 to 29;
+
+  // Optimistic locking version counter. Incremented on each update.
+  // COMPLIANCE: SOC 2 CC6.1 (data integrity, concurrent modification protection)
+  int64 version = 30 [(buf.validate.field).int64 = {gte: 1}];
+
+  reserved 31 to 39;
+}
+
+// UserStatus - user account lifecycle states.
+// STATE TRANSITIONS:
+// - PENDING_VERIFICATION -> ACTIVE (email/phone verified)
+// - PENDING_APPROVAL -> ACTIVE (admin approved)
+// - ACTIVE <-> INACTIVE (user or admin action)
+// - ACTIVE <-> SUSPENDED (admin action, policy violation)
+// - ACTIVE <-> LOCKED (security event: brute force, suspicious activity)
+// - ANY -> DELETED (soft delete, GDPR Right to Erasure)
+// - ACTIVE -> EXPIRED (account expiration policy)
+enum UserStatus {
+  // Unspecified - invalid default value.
+  USER_STATUS_UNSPECIFIED = 0;
+
+  // Active account - can authenticate and access system.
+  ACTIVE = 1;
+
+  // Inactive - user disabled account, can be reactivated.
+  INACTIVE = 2;
+
+  // Suspended - admin disabled, requires admin to reactivate.
+  SUSPENDED = 3;
+
+  // Locked - security lock (brute force, suspicious activity).
+  // Auto-unlocks after locked_until timestamp or requires admin action.
+  LOCKED = 4;
+
+  // Deleted - soft delete, PII retained for audit/compliance.
+  DELETED = 5;
+
+  // Pending verification - awaiting email/phone verification.
+  PENDING_VERIFICATION = 6;
+
+  // Pending approval - awaiting admin approval.
+  PENDING_APPROVAL = 7;
+
+  // Expired - account expired per organization policy.
+  EXPIRED = 8;
+}

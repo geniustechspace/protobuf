@@ -10,20 +10,21 @@ The `proto/core` module contains domain-agnostic, reusable message definitions t
 
 ```
 proto/core/
+├── api/                # API layer concerns (request/response lifecycle)
+│   ├── pagination/v1/  # Pagination controls (moved from core/pagination)
+│   ├── error/v1/       # Error handling (moved from core/error)
+│   ├── request/v1/     # Request metadata (moved from core/request)
+│   ├── retry/v1/       # Retry policies (moved from core/retry)
+│   └── circuit_breaker/v1/ # Circuit breaker (moved from core/circuit_breaker)
 ├── common/v1/          # Common value objects (Address, Money, TenantContext)
 ├── metadata/v1/        # Entity metadata and audit trails
 ├── events/v1/          # Event sourcing foundation
-├── pagination/v1/      # Pagination controls
-├── error/v1/           # Standardized error handling
-├── request/v1/         # Request metadata and context
 ├── device/v1/          # Device identification and fingerprinting
 ├── client/v1/          # Client application tracking
 ├── network/v1/         # Network and connectivity context
 ├── geo/v1/             # Geolocation value objects
 ├── token/v1/           # Token structures and JWT claims
-├── session/v1/         # Session management
-├── retry/v1/           # Retry policies and strategies
-└── circuit_breaker/v1/ # Circuit breaker configuration
+└── session/v1/         # Session management
 ```
 
 ## Core Modules
@@ -143,14 +144,26 @@ geniustechspace.core.events.v1.BaseEvent event = {
 
 ---
 
-### 4. Pagination (`core/pagination/v1`)
+### 4. Pagination (`core/api/pagination/v1`)
 
-**Purpose:** Consistent pagination across all list operations
+**Location:** Moved to `core/api/*` - API layer concern
+
+**Purpose:** Cursor-based hybrid pagination with bidirectional navigation
+
+**Standards:** Industry-standard (MongoDB, GraphQL Relay, Stripe, Elasticsearch)
 
 **Key Types:**
 
-- `PaginationParams` - Request parameters (page, page_size, sort)
-- `PaginationInfo` - Response metadata (total_items, has_next, etc.)
+- `PaginationRequest` - Request parameters (page_size, page, cursor)
+- `PaginationResponse` - Response metadata (total_size, current_page, page_size, cursor)
+
+**Design:** Single responsibility - pagination only, sorting/filtering separate
+
+**Performance:**
+
+- O(log n) with client-side cursor caching
+- Graceful O(n) fallback without cursor
+- Client caches cursors per page for optimal bidirectional navigation
 
 **Limits:**
 
@@ -160,24 +173,35 @@ geniustechspace.core.events.v1.BaseEvent event = {
 **Usage:**
 
 ```protobuf
-import "core/pagination/v1/messages.proto";
+import "core/api/pagination/v1/messages.proto";
 
 message ListUsersRequest {
   string tenant_id = 1;
-  geniustechspace.core.pagination.v1.PaginationParams pagination = 2;
+  core.api.pagination.v1.PaginationRequest pagination = 2;
+  string order_by = 3;  // Sorting (separate concern)
+  string filter = 4;    // Filtering (separate concern)
 }
 
 message ListUsersResponse {
   repeated User users = 1;
-  geniustechspace.core.pagination.v1.PaginationInfo pagination = 2;
+  core.api.pagination.v1.PaginationResponse pagination = 2;
 }
 ```
 
-**Performance:** Prevents memory exhaustion and timeouts with large datasets
+**Cursor-based flow:**
+
+- First page: No cursor provided, server returns cursor for page 2
+- Next pages: Client provides cached cursor → O(log n) keyset pagination
+- Bidirectional: Client caches cursors for forward/backward navigation
+- End of collection: cursor is empty
+
+**Performance:** Prevents memory exhaustion, O(log n) for sequential navigation, handles concurrent modifications
 
 ---
 
-### 5. Error (`core/error/v1`)
+### 5. Error (`core/api/error/v1`)
+
+**Note:** Moved to `core/api/*` - API layer concern
 
 **Purpose:** Standardized error responses for distributed systems
 
@@ -207,7 +231,7 @@ message ListUsersResponse {
 **Usage:**
 
 ```protobuf
-import "core/error/v1/messages.proto";
+import "core/api/error/v1/messages.proto";
 
 ErrorResponse error = {
   message: "User not found",
@@ -225,7 +249,9 @@ ErrorResponse error = {
 
 ---
 
-### 6. Request (`core/request/v1`)
+### 6. Request (`core/api/request/v1`)
+
+**Note:** Moved to `core/api/*` - API layer concern
 
 **Purpose:** Request metadata, client context, and authorization
 
@@ -244,7 +270,7 @@ ErrorResponse error = {
 **Usage:**
 
 ```protobuf
-import "core/request/v1/messages.proto";
+import "core/api/request/v1/messages.proto";to";
 
 message CreateResourceRequest {
   geniustechspace.core.request.v1.RequestContext context = 1;
@@ -369,7 +395,7 @@ message CreateResourceRequest {
 **Usage:**
 
 ```protobuf
-import "core/token/v1/messages.proto";
+import "core/api/request/v1/messages.proto";
 
 geniustechspace.core.token.v1.TokenClaims claims = {
   sub: "usr_123",
@@ -414,7 +440,9 @@ geniustechspace.core.token.v1.TokenClaims claims = {
 
 ---
 
-### 13. Retry (`core/retry/v1`)
+### 13. Retry (`core/api/retry/v1`)
+
+**Note:** Moved to `core/api/*` - API layer concern
 
 **Purpose:** Enterprise retry policies and strategies
 
@@ -438,7 +466,9 @@ geniustechspace.core.token.v1.TokenClaims claims = {
 
 ---
 
-### 14. Circuit Breaker (`core/circuit_breaker/v1`)
+### 14. Circuit Breaker (`core/api/circuit_breaker/v1`)
+
+**Note:** Moved to `core/api/*` - API layer concern
 
 **Purpose:** Cascading failure prevention
 
@@ -501,7 +531,7 @@ Always use module-relative paths (no `proto/` prefix):
 ```protobuf
 import "core/common/v1/common.proto";
 import "core/metadata/v1/metadata.proto";
-import "core/error/v1/messages.proto";
+import "core/api/error/v1/messages.proto";
 ```
 
 ❌ **Wrong:**
@@ -524,8 +554,8 @@ message BaseEvent {
 ```
 
 ```protobuf
-// In core/error/v1/messages.proto
-import "core/retry/v1/messages.proto";
+// In core/api/error/v1/messages.proto
+import "core/api/retry/v1/messages.proto";
 
 message ErrorResponse {
   geniustechspace.core.retry.v1.RetryInfo retry_info = 5;
@@ -585,7 +615,7 @@ Modules containing PII (marked in header):
 
 ```protobuf
 import "core/common/v1/common.proto";
-import "core/request/v1/messages.proto";
+import "core/api/request/v1/messages.proto";
 import "core/metadata/v1/metadata.proto";
 
 message CreateUserRequest {
@@ -641,7 +671,7 @@ geniustechspace.core.events.v1.BaseEvent event = {
 ### Error Handling Example
 
 ```protobuf
-import "core/error/v1/messages.proto";
+import "core/api/error/v1/messages.proto";
 
 message CreateUserResponse {
   oneof result {

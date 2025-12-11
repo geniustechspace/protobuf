@@ -1,0 +1,120 @@
+// Core Error Messages - Production v1
+//
+// Standardized error responses for distributed systems.
+// SECURITY: Never expose stack traces, internal IDs, PII, or infrastructure details.
+// COMPLIANCE: SOC 2 CC6.1, CC7.2 | GDPR Article 32
+// COMPATIBILITY: Fields never change type. Numbers never reused. See reserved ranges.
+
+syntax = "proto3";
+
+package geniustechspace.core.api.error.v1;
+
+import "buf/validate/validate.proto";
+import "core/api/error/v1/enums.proto";
+import "core/api/retry/v1/messages.proto";
+import "google/protobuf/timestamp.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Core.Api.Error.V1";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/core/api/error/v1;errorv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.core.api.error.v1";
+
+// ErrorDetail: Specific error information.
+// Use for validation failures, field-level errors, granular feedback.
+message ErrorDetail {
+  reserved 13 to 20, 25, 27 to 30;
+
+  // Strongly-typed error category. REQUIRED.
+  oneof category {
+    ValidationErrorCode validation = 1;
+    AuthenticationErrorCode authentication = 2;
+    AuthorizationErrorCode authorization = 3;
+    ResourceErrorCode resource = 4;
+    BusinessErrorCode business = 5;
+    RateLimitErrorCode rate_limit = 6;
+    SystemErrorCode system = 7;
+    IntegrationErrorCode integration = 8;
+    DataErrorCode data = 9;
+    NetworkErrorCode network = 10;
+    FileErrorCode file = 11;
+    SecurityErrorCode security = 12;
+  }
+
+  // Error severity.
+  ErrorSeverity severity = 21;
+
+  // Field path (e.g., "user.email"). For validation errors.
+  string field = 22 [(buf.validate.field).string.max_len = 256];
+
+  // Human-readable message. REQUIRED.
+  string message = 23 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 500
+  }];
+
+  // i18n message key.
+  string message_key = 24 [(buf.validate.field).string.max_len = 128];
+
+  // Error timestamp (UTC). REQUIRED.
+  google.protobuf.Timestamp occurred_at = 26 [(buf.validate.field).required = true];
+
+  // Error metadata (no PII/secrets).
+  map<string, string> metadata = 31;
+
+  // Help documentation URL.
+  string help_url = 32 [(buf.validate.field).string = {
+    uri: true
+    max_len: 2048
+  }];
+}
+
+// ErrorContext: Additional error context.
+message ErrorContext {
+  reserved 6 to 10, 14 to 20, 22 to 30;
+
+  // Detailed errors.
+  repeated ErrorDetail details = 3;
+
+  // Retry guidance.
+  core.api.retry.v1.RetryInfo retry_info = 5;
+
+  // Request ID. REQUIRED.
+  string request_id = 11 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 128
+  }];
+
+  // Request path.
+  string request_path = 12 [(buf.validate.field).string.max_len = 512];
+
+  // HTTP method.
+  string request_method = 13 [(buf.validate.field).string.max_len = 16];
+
+  // Error metadata (no PII/secrets) can include trace IDs, correlation IDs, etc.
+  map<string, string> metadata = 21;
+
+  // Help documentation URL.
+  string help_url = 41 [(buf.validate.field).string = {
+    uri: true
+    max_len: 2048
+  }];
+}
+
+// ErrorResponse: Standardized error response.
+// Use as gRPC error details or HTTP response body.
+// SECURITY: Never expose stack traces, DB queries, or internal system details.
+message ErrorResponse {
+  reserved 6 to 10, 14 to 20, 22 to 30;
+
+  // High-level error message. REQUIRED.
+  string message = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 500
+  }];
+
+  // i18n message key.
+  string message_key = 2 [(buf.validate.field).string.max_len = 128];
+
+  // ErrorContext with detailed info.
+  ErrorContext context = 3;
+}

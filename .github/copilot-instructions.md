@@ -113,21 +113,87 @@ rpc CreateUser(CreateUserRequest) returns (CreateUserResponse);
 
 ## Common Patterns
 
-### Pagination (Use core.v1)
+### Pagination (Industry-Standard Cursor-Based)
+
+**Single Responsibility:** Pagination only - sorting and filtering are separate concerns
 
 ```protobuf
-import "core/v1/common.proto";
+import "core/api/pagination/v1/messages.proto";
 
 message ListUsersRequest {
   string tenant_id = 1;
-  core.v1.PaginationRequest pagination = 2;
+  
+  // Pagination (separate concern)
+  core.api.pagination.v1.PaginationRequest pagination = 2;
+  
+  // Sorting (Google AIP-132 - add directly to request)
+  string order_by = 3;  // e.g., "created_at desc"
+  
+  // Filtering (Google AIP-160 - add directly to request)
+  string filter = 4;  // e.g., "status='active'"
 }
 
 message ListUsersResponse {
   repeated User users = 1;
-  core.v1.PaginationResponse pagination = 2;
+  core.api.pagination.v1.PaginationResponse pagination = 2;
 }
 ```
+
+**Pagination uses cursor map with client-side caching:**
+
+- First page: omit `cursor`, server returns cursor for next page
+- Next pages: provide cached `cursor` from previous response → O(log n) performance
+- Client caches cursors per page for bidirectional navigation
+- End of results: `cursor` is empty
+
+**Sorting format (Google AIP-132 standard):**
+
+- `"created_at desc"` - newest first
+- `"name"` - alphabetical ascending  
+- `"priority desc, created_at"` - multi-field sort
+
+### Entity Metadata Pattern (CRITICAL)
+
+**All domain entities MUST include flattened audit fields for database efficiency.**
+
+DO NOT use nested `core.metadata.v1.Metadata` message in entities. Use direct fields instead to support efficient search, filtering, and indexing in databases.
+
+**Required Audit Fields Template:**
+
+```protobuf
+message User {
+  string user_id = 1;
+  string tenant_id = 2;
+  // ... domain-specific fields ...
+
+  // Created timestamp. IMMUTABLE after creation.
+  // COMPLIANCE: SOC 2 CC6.3, GDPR Article 30 (audit trail)
+  google.protobuf.Timestamp created_at = N [(buf.validate.field).required = true];
+
+  // Last updated timestamp.
+  // COMPLIANCE: SOC 2 CC6.3 (change tracking)
+  google.protobuf.Timestamp updated_at = N+1;
+
+  // Deletion timestamp. If set, entity is soft deleted.
+  // COMPLIANCE: GDPR Article 17, SOC 2 CC6.3 (deletion audit trail)
+  // QUERY: Use "WHERE deleted_at IS NULL" for active records
+  google.protobuf.Timestamp deleted_at = N+2;
+
+  // Optimistic locking version counter. Incremented on each update.
+  // COMPLIANCE: SOC 2 CC6.1 (data integrity, concurrent modification protection)
+  int64 version = N+3;
+}
+```
+
+**Rationale:** Flattened structure enables:
+
+- Efficient database indexing on audit fields
+- Direct filtering/searching on created_at, updated_at, deleted_at
+- Better ORM mapping and query performance
+- Simplified database schema generation
+- Single source of truth for deletion (deleted_at IS NULL = active, IS NOT NULL = deleted)
+
+**Note:** Actor tracking (created_by, updated_by) should be maintained in separate audit entity for detailed change history while keeping domain entities lean for frequent queries.
 
 ### Domain Events Pattern
 
@@ -136,11 +202,13 @@ message ListUsersResponse {
 // EVENT: Publish to event bus for downstream consumers
 // COMPLIANCE: Audit trail requirement
 message UserCreated {
-  core.v1.Metadata metadata = 1;  // Event ID and timestamp
-  string tenant_id = 2;
-  string user_id = 3;
-  string email = 4;  // Safe for event - no password
-  string created_by = 5;
+  string event_id = 1;  // UUID for event tracing
+  google.protobuf.Timestamp event_timestamp = 2;
+  string tenant_id = 3;
+  string user_id = 4;
+  string email = 5;  // Safe for event - no password
+  string created_by = 6;
+  string correlation_id = 7;  // For distributed tracing
 }
 ```
 
@@ -169,8 +237,8 @@ Before committing:
 
 ## Common Gotchas
 
-1. **Don't modify `deprecated/` directory** - it's frozen legacy code
-2. **Check if domain exists** - Use `proto/idp/` for auth, not deprecated `proto/auth/`
+1. **Package naming** - Use domain-first for IDP: `geniustechspace.idp.{domain}.{subdomain}.{layer}.v1`
+2. **Check if domain exists** - Use `proto/idp/` for identity and auth operations
 3. **Empty directories** - `proto/idp/authn/v1/`, `proto/core/[subdomain]/` may be empty; check README location
 4. **Import paths** - Always module-relative, never absolute with `proto/` prefix
 5. **Tenant isolation** - Every request MUST have tenant_id; every service MUST enforce it
@@ -182,7 +250,7 @@ Before committing:
 1. Create directory: `proto/newdomain/v1/`
 2. Create modular files: `messages.proto`, `service.proto`, `events.proto`, `enums.proto`
 3. Add domain README explaining purpose and patterns
-4. Include Metadata in all entities
+4. Include flattened audit fields in all entities (created_at, updated_at, deleted_at, version)
 5. Include tenant_id in all requests
 6. Add protovalidate annotations
 7. Document compliance requirements
@@ -191,7 +259,7 @@ Before committing:
 
 ## Additional Resources
 
-- Buf docs: https://buf.build/docs
-- Protovalidate: https://github.com/bufbuild/protovalidate
-- gRPC style guide: https://grpc.io/docs/guides/
+- Buf docs: <https://buf.build/docs>
+- Protovalidate: <https://github.com/bufbuild/protovalidate>
+- gRPC style guide: <https://grpc.io/docs/guides/>
 - Domain-driven design applied to this repo: Check modular IDP structure in `proto/idp/`

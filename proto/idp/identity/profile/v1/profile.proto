@@ -1,0 +1,86 @@
+// DOMAIN: Identity - Profile (Core)
+// COMPLIANCE: GDPR Article 5, SOC 2 CC6.1
+// SECURITY: PII data - encryption at rest required
+// PII: Yes - personal identity information
+
+syntax = "proto3";
+
+package geniustechspace.idp.identity.profile.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/timestamp.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Idp.Identity.Profile.V1";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/idp/identity/profile/v1;idpidentityprofilev1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.idp.identity.profile.v1";
+
+// UserProfile - core personal information (name, bio, identity).
+// PII: Yes - all fields are personal data under GDPR.
+// COMPLIANCE: GDPR Article 5 (data minimization).
+// NOTE: Address, phone numbers, social profiles, and employment are separate entities.
+message UserProfile {
+  // Profile ID. Optional - server generates if omitted.
+  string profile_id = 1 [(buf.validate.field).string.max_len = 512];
+
+  // User ID. Optional - can be set from context or provided.
+  // PII: Yes - GDPR Article 4(1) personal identifier.
+  string user_id = 2 [(buf.validate.field).string.max_len = 512];
+
+  // Hierarchical tenant path for nested multi-tenancy. Optional - defaults to root if omitted.
+  // Examples: "acme-corp", "acme-corp/customer-1", "acme-corp/customer-1/sub-org"
+  // ISOLATION: Supports unlimited nesting levels for complex B2B2B... scenarios.
+  string tenant_path = 3 [(buf.validate.field).string.max_len = 512];
+
+  // Given name (first name).
+  // PII: Yes - GDPR Article 4(1) personal identifier.
+  string given_name = 4 [(buf.validate.field).string.max_len = 64];
+
+  // Family name (last name).
+  // PII: Yes - GDPR Article 4(1) personal identifier.
+  string family_name = 5 [(buf.validate.field).string.max_len = 64];
+
+  // Middle name.
+  // PII: Yes - GDPR Article 4(1) personal identifier.
+  string middle_name = 6 [(buf.validate.field).string.max_len = 64];
+
+  // Nickname or preferred informal name.
+  string nickname = 7 [(buf.validate.field).string.max_len = 64];
+
+  // Profile picture URL.
+  string picture_url = 8 [(buf.validate.field).string.uri = true];
+
+  // Gender.
+  // PII: Yes - GDPR Article 9 (special category).
+  string gender = 9 [(buf.validate.field).string.max_len = 50];
+
+  // Birth date.
+  // PII: Yes - GDPR Article 9 (special category).
+  google.protobuf.Timestamp birth_date = 10;
+
+  reserved 11 to 19;
+
+  // Personal or professional website URL.
+  string website_url = 20 [(buf.validate.field).string.uri = true];
+
+  // Biography or description.
+  string bio = 21 [(buf.validate.field).string.max_len = 1000];
+
+  // Custom attributes for extensibility.
+  // PII: Possibly - depends on content.
+  map<string, string> custom_attributes = 22;
+
+  // Created timestamp.
+  google.protobuf.Timestamp created_at = 23 [(buf.validate.field).required = true];
+
+  // Last updated timestamp.
+  google.protobuf.Timestamp updated_at = 24;
+
+  // Deletion timestamp (soft delete).
+  google.protobuf.Timestamp deleted_at = 25;
+
+  reserved 26 to 29;
+
+  // Optimistic locking version.
+  int64 version = 30 [(buf.validate.field).int64.gte = 1];
+}

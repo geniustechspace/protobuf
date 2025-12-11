@@ -1,0 +1,66 @@
+// DOMAIN: Identity - Profile Social Profiles
+// COMPLIANCE: GDPR Article 5, SOC 2 CC6.1
+// SECURITY: PII data - can reveal personal information
+// PII: Yes - social media profiles are personal identifiers
+
+syntax = "proto3";
+
+package geniustechspace.idp.identity.profile.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/timestamp.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Idp.Identity.Profile.V1";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/idp/identity/profile/v1;idpidentityprofilev1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.idp.identity.profile.v1";
+
+// UserSocialProfile - user's social media profiles (separate entity).
+// PII: Yes - can reveal personal information.
+// MULTI-RECORD: Users can have multiple social profiles (GitHub, LinkedIn, Twitter, etc.).
+message UserSocialProfile {
+  // Social profile ID. Primary key.
+  string social_profile_id = 1 [(buf.validate.field).string.max_len = 512];
+
+  // User ID. Foreign key.
+  string user_id = 2 [(buf.validate.field).string.max_len = 512];
+
+  // Hierarchical tenant path for nested multi-tenancy.
+  // Examples: "acme-corp", "acme-corp/customer-1", "acme-corp/customer-1/sub-org"
+  // ISOLATION: Supports unlimited nesting levels for complex B2B2B... scenarios.
+  string tenant_path = 3 [(buf.validate.field).string.max_len = 512];
+
+  // Provider (github, linkedin, twitter, facebook, etc.).
+  string provider = 4 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 50
+  }];
+
+  // Username or handle on the platform.
+  string username = 5 [(buf.validate.field).string.max_len = 100];
+
+  // Profile URL on the platform.
+  string profile_url = 6 [(buf.validate.field).string.uri = true];
+
+  // OAuth connection ID (if connected via OAuth).
+  string oauth_connection_id = 7;
+
+  reserved 8 to 19;
+
+  // Verification timestamp and flag (OAuth or manual verification).
+  google.protobuf.Timestamp verified_at = 20;
+
+  // Created timestamp.
+  google.protobuf.Timestamp created_at = 21 [(buf.validate.field).required = true];
+
+  // Last updated timestamp.
+  google.protobuf.Timestamp updated_at = 22;
+
+  // Deletion timestamp (soft delete).
+  google.protobuf.Timestamp deleted_at = 23;
+
+  reserved 24 to 29;
+
+  // Optimistic locking version.
+  int64 version = 30 [(buf.validate.field).int64.gte = 1];
+}

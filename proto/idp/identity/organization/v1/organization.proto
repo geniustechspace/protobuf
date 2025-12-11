@@ -1,0 +1,190 @@
+// DOMAIN: Identity - Organization
+// COMPLIANCE: ISO 27001 A.7.1, SOC 2 CC6.1
+// SECURITY: Organization-level data isolation and configuration
+// PURPOSE: Multi-organization tenant support
+
+syntax = "proto3";
+
+package geniustechspace.idp.identity.organization.v1;
+
+import "buf/validate/validate.proto";
+import "core/metadata/v1/metadata.proto";
+import "google/protobuf/timestamp.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Idp.Identity.Organization.V1";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/idp/identity/organization/v1;idpidentityorganizationv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.idp.identity.organization.v1";
+
+// Organization entity - company or organizational unit within a tenant.
+// HIERARCHICAL: Organizations can have parent/child relationships.
+// MULTI-TENANT: Multiple organizations per tenant for enterprise customers.
+// DOMAIN OWNERSHIP: Organizations can claim email domains for auto-join.
+// INVARIANTS:
+// - Name unique within tenant
+// - Circular parent references not allowed
+// - Domain ownership exclusive (one org per domain)
+message Organization {
+  // Organization ID. Immutable unique identifier.
+  string id = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Hierarchical tenant path for nested multi-tenancy. Immutable.
+  // Examples: "acme-corp", "acme-corp/customer-1", "acme-corp/customer-1/sub-org"
+  // ISOLATION: Supports unlimited nesting levels for complex B2B2B... scenarios.
+  string tenant_path = 2 [(buf.validate.field).string.max_len = 512];
+
+  // Organization name. Required. Must be unique within tenant.
+  string name = 3 [(buf.validate.field).string.max_len = 512];
+
+  // Display name (human-readable, may include spaces/special chars).
+  string display_name = 4;
+
+  // Organization type classification.
+  OrganizationType type = 5 [(buf.validate.field).enum.defined_only = true];
+
+  // Organization size classification (by employee count).
+  OrganizationSize size = 6;
+
+  // Organization status - controls access and lifecycle.
+  OrganizationStatus status = 7 [(buf.validate.field).enum.defined_only = true];
+
+  // Parent organization ID for hierarchical structure.
+  string parent_id = 8;
+
+  // Child organization IDs for hierarchy navigation.
+  repeated string child_organization_ids = 9;
+
+  // Owned email domains for auto-join (e.g., "company.com").
+  // Users with verified emails from these domains auto-join organization.
+  repeated string domains = 10;
+
+  // Branding configuration (logo, colors, custom CSS).
+  OrganizationBranding branding = 11;
+
+  // Organization settings (JSON or key-value configuration).
+  map<string, string> settings = 12;
+
+  // Member count (denormalized for performance).
+  int32 member_count = 13;
+
+  // Group count (denormalized for performance).
+  int32 group_count = 14;
+
+  // Custom attributes for extensibility (key-value pairs).
+  map<string, string> custom_attributes = 15;
+
+  // Created timestamp. IMMUTABLE after creation.
+  // COMPLIANCE: SOC 2 CC6.3, GDPR Article 30 (audit trail)
+  google.protobuf.Timestamp created_at = 16 [(buf.validate.field).required = true];
+
+  // Last updated timestamp.
+  // COMPLIANCE: SOC 2 CC6.3 (change tracking)
+  google.protobuf.Timestamp updated_at = 17;
+
+  // Deletion timestamp. If set, entity is soft deleted.
+  // COMPLIANCE: GDPR Article 17, SOC 2 CC6.3 (deletion audit trail)
+  // QUERY: Use "WHERE deleted_at IS NULL" for active records
+  google.protobuf.Timestamp deleted_at = 18;
+
+  // Optimistic locking version counter. Incremented on each update.
+  // COMPLIANCE: SOC 2 CC6.1 (data integrity, concurrent modification protection)
+  int64 version = 19;
+}
+
+// OrganizationType - classification by industry/sector.
+enum OrganizationType {
+  // Unspecified - invalid default value.
+  ORGANIZATION_TYPE_UNSPECIFIED = 0;
+
+  // Enterprise - large commercial organization.
+  ENTERPRISE = 1;
+
+  // Business - SMB commercial organization.
+  BUSINESS = 2;
+
+  // Non-profit organization.
+  NON_PROFIT = 3;
+
+  // Government entity.
+  GOVERNMENT = 4;
+
+  // Educational institution.
+  EDUCATIONAL = 5;
+
+  // Healthcare provider.
+  HEALTHCARE = 6;
+
+  // Other type not listed.
+  OTHER = 7;
+}
+
+// OrganizationSize - classification by employee count.
+enum OrganizationSize {
+  // Unspecified - invalid default value.
+  ORGANIZATION_SIZE_UNSPECIFIED = 0;
+
+  // Small: 1-10 employees.
+  SMALL = 1;
+
+  // Medium: 11-50 employees.
+  MEDIUM = 2;
+
+  // Large: 51-200 employees.
+  LARGE = 3;
+
+  // Enterprise size: 201-1000 employees.
+  SIZE_ENTERPRISE = 4;
+
+  // Large Enterprise: 1001-5000 employees.
+  SIZE_LARGE_ENTERPRISE = 5;
+
+  // Mega Enterprise: 5000+ employees.
+  SIZE_MEGA_ENTERPRISE = 6;
+}
+
+// OrganizationStatus - organization lifecycle states.
+// STATE TRANSITIONS:
+// - PENDING -> ACTIVE (setup completed)
+// - ACTIVE <-> INACTIVE (admin action)
+// - ACTIVE -> SUSPENDED (policy violation, payment issue)
+// - ANY -> DELETED (soft delete)
+enum OrganizationStatus {
+  // Unspecified - invalid default value.
+  ORGANIZATION_STATUS_UNSPECIFIED = 0;
+
+  // Active organization - fully operational.
+  ACTIVE = 1;
+
+  // Inactive - temporarily disabled, can be reactivated.
+  INACTIVE = 2;
+
+  // Suspended - admin action, requires resolution.
+  SUSPENDED = 3;
+
+  // Deleted - soft delete, data retained for audit.
+  DELETED = 4;
+
+  // Pending setup - initial state, requires configuration.
+  PENDING = 5;
+}
+
+// OrganizationBranding - visual identity and customization.
+message OrganizationBranding {
+  // Logo URL (absolute URL to organization logo image).
+  string logo_url = 1;
+
+  // Primary brand color (hex format: #RRGGBB).
+  string primary_color = 2;
+
+  // Secondary brand color (hex format: #RRGGBB).
+  string secondary_color = 3;
+
+  // Accent color (hex format: #RRGGBB).
+  string accent_color = 4;
+
+  // Custom CSS URL for advanced branding.
+  string custom_css_url = 5;
+
+  // Favicon URL (absolute URL to favicon).
+  string favicon_url = 6;
+}

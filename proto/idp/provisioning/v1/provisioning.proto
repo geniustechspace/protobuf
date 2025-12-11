@@ -1,0 +1,108 @@
+// DOMAIN: IDP - Provisioning
+// PURPOSE: Automated user lifecycle management (SCIM 2.0)
+// STANDARDS: SCIM 2.0 (RFC 7643, RFC 7644)
+
+syntax = "proto3";
+
+package geniustechspace.idp.provisioning.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/timestamp.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Idp.Provisioning.V1";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/idp/provisioning/v1;idpprovisioningv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.idp.provisioning.v1";
+
+// ProvisioningConfig - SCIM provisioning configuration.
+message ProvisioningConfig {
+  // Provisioning config ID. REQUIRED.
+  string id = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Tenant path. REQUIRED.
+  string tenant_path = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 512
+  }];
+
+  // Configuration name. REQUIRED.
+  string name = 3 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 512
+  }];
+
+  // Provisioning direction. REQUIRED.
+  ProvisioningDirection direction = 4 [(buf.validate.field).enum.defined_only = true];
+
+  // Provisioning status. REQUIRED.
+  ProvisioningStatus status = 5 [(buf.validate.field).enum.defined_only = true];
+
+  // Target system identifier. REQUIRED.
+  // Examples: "okta", "azure-ad", "google-workspace", "salesforce"
+  string target_system = 6 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 128
+    pattern: "^[a-z][a-z0-9-]*$"
+  }];
+
+  // SCIM attribute mapping configuration. Optional.
+  // Maps source attributes to target attributes
+  // Example: {"givenName": "firstName", "familyName": "lastName"}
+  map<string, string> attribute_mapping = 7 [(buf.validate.field).map = {
+    max_pairs: 100
+    keys: {
+      string: {
+        min_len: 1
+        max_len: 128
+      }
+    }
+    values: {
+      string: {
+        min_len: 1
+        max_len: 128
+      }
+    }
+  }];
+
+  // Sync groups in addition to users. Optional, defaults to false.
+  bool sync_groups = 8;
+
+  // Sync interval in minutes. Optional, defaults to 60.
+  // VALIDATION: Must be between 5 minutes and 1440 minutes (24 hours)
+  int32 sync_interval_minutes = 9 [(buf.validate.field).int32 = {
+    gte: 5
+    lte: 1440
+  }];
+
+  // Created timestamp. IMMUTABLE after creation.
+  // COMPLIANCE: SOC 2 CC6.3, GDPR Article 30 (audit trail)
+  google.protobuf.Timestamp created_at = 10 [(buf.validate.field).required = true];
+
+  // Last updated timestamp.
+  // COMPLIANCE: SOC 2 CC6.3 (change tracking)
+  google.protobuf.Timestamp updated_at = 11;
+
+  // Deletion timestamp. If set, entity is soft deleted.
+  // COMPLIANCE: GDPR Article 17, SOC 2 CC6.3 (deletion audit trail)
+  // QUERY: Use "WHERE deleted_at IS NULL" for active records
+  google.protobuf.Timestamp deleted_at = 12;
+
+  // Optimistic locking version counter. Incremented on each update.
+  // COMPLIANCE: SOC 2 CC6.1 (data integrity, concurrent modification protection)
+  int64 version = 13;
+}
+
+enum ProvisioningDirection {
+  PROVISIONING_DIRECTION_UNSPECIFIED = 0;
+  INBOUND = 1;
+  OUTBOUND = 2;
+  BIDIRECTIONAL = 3;
+}
+
+enum ProvisioningStatus {
+  PROVISIONING_STATUS_UNSPECIFIED = 0;
+  ACTIVE = 1;
+  PAUSED = 2;
+  ERROR = 3;
+  SYNCING = 4;
+}

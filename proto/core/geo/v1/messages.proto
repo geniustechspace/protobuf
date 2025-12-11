@@ -8,6 +8,7 @@ syntax = "proto3";
 
 package geniustechspace.core.geo.v1;
 
+import "buf/validate/validate.proto";
 import "core/geo/v1/enums.proto";
 import "google/protobuf/timestamp.proto";
 
@@ -20,39 +21,66 @@ option java_package = "com.geniustechspace.protobuf.core.geo.v1";
 message GeoLocation {
   reserved 6 to 10, 15 to 20, 25 to 30;
 
-  // Country code (ISO 3166-1 alpha-2)
-  string country_code = 1;
+  // Country code (ISO 3166-1 alpha-2). REQUIRED.
+  // Examples: "US", "GB", "CA", "DE"
+  string country_code = 1 [(buf.validate.field).string = {
+    len: 2
+    pattern: "^[A-Z]{2}$"
+  }];
 
-  // Country name
-  string country = 2;
+  // Country name. Optional.
+  // Example: "United States", "United Kingdom"
+  string country = 2 [(buf.validate.field).string.max_len = 100];
 
-  // Region/state
-  string region = 3;
+  // Region/state. Optional.
+  // Example: "California", "Texas", "England"
+  string region = 3 [(buf.validate.field).string.max_len = 100];
 
-  // City
-  string city = 4;
+  // City. Optional.
+  // Example: "San Francisco", "London"
+  string city = 4 [(buf.validate.field).string.max_len = 100];
 
-  // Town
-  string town = 5;
+  // Town. Optional.
+  string town = 5 [(buf.validate.field).string.max_len = 100];
 
-  // Postal code
-  string postal_code = 11;
+  // Postal code. Optional.
+  // Example: "94102", "SW1A 1AA"
+  string postal_code = 11 [(buf.validate.field).string.max_len = 20];
 
-  // Latitude
-  double latitude = 12;
+  // Latitude in decimal degrees. Optional.
+  // VALIDATION: Must be between -90 and 90
+  // PRIVACY: Exact coordinates require user consent per GDPR
+  double latitude = 12 [(buf.validate.field).double = {
+    gte: -90.0
+    lte: 90.0
+  }];
 
-  // Longitude
-  double longitude = 13;
+  // Longitude in decimal degrees. Optional.
+  // VALIDATION: Must be between -180 and 180
+  // PRIVACY: Exact coordinates require user consent per GDPR
+  double longitude = 13 [(buf.validate.field).double = {
+    gte: -180.0
+    lte: 180.0
+  }];
 
-  // Timezone (IANA)
-  string timezone = 14;
+  // Timezone (IANA timezone database name). Optional.
+  // Example: "America/New_York", "Europe/London"
+  string timezone = 14 [(buf.validate.field).string.max_len = 64];
 
-  // Determination timestamp (UTC)
+  // Determination timestamp (UTC). Optional.
   google.protobuf.Timestamp determined_at = 21;
 
-  // Source of geolocation data
+  // Source of geolocation data. Optional.
   GeoLocationSource source = 22;
 
-  // Additional metadata (no PII)
-  map<string, string> metadata = 23;
+  // Additional metadata (no PII). Optional.
+  map<string, string> metadata = 23 [(buf.validate.field).map = {
+    max_pairs: 20
+    keys: {
+      string: {max_len: 128}
+    }
+    values: {
+      string: {max_len: 512}
+    }
+  }];
 }

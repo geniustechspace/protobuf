@@ -1,0 +1,20 @@
+// DOMAIN: Identity - User Profile Management API(Consolidated Import)
+// COMPLIANCE: GDPR Article 5, SOC 2 CC6.1
+// SECURITY: Authentication required, tenant isolation enforced
+// PII: Yes - Profile contains personal data
+//
+// NOTE: This file serves as a convenience import that includes service, request, and response.
+// For modular imports, use:
+//   - idp/identity/profile/api/v1/service.proto (service definition only)
+//   - idp/identity/profile/api/v1/request.proto (request messages only)
+//   - idp/identity/profile/api/v1/response.proto (response messages only)
+
+syntax = "proto3";
+
+package geniustechspace.idp.identity.profile.api.v1;
+
+import "idp/identity/profile/api/v1/request.proto";
+import "idp/identity/profile/api/v1/response.proto";
+// import "idp/identity/profile/api/v1/service.proto";  // TODO: Complete service definitions
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/idp/identity/profile/api/v1;profileapiv1";
