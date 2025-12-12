@@ -123,7 +123,7 @@ message ListResponse {
 message SearchResponse {
   string message = 1 [(buf.validate.field).string.max_len = 500];
   string message_key = 2 [(buf.validate.field).string.max_len = 128];
-  repeated google.protobuf.Any items = 3;
+  repeated google.protobuf.Any data = 3;
   PaginationMetadata pagination = 4;
   geniustechspace.core.api.error.v1.ErrorContext error = 5;
   repeated string warnings = 6;

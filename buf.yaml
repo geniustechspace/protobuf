@@ -12,6 +12,8 @@ lint:
   except:
     # Allow packages without version suffix for core types
     - PACKAGE_VERSION_SUFFIX
+    # Allow geniustechspace package prefix without matching directory structure
+    - PACKAGE_DIRECTORY_MATCH
   # Enforce comprehensive documentation
   enum_zero_value_suffix: _UNSPECIFIED
   rpc_allow_same_request_response: false

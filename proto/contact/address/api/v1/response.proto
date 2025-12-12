@@ -1,0 +1,63 @@
+// Address Management API Response Messages
+//
+// Response messages for Address domain operations.
+//
+// DOMAIN: Contact - Address Management
+// VERSION: v1
+// COMPLIANCE: SOC 2 CC6.1, GDPR Articles 5/17, ISO 27001 A.9.2
+// PII: Yes - Contains personal identifiers and address data
+
+syntax = "proto3";
+
+package geniustechspace.contact.address.api.v1;
+
+import "contact/address/v1/address.proto";
+import "core/api/pagination/v1/messages.proto";
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/contact/address/api/v1;addressv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.contact.address.api.v1";
+
+// AddressResponse wraps address data.
+message AddressResponse {
+  // Address data.
+  geniustechspace.contact.address.v1.UserAddress data = 1;
+
+  reserved 2 to 9;
+}
+
+// DeleteAddressResponse confirms deletion.
+message DeleteAddressResponse {
+  // Whether deletion was successful.
+  bool success = 1;
+
+  // Deleted address ID.
+  string address_id = 2;
+
+  reserved 3 to 9;
+}
+
+// ListAddressesResponse returns paginated addresses.
+message ListAddressesResponse {
+  // Addresses in current page.
+  repeated geniustechspace.contact.address.v1.UserAddress data = 1;
+
+  // Pagination metadata.
+  core.api.pagination.v1.PaginationResponse pagination = 2;
+
+  reserved 3 to 9;
+}
+
+// VerifyAddressResponse confirms verification.
+message VerifyAddressResponse {
+  // Whether verification was successful.
+  bool success = 1;
+
+  // Verified address.
+  geniustechspace.contact.address.v1.UserAddress data = 2;
+
+  // Verification method used.
+  string method = 3;
+
+  reserved 4 to 9;
+}

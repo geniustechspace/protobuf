@@ -1,0 +1,74 @@
+// Phone Management API Response Messages
+//
+// Response messages for Phone domain operations.
+//
+// DOMAIN: Contact - Phone Management
+// VERSION: v1
+// COMPLIANCE: SOC 2 CC6.1, GDPR Articles 5/17, ISO 27001 A.9.2
+// PII: Yes - Contains personal identifiers and phone data
+
+syntax = "proto3";
+
+package geniustechspace.contact.phone.api.v1;
+
+import "contact/phone/v1/phone.proto";
+import "core/api/pagination/v1/messages.proto";
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/contact/phone/api/v1;phonev1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.contact.phone.api.v1";
+
+// PhoneNumberResponse wraps phone number data.
+message PhoneNumberResponse {
+  // Phone number data.
+  geniustechspace.contact.phone.v1.UserPhoneNumber data = 1;
+
+  reserved 2 to 9;
+}
+
+// DeletePhoneNumberResponse confirms deletion.
+message DeletePhoneNumberResponse {
+  // Whether deletion was successful.
+  bool success = 1;
+
+  // Deleted phone number ID.
+  string phone_id = 2;
+
+  reserved 3 to 9;
+}
+
+// ListPhoneNumbersResponse returns paginated phone numbers.
+message ListPhoneNumbersResponse {
+  // Phone numbers in current page.
+  repeated geniustechspace.contact.phone.v1.UserPhoneNumber data = 1;
+
+  // Pagination metadata.
+  core.api.pagination.v1.PaginationResponse pagination = 2;
+
+  reserved 3 to 9;
+}
+
+// VerifyPhoneNumberResponse confirms verification.
+message VerifyPhoneNumberResponse {
+  // Whether verification was successful.
+  bool success = 1;
+
+  // Verified phone number.
+  geniustechspace.contact.phone.v1.UserPhoneNumber data = 2;
+
+  reserved 3 to 9;
+}
+
+// SendVerificationCodeResponse confirms code sent.
+message SendVerificationCodeResponse {
+  // Whether code was sent successfully.
+  bool success = 1;
+
+  // Delivery method used.
+  string method = 2;
+
+  // Expiration timestamp (seconds since epoch).
+  int64 expires_at = 3;
+
+  reserved 4 to 9;
+}

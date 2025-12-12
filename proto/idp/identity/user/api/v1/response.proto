@@ -16,9 +16,9 @@ syntax = "proto3";
 package geniustechspace.idp.identity.user.api.v1;
 
 import "buf/validate/validate.proto";
+import "core/api/error/v1/messages.proto";
 import "core/api/pagination/v1/messages.proto";
 import "core/common/v1/common.proto";
-import "core/api/error/v1/messages.proto";
 import "idp/identity/user/v1/user.proto";
 
 option csharp_namespace = "GeniusTechSpace.Protobuf.Idp.Identity.User.Api.V1";

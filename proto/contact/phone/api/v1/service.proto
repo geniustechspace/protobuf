@@ -1,0 +1,70 @@
+// Phone Management gRPC Service
+//
+// Provides gRPC API for phone number lifecycle management including CRUD operations,
+// verification workflows, and primary phone management.
+//
+// DOMAIN: Contact - Phone Management
+// VERSION: v1
+// COMPLIANCE: SOC 2 CC6.1, GDPR Articles 5/15-17, ISO 27001 A.9.2
+// PII: Yes - Contains personal identifiers and phone data
+
+syntax = "proto3";
+
+package geniustechspace.contact.phone.api.v1;
+
+import "contact/phone/api/v1/request.proto";
+import "contact/phone/api/v1/response.proto";
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/contact/phone/api/v1;phonev1";
+option java_multiple_files = true;
+option java_outer_classname = "PhoneServiceProto";
+option java_package = "com.geniustechspace.protobuf.contact.phone.api.v1";
+
+// PhoneService manages phone number lifecycle operations.
+//
+// All RPCs require authentication (Bearer token) and authorization (RBAC permissions).
+// Mutations publish domain events. Rate limits enforced per-tenant.
+service PhoneService {
+  // CreatePhoneNumber creates a new phone number.
+  // AUTH: Requires 'contact:phone:create' permission OR self-access
+  // EVENTS: Publishes PhoneNumberCreated
+  // RATE LIMIT: 20/min per tenant
+  rpc CreatePhoneNumber(CreatePhoneNumberRequest) returns (PhoneNumberResponse);
+
+  // GetPhoneNumber retrieves phone number by ID.
+  // AUTH: Requires 'contact:phone:read' permission OR self-access
+  // RATE LIMIT: 100/min per tenant
+  rpc GetPhoneNumber(GetPhoneNumberRequest) returns (PhoneNumberResponse);
+
+  // UpdatePhoneNumber modifies existing phone number (partial update).
+  // AUTH: Requires 'contact:phone:update' permission OR self-access
+  // NOTE: Uses optimistic locking via version field
+  // EVENTS: Publishes PhoneNumberUpdated
+  // RATE LIMIT: 50/min per tenant
+  rpc UpdatePhoneNumber(UpdatePhoneNumberRequest) returns (PhoneNumberResponse);
+
+  // DeletePhoneNumber soft-deletes or hard-deletes phone number.
+  // AUTH: Requires 'contact:phone:delete' permission OR self-access (soft)
+  //       or 'contact:phone:hard_delete' (hard)
+  // NOTE: Hard delete is irreversible
+  // EVENTS: Publishes PhoneNumberDeleted
+  // RATE LIMIT: 20/min per tenant
+  rpc DeletePhoneNumber(DeletePhoneNumberRequest) returns (DeletePhoneNumberResponse);
+
+  // ListPhoneNumbers retrieves paginated list of phone numbers for a user.
+  // AUTH: Requires 'contact:phone:list' permission OR self-access
+  // NOTE: Ordered by created_at DESC, max 100 items per page
+  // RATE LIMIT: 50/min per tenant
+  rpc ListPhoneNumbers(ListPhoneNumbersRequest) returns (ListPhoneNumbersResponse);
+
+  // VerifyPhoneNumber verifies phone number with code.
+  // AUTH: Requires verification code (expires 10min) OR 'contact:phone:verify' permission
+  // EVENTS: Publishes PhoneNumberVerified
+  // RATE LIMIT: 10/min per phone number
+  rpc VerifyPhoneNumber(VerifyPhoneNumberRequest) returns (VerifyPhoneNumberResponse);
+
+  // SendVerificationCode sends verification code via SMS/voice.
+  // AUTH: Requires 'contact:phone:send_code' permission OR self-access
+  // RATE LIMIT: 5/hour per phone number (anti-spam)
+  rpc SendVerificationCode(SendVerificationCodeRequest) returns (SendVerificationCodeResponse);
+}

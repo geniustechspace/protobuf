@@ -1,0 +1,71 @@
+// Email Management API Response Messages
+//
+// Response messages for Email domain operations.
+//
+// DOMAIN: Contact - Email Management
+// VERSION: v1
+// COMPLIANCE: SOC 2 CC6.1, GDPR Articles 5/17, ISO 27001 A.9.2
+// PII: Yes - Contains personal identifiers and email data
+
+syntax = "proto3";
+
+package geniustechspace.contact.email.api.v1;
+
+import "contact/email/v1/email.proto";
+import "core/api/pagination/v1/messages.proto";
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/contact/email/api/v1;emailv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.contact.email.api.v1";
+
+// EmailResponse wraps email data.
+message EmailResponse {
+  // Email data.
+  geniustechspace.contact.email.v1.UserEmail data = 1;
+
+  reserved 2 to 9;
+}
+
+// DeleteEmailResponse confirms deletion.
+message DeleteEmailResponse {
+  // Whether deletion was successful.
+  bool success = 1;
+
+  // Deleted email ID.
+  string email_id = 2;
+
+  reserved 3 to 9;
+}
+
+// ListEmailsResponse returns paginated emails.
+message ListEmailsResponse {
+  // Emails in current page.
+  repeated geniustechspace.contact.email.v1.UserEmail data = 1;
+
+  // Pagination metadata.
+  core.api.pagination.v1.PaginationResponse pagination = 2;
+
+  reserved 3 to 9;
+}
+
+// VerifyEmailResponse confirms verification.
+message VerifyEmailResponse {
+  // Whether verification was successful.
+  bool success = 1;
+
+  // Verified email.
+  geniustechspace.contact.email.v1.UserEmail data = 2;
+
+  reserved 3 to 9;
+}
+
+// SendVerificationEmailResponse confirms email sent.
+message SendVerificationEmailResponse {
+  // Whether email was sent successfully.
+  bool success = 1;
+
+  // Expiration timestamp (seconds since epoch).
+  int64 expires_at = 2;
+
+  reserved 3 to 9;
+}

@@ -1,0 +1,65 @@
+// Address Management gRPC Service
+//
+// Provides gRPC API for address lifecycle management including CRUD operations,
+// verification workflows, and primary address management.
+//
+// DOMAIN: Contact - Address Management
+// VERSION: v1
+// COMPLIANCE: SOC 2 CC6.1, GDPR Articles 5/15-17, ISO 27001 A.9.2
+// PII: Yes - Contains personal identifiers and address data
+
+syntax = "proto3";
+
+package geniustechspace.contact.address.api.v1;
+
+import "contact/address/api/v1/request.proto";
+import "contact/address/api/v1/response.proto";
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/contact/address/api/v1;addressv1";
+option java_multiple_files = true;
+option java_outer_classname = "AddressServiceProto";
+option java_package = "com.geniustechspace.protobuf.contact.address.api.v1";
+
+// AddressService manages address lifecycle operations.
+//
+// All RPCs require authentication (Bearer token) and authorization (RBAC permissions).
+// Mutations publish domain events. Rate limits enforced per-tenant.
+service AddressService {
+  // CreateAddress creates a new address.
+  // AUTH: Requires 'contact:address:create' permission OR self-access
+  // EVENTS: Publishes AddressCreated
+  // RATE LIMIT: 20/min per tenant
+  rpc CreateAddress(CreateAddressRequest) returns (AddressResponse);
+
+  // GetAddress retrieves address by ID.
+  // AUTH: Requires 'contact:address:read' permission OR self-access
+  // RATE LIMIT: 100/min per tenant
+  rpc GetAddress(GetAddressRequest) returns (AddressResponse);
+
+  // UpdateAddress modifies existing address (partial update).
+  // AUTH: Requires 'contact:address:update' permission OR self-access
+  // NOTE: Uses optimistic locking via version field
+  // EVENTS: Publishes AddressUpdated
+  // RATE LIMIT: 50/min per tenant
+  rpc UpdateAddress(UpdateAddressRequest) returns (AddressResponse);
+
+  // DeleteAddress soft-deletes or hard-deletes address.
+  // AUTH: Requires 'contact:address:delete' permission OR self-access (soft)
+  //       or 'contact:address:hard_delete' (hard)
+  // NOTE: Hard delete is irreversible
+  // EVENTS: Publishes AddressDeleted
+  // RATE LIMIT: 20/min per tenant
+  rpc DeleteAddress(DeleteAddressRequest) returns (DeleteAddressResponse);
+
+  // ListAddresses retrieves paginated list of addresses for a user.
+  // AUTH: Requires 'contact:address:list' permission OR self-access
+  // NOTE: Ordered by created_at DESC, max 100 items per page
+  // RATE LIMIT: 50/min per tenant
+  rpc ListAddresses(ListAddressesRequest) returns (ListAddressesResponse);
+
+  // VerifyAddress verifies address via postal/geocoding services.
+  // AUTH: Requires 'contact:address:verify' permission OR self-access
+  // EVENTS: Publishes AddressVerified
+  // RATE LIMIT: 10/min per address
+  rpc VerifyAddress(VerifyAddressRequest) returns (VerifyAddressResponse);
+}

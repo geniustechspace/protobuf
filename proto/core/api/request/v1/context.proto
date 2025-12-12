@@ -1,0 +1,128 @@
+// Core Request Context - Internal Data Structure
+//
+// ARCHITECTURE: Internal Data Structures for Zero-Trust
+// - RequestContext is an INTERNAL data structure only (NOT sent in proto requests)
+// - Services build RequestContext from gRPC metadata + Session lookup
+// - Proto provides type-safe schema across all languages (Go, Python, Java, etc.)
+// - Single source of truth for request context structure
+//
+// USAGE PATTERN:
+//   1. Client sends Authorization header with JWT
+//   2. Gateway extracts JWT → populates gRPC metadata (x-session-id, x-tenant-path, etc.)
+//   3. Service receives gRPC metadata (NOT RequestContext in proto)
+//   4. Service middleware builds RequestContext from metadata + Session cache lookup
+//   5. Service uses RequestContext for internal decision making
+//
+// SECURITY: Zero-trust - each service validates session independently.
+// COMPLIANCE: SOC 2 CC6.1, CC7.2 | GDPR Article 32
+//
+// NOTE: Do NOT add RequestContext as a field in your service request messages!
+//       It is built server-side from gRPC metadata or HTTP headers.
+
+syntax = "proto3";
+
+package geniustechspace.core.api.request.v1;
+
+import "buf/validate/validate.proto";
+import "core/api/request/v1/enums.proto";
+import "core/session/v1/messages.proto";
+import "google/protobuf/timestamp.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Core.Api.Request.V1";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/core/api/request/v1;requestv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.core.api.request.v1";
+
+// RequestContext: Internal data structure for request handling.
+//
+// USAGE: Built server-side by middleware, NOT sent in proto request messages.
+//
+// CONSTRUCTION:
+//   1. Extract identifiers from gRPC metadata (x-session-id, x-request-id, etc.)
+//   2. Lookup core.session.v1.Session from session service (cached 99.9%)
+//   3. Populate RequestContext with request-specific fields + Session
+//   4. Store in context.Context for handler access
+//
+// ARCHITECTURE: Embeds full Session proto for zero duplication.
+//               Session is single source of truth for user/auth/device context.
+//               RequestContext only contains request-specific fields.
+//
+// ZERO-TRUST: Services validate session independently, cannot trust upstream.
+//
+// SIZE: ~600-800 bytes (only in memory, NOT sent over network).
+message RequestContext {
+  reserved 4 to 19, 27 to 99;
+
+  // ============ REQUEST TRACKING ============
+
+  // Request ID - unique per request. Source: gRPC metadata or generated.
+  // AUDIT: Required for distributed tracing and request correlation.
+  string request_id = 1 [(buf.validate.field).required = true];
+
+  // Correlation ID. Source: gRPC metadata x-correlation-id.
+  // AUDIT: Links distributed operations across services (e.g., batch jobs, workflows).
+  string correlation_id = 2 [(buf.validate.field).string.max_len = 128];
+
+  // Idempotency key. Source: gRPC metadata x-idempotency-key.
+  // COMPLIANCE: PCI DSS for payment retries, general idempotency pattern.
+  // FORMAT: UUID, ULID, or custom alphanumeric string.
+  string idempotency_key = 3 [(buf.validate.field).string.max_len = 128];
+
+  // ============ REQUEST CONTROL (Request-Specific, NOT in Session) ============
+
+  // Communication protocol. Source: Detected from transport.
+  // USAGE: Service behavior may differ based on protocol (e.g., streaming vs unary).
+  RequestProtocol protocol = 20;
+
+  // HTTP method. Source: Detected from HTTP request or gRPC metadata.
+  // USAGE: Audit logging, request classification, idempotency checks (GET is idempotent).
+  HTTPRequestMethod method = 21;
+
+  // Request timeout (ms). Source: gRPC deadline or x-timeout-ms header.
+  // USAGE: Services enforce timeout to prevent long-running operations.
+  // NOTE: Different from Session expiry (session can live for hours).
+  int64 timeout_ms = 22 [(buf.validate.field).int64 = {
+    gte: 0
+    lte: 300000
+  }];
+
+  // Request priority. Source: x-priority header or default.
+  // USAGE: Queue prioritization, rate limiting tiers, resource allocation.
+  // SECURITY: Validate server-side to prevent priority escalation.
+  RequestPriority priority = 23;
+
+  // Validation mode. Source: x-validation-mode header or default STRICT.
+  // USAGE: Controls validation strictness (strict, lenient, dry-run, skip).
+  // EXAMPLE: dry-run mode for testing without side effects.
+  RequestValidationMode validation = 24;
+
+  // Idempotency mode. Source: x-idempotency-mode header or default.
+  // USAGE: How to handle duplicate requests (enforce, allow, return cached, warn).
+  // COMPLIANCE: PCI DSS for payment retries (must detect duplicates).
+  RequestIdempotencyMode idempotency_mode = 26;
+
+  // ============ SESSION (Single Source of Truth) ============
+
+  // Full session context. Source: Cached lookup from session service.
+  // ZERO-TRUST: Validated by each service independently.
+  // CONTAINS: user_id, roles, permissions, tenant_path, device context, etc.
+  core.session.v1.Session session = 100 [(buf.validate.field).required = true];
+
+  // ============ REQUEST LIFECYCLE ============
+
+  // Request creation timestamp (UTC). Source: Computed server-side.
+  // AUDIT: Required for request age tracking and timeout calculation.
+  google.protobuf.Timestamp created_at = 101;
+
+  // Request expiration timestamp (UTC). Source: Computed from timeout or deadline.
+  // ARCHITECTURE: Services check if request expired before processing.
+  google.protobuf.Timestamp expires_at = 102;
+
+  // ============ REQUEST METADATA ============
+
+  // Additional request-specific metadata. Source: gRPC metadata or computed.
+  // SECURITY: Never include Authorization, API keys, cookies.
+  // USAGE: Request-scoped data like feature flags, A/B test groups, experiments.
+  // NOTE: Different from session.metadata (which is session-scoped).
+  map<string, string> metadata = 103;
+}

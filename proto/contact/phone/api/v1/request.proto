@@ -1,0 +1,149 @@
+// Phone Management API Request Messages
+//
+// Request messages for Phone domain CRUD operations.
+//
+// DOMAIN: Contact - Phone Management
+// VERSION: v1
+// COMPLIANCE: SOC 2 CC6.1, GDPR Articles 5/17, ISO 27001 A.9.2
+// PII: Yes - Contains personal identifiers and phone data
+
+syntax = "proto3";
+
+package geniustechspace.contact.phone.api.v1;
+
+import "buf/validate/validate.proto";
+import "contact/phone/v1/phone.proto";
+import "core/api/pagination/v1/messages.proto";
+import "google/protobuf/field_mask.proto";
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/contact/phone/api/v1;phonev1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.contact.phone.api.v1";
+
+// CreatePhoneNumberRequest creates new phone number.
+// OFFLINE SUPPORT: phone_id can be pre-generated for offline-first apps.
+message CreatePhoneNumberRequest {
+  // Phone number data to create.
+  // REQUIRED: Yes - must include tenant_path, user_id, label, and number
+  // OFFLINE: phone_id can be pre-generated; if omitted, server generates it
+  // PII: Yes - contains personal identifiers per GDPR Article 4(1)
+  geniustechspace.contact.phone.v1.UserPhoneNumber data = 1;
+
+  reserved 2 to 9;
+}
+
+// GetPhoneNumberRequest retrieves phone number by ID.
+message GetPhoneNumberRequest {
+  // Tenant path for multi-tenancy isolation.
+  // REQUIRED: Yes
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Phone number ID to retrieve.
+  // REQUIRED: Yes
+  string phone_id = 2 [(buf.validate.field).string.max_len = 512];
+
+  reserved 3 to 9;
+}
+
+// UpdatePhoneNumberRequest modifies existing phone number (partial update).
+message UpdatePhoneNumberRequest {
+  // Phone number data with fields to update.
+  // REQUIRED: Yes - must contain tenant_path and phone_id
+  // PII: Yes - contains personal data per GDPR Article 4(1)
+  // PARTIAL UPDATE: Only fields listed in update_mask are modified
+  geniustechspace.contact.phone.v1.UserPhoneNumber data = 1;
+
+  // Field mask specifying which fields to update.
+  // REQUIRED: Yes - explicit intent required for updates
+  // EXAMPLES:
+  //   - Update label: paths: ["label", "custom_label"]
+  //   - Update tags: paths: ["tags"]
+  //   - Update primary: paths: ["is_primary"]
+  google.protobuf.FieldMask update_mask = 2 [(buf.validate.field).required = true];
+
+  reserved 3 to 9;
+}
+
+// DeletePhoneNumberRequest soft-deletes or hard-deletes phone number.
+message DeletePhoneNumberRequest {
+  // Tenant path for multi-tenancy isolation.
+  // REQUIRED: Yes
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Phone number ID to delete.
+  // REQUIRED: Yes
+  string phone_id = 2 [(buf.validate.field).string.max_len = 512];
+
+  // Hard delete flag (irreversible).
+  // DEFAULT: false (soft delete)
+  bool hard_delete = 3;
+
+  reserved 4 to 9;
+}
+
+// ListPhoneNumbersRequest retrieves paginated list of phone numbers.
+message ListPhoneNumbersRequest {
+  // Tenant path for multi-tenancy isolation.
+  // REQUIRED: Yes
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // User ID to filter by.
+  // REQUIRED: Yes
+  string user_id = 2 [(buf.validate.field).string.max_len = 512];
+
+  // Pagination parameters.
+  core.api.pagination.v1.PaginationRequest pagination = 3;
+
+  // Filter by label (e.g., "MOBILE", "WORK").
+  // OPTIONAL: If empty, returns all labels
+  string label_filter = 4;
+
+  // Include soft-deleted records.
+  // DEFAULT: false
+  bool include_deleted = 5;
+
+  reserved 6 to 9;
+}
+
+// VerifyPhoneNumberRequest verifies phone number via SMS/voice.
+message VerifyPhoneNumberRequest {
+  // Tenant path for multi-tenancy isolation.
+  // REQUIRED: Yes
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Phone number ID to verify.
+  // REQUIRED: Yes
+  string phone_id = 2 [(buf.validate.field).string.max_len = 512];
+
+  // Verification code sent via SMS/voice.
+  // REQUIRED: Yes
+  string verification_code = 3 [(buf.validate.field).string = {
+    min_len: 4
+    max_len: 10
+    pattern: "^[0-9]+$"
+  }];
+
+  reserved 4 to 9;
+}
+
+// SendVerificationCodeRequest sends verification code via SMS/voice.
+message SendVerificationCodeRequest {
+  // Tenant path for multi-tenancy isolation.
+  // REQUIRED: Yes
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Phone number ID to send code to.
+  // REQUIRED: Yes
+  string phone_id = 2 [(buf.validate.field).string.max_len = 512];
+
+  // Delivery method: "sms" or "voice".
+  // DEFAULT: "sms"
+  string method = 3 [(buf.validate.field).string = {
+    in: [
+      "sms",
+      "voice"
+    ]
+  }];
+
+  reserved 4 to 9;
+}

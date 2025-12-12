@@ -27,7 +27,6 @@ enum HTTPRequestMethod {
   TRACE = 8;
   CONNECT = 9;
   reserved 10 to 99;
-  reserved 100 to 199;
 }
 
 // RequestPriority: Request processing priority.
@@ -40,7 +39,6 @@ enum RequestPriority {
   CRITICAL = 4;
   URGENT = 5;
   reserved 6 to 99;
-  reserved 100 to 199;
 }
 
 // RequestSource: Origin of the request.
@@ -59,7 +57,6 @@ enum RequestSource {
   TEST = 11;
   DEVELOPMENT = 12;
   reserved 13 to 99;
-  reserved 100 to 199;
 }
 
 // RequestProtocol: Communication protocol.
@@ -77,13 +74,12 @@ enum RequestProtocol {
   TCP = 10;
   UDP = 11;
   reserved 12 to 99;
-  reserved 100 to 199;
 }
 
-// CacheControl: Caching directives.
+// RequestCacheControl: Caching directives.
 // STANDARD: RFC 7234
-enum CacheControl {
-  CACHE_CONTROL_UNSPECIFIED = 0;
+enum RequestCacheControl {
+  REQUEST_CACHE_CONTROL_UNSPECIFIED = 0;
   NO_CACHE = 1;
   NO_STORE = 2;
   PUBLIC = 3;
@@ -93,28 +89,25 @@ enum CacheControl {
   STALE_IF_ERROR = 7;
   STALE_WHILE_REVALIDATE = 8;
   reserved 9 to 99;
-  reserved 100 to 199;
 }
 
-// IdempotencyMode: Idempotent request handling.
+// RequestIdempotencyMode: Idempotent request handling.
 // COMPLIANCE: PCI DSS for payment retries
-enum IdempotencyMode {
-  IDEMPOTENCY_MODE_UNSPECIFIED = 0;
+enum RequestIdempotencyMode {
+  REQUEST_IDEMPOTENCY_MODE_UNSPECIFIED = 0;
   ENFORCE = 1;
   ALLOW_DUPLICATES = 2;
   RETURN_CACHED = 3;
   WARN_DUPLICATE = 4;
   reserved 5 to 99;
-  reserved 100 to 199;
 }
 
-// ValidationMode: Request validation strictness.
-enum ValidationMode {
-  VALIDATION_MODE_UNSPECIFIED = 0;
+// RequestValidationMode: Request validation strictness.
+enum RequestValidationMode {
+  REQUEST_VALIDATION_MODE_UNSPECIFIED = 0;
   STRICT = 1;
   LENIENT = 2;
   DRY_RUN = 3;
   SKIP = 4;
   reserved 5 to 99;
-  reserved 100 to 199;
 }

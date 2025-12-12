@@ -10,10 +10,19 @@ package geniustechspace.contact.address.v1;
 import "buf/validate/validate.proto";
 import "google/protobuf/timestamp.proto";
 
-option csharp_namespace = "GeniusTechSpace.Protobuf.Contact.Address.V1";
 option go_package = "github.com/geniustechspace/protobuf/gen/go/contact/address/v1;contactaddressv1";
 option java_multiple_files = true;
 option java_package = "com.geniustechspace.protobuf.contact.address.v1";
+
+// AddressLabel - standard address classifications.
+enum AddressLabel {
+  UNSPECIFIED = 0; // Default value, not set
+  HOME = 1; // Residential/personal address
+  WORK = 2; // Work/office address
+  BILLING = 3; // Billing address for payments
+  SHIPPING = 4; // Default shipping address
+  CUSTOM = 5; // Custom label (use custom_label field)
+}
 
 // UserAddress - user's physical address.
 // PII: Yes - GDPR Article 4(1) personal identifier.
@@ -31,11 +40,9 @@ message UserAddress {
   // ISOLATION: Supports unlimited nesting levels for complex B2B2B... scenarios.
   string tenant_path = 3 [(buf.validate.field).string.max_len = 512];
 
-  // Address type (home, work, billing, shipping, etc.).
-  string address_type = 4 [(buf.validate.field).string = {
-    min_len: 1
-    max_len: 50
-  }];
+  // Address classification label.
+  // USAGE: Determines address purpose and routing behavior.
+  AddressLabel label = 4 [(buf.validate.field).enum.defined_only = true];
 
   // Street address line 1.
   string street_line1 = 5 [(buf.validate.field).string.max_len = 255];
@@ -43,36 +50,63 @@ message UserAddress {
   // Street address line 2 (apartment, suite, etc.).
   string street_line2 = 6 [(buf.validate.field).string.max_len = 255];
 
-  // City.
+  // City (primary locality).
   string city = 7 [(buf.validate.field).string.max_len = 100];
 
+  // Secondary locality (district, neighborhood, town, village, etc.).
+  // USAGE: Optional granular location within or related to city.
+  // Examples: "Brooklyn" (in NYC), "Greenwich Village", "Shibuya Ward"
+  string locality = 8 [(buf.validate.field).string.max_len = 100];
+
   // State/Province/Region.
-  string state = 8 [(buf.validate.field).string.max_len = 100];
+  string state = 9 [(buf.validate.field).string.max_len = 100];
 
   // Postal/ZIP code.
-  string postal_code = 9 [(buf.validate.field).string.max_len = 20];
+  string postal_code = 10 [(buf.validate.field).string.max_len = 20];
 
   // Country (ISO 3166-1 alpha-2 code: US, CA, GB, etc.).
-  string country = 10 [(buf.validate.field).string = {
+  // VALIDATION: Accepts both uppercase and lowercase.
+  string country = 11 [(buf.validate.field).string = {
     len: 2
-    pattern: "^[A-Z]{2}$"
+    pattern: "^[A-Za-z]{2}$"
   }];
 
-  // Primary address flag (one primary per type per user).
-  bool is_primary = 11;
+  // Custom label text. REQUIRED when label = CUSTOM.
+  // Examples: "Vacation Home", "Parents' House", "Storage Facility"
+  string custom_label = 12 [(buf.validate.field).string.max_len = 100];
 
-  reserved 12 to 19;
+  // Optional tags for additional categorization and metadata.
+  // Examples: ["default-shipping", "tax-purposes", "verified", "po-box"]
+  // VALIDATION: Lowercase alphanumeric with hyphens only.
+  repeated string tags = 13 [(buf.validate.field).repeated = {
+    max_items: 20
+    items: {
+      string: {
+        min_len: 1
+        max_len: 50
+        pattern: "^[a-z0-9-]+$"
+      }
+    }
+  }];
+
+  // Primary address flag (one primary per label per user).
+  bool is_primary = 14;
+
+  reserved 15 to 19;
+
+  // Verification timestamp.
+  google.protobuf.Timestamp verified_at = 20;
 
   // Created timestamp.
-  google.protobuf.Timestamp created_at = 20 [(buf.validate.field).required = true];
+  google.protobuf.Timestamp created_at = 21 [(buf.validate.field).required = true];
 
   // Last updated timestamp.
-  google.protobuf.Timestamp updated_at = 21;
+  google.protobuf.Timestamp updated_at = 22;
 
   // Deletion timestamp (soft delete).
-  google.protobuf.Timestamp deleted_at = 22;
+  google.protobuf.Timestamp deleted_at = 23;
 
-  reserved 23 to 29;
+  reserved 24 to 29;
 
   // Optimistic locking version.
   int64 version = 30 [(buf.validate.field).int64.gte = 1];

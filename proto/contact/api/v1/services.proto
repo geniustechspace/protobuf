@@ -1,0 +1,36 @@
+// Contact Domain - Unified API Import Aggregator
+//
+// Convenience file that aggregates all contact subdomain services in a single import.
+// This eliminates the need to import multiple service files individually.
+//
+// DOMAIN: Contact - Unified API
+// VERSION: v1
+// COMPLIANCE: SOC 2 CC6.1, GDPR Articles 5/15-17, ISO 27001 A.9.2
+// PII: Yes - Contains personal identifiers across all contact types
+//
+// USAGE:
+// Instead of importing three separate files:
+//   import "contact/phone/api/v1/service.proto";
+//   import "contact/address/api/v1/service.proto";
+//   import "contact/email/api/v1/service.proto";
+//
+// Import this single file:
+//   import "contact/api/v1/services.proto";
+//
+// AVAILABLE SERVICES:
+// - geniustechspace.contact.phone.api.v1.PhoneService
+// - geniustechspace.contact.address.api.v1.AddressService
+// - geniustechspace.contact.email.api.v1.EmailService
+
+syntax = "proto3";
+
+package geniustechspace.contact.api.v1;
+
+// Import all contact subdomain services
+import "contact/address/api/v1/service.proto";
+import "contact/email/api/v1/service.proto";
+import "contact/phone/api/v1/service.proto";
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/contact/api/v1;contactapiv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.contact.api.v1";

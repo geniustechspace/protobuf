@@ -10,10 +10,20 @@ package geniustechspace.contact.phone.v1;
 import "buf/validate/validate.proto";
 import "google/protobuf/timestamp.proto";
 
-option csharp_namespace = "GeniusTechSpace.Protobuf.Contact.Phone.V1";
 option go_package = "github.com/geniustechspace/protobuf/gen/go/contact/phone/v1;contactphonev1";
 option java_multiple_files = true;
 option java_package = "com.geniustechspace.protobuf.contact.phone.v1";
+
+// PhoneNumberLabel - standard phone number classifications.
+enum PhoneNumberLabel {
+  UNSPECIFIED = 0; // Default value, not set
+  MOBILE = 1; // Mobile/cell phone (SMS-capable, portable)
+  HOME = 2; // Home/residential landline
+  WORK = 3; // Work/business phone
+  FAX = 4; // Fax number (document transmission)
+  PAGER = 5; // Pager/beeper
+  CUSTOM = 6; // Custom label (use custom_label field)
+}
 
 // UserPhoneNumber - user's phone numbers.
 // PII: Yes - GDPR Article 4(1) personal identifier.
@@ -31,44 +41,56 @@ message UserPhoneNumber {
   // ISOLATION: Supports unlimited nesting levels for complex B2B2B... scenarios.
   string tenant_path = 3 [(buf.validate.field).string.max_len = 512];
 
-  // Phone number type (mobile, home, work, fax, etc.).
-  string phone_type = 4 [(buf.validate.field).string = {
-    min_len: 1
-    max_len: 50
-  }];
+  // Phone number classification label.
+  // USAGE: Determines communication context and routing behavior.
+  PhoneNumberLabel label = 4 [(buf.validate.field).enum.defined_only = true];
 
   // Phone number in E.164 format (+1234567890).
   // VALIDATION: Must start with + followed by country code and number.
   string number = 5 [(buf.validate.field).string.pattern = "^\\+[1-9]\\d{1,14}$"];
 
   // Country code (extracted from E.164).
-  string country_code = 6;
+  string country_code = 6 [(buf.validate.field).string.max_len = 5];
 
   // Extension (for business phones).
   string extension = 7 [(buf.validate.field).string.max_len = 10];
 
-  // Verified flag.
-  // COMPLIANCE: Required for 2FA/MFA usage.
-  bool verified = 8;
+  // Custom label text. REQUIRED when label = CUSTOM.
+  // Examples: "Mom's iPhone", "Beach House", "Emergency Contact"
+  string custom_label = 8 [(buf.validate.field).string.max_len = 100];
 
-  // Verification timestamp.
-  google.protobuf.Timestamp verified_at = 9;
+  // Optional tags for additional categorization and metadata.
+  // Examples: ["emergency", "primary-contact", "sms-enabled", "voicemail", "do-not-disturb"]
+  // VALIDATION: Lowercase alphanumeric with hyphens only.
+  repeated string tags = 9 [(buf.validate.field).repeated = {
+    max_items: 20
+    items: {
+      string: {
+        min_len: 1
+        max_len: 50
+        pattern: "^[a-z0-9-]+$"
+      }
+    }
+  }];
 
   // Primary phone flag (one primary per type per user).
   bool is_primary = 10;
 
   reserved 11 to 19;
 
+  // Verification timestamp.
+  google.protobuf.Timestamp verified_at = 20;
+
   // Created timestamp.
-  google.protobuf.Timestamp created_at = 20 [(buf.validate.field).required = true];
+  google.protobuf.Timestamp created_at = 21 [(buf.validate.field).required = true];
 
   // Last updated timestamp.
-  google.protobuf.Timestamp updated_at = 21;
+  google.protobuf.Timestamp updated_at = 22;
 
   // Deletion timestamp (soft delete).
-  google.protobuf.Timestamp deleted_at = 22;
+  google.protobuf.Timestamp deleted_at = 23;
 
-  reserved 23 to 29;
+  reserved 24 to 29;
 
   // Optimistic locking version.
   int64 version = 30 [(buf.validate.field).int64.gte = 1];
