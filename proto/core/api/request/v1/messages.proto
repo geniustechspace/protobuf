@@ -1,29 +1,18 @@
 // Core API Request Messages - Generic CRUD Request Pattern
 //
 // Provides standardized request structure for all domain CRUD operations.
-// Ensures consistency across all SDKs and simplifies service-side handling.
+// Simple, flexible, and reusable across all domains.
 //
 // DOMAIN: Core - API Standards
 // VERSION: v1
-// PATTERN: Generic request wrapper with data + options
-// USAGE: Import and use with domain-specific data types
-//
-// BENEFITS:
-// - Consistent validation across all APIs
-// - Standardized options (field_mask, dry_run, etc.)
-// - Reusable across all domains (User, Profile, Group, etc.)
-// - Type-safe with google.protobuf.Any or domain-specific types
-//
-// NOTE: RequestContext (internal data structure) is separate - built by middleware.
-// These messages are the actual gRPC request bodies sent by clients.
 
 syntax = "proto3";
 
 package geniustechspace.core.api.request.v1;
 
 import "buf/validate/validate.proto";
-import "core/api/error/v1/messages.proto";
 import "core/api/pagination/v1/messages.proto";
+import "core/api/query/v1/query.proto";
 import "google/protobuf/any.proto";
 import "google/protobuf/field_mask.proto";
 
@@ -32,433 +21,155 @@ option go_package = "github.com/geniustechspace/protobuf/gen/go/core/api/request
 option java_multiple_files = true;
 option java_package = "com.geniustechspace.protobuf.core.api.request.v1";
 
-// ==================== GRAPHQL-LIKE FILTERING ====================
+// ==================== FILTERING ====================
 
-// Filter provides GraphQL-like structured filtering for complex queries.
-// PATTERN: Supports nested logical operations (AND, OR, NOT) and field comparisons.
-// USAGE: Alternative to string-based filters for type-safe, composable queries.
-//
-// EXAMPLES:
-//   - Single field: {field: {field: "status", operator: EQ, value: "active"}}
-//   - Logical AND: {logical: {operator: AND, filters: [filter1, filter2]}}
-//   - Nested: {logical: {operator: AND, filters: [{field: ...}, {logical: {operator: OR, ...}}]}}
-message Filter {
-  oneof filter {
-    // Single field comparison filter
-    FieldFilter field = 1;
-    // Logical combination of multiple filters
-    LogicalFilter logical = 2;
-  }
-}
-
-// FieldFilter compares a field against a value using an operator.
-// PATTERN: Type-safe field filtering with standard comparison operators.
-message FieldFilter {
-  // Field path to filter. REQUIRED.
-  // EXAMPLES: "status", "user.email", "metadata.tier", "created_at"
-  // NESTED: Use dot notation for nested fields
-  string field = 1 [(buf.validate.field).string = {
-    min_len: 1
-    max_len: 128
-  }];
-
-  // Comparison operator. REQUIRED.
-  FilterOperator operator = 2 [(buf.validate.field).enum.defined_only = true];
-
-  // Value to compare against. Type depends on field type.
-  // EXAMPLES:
-  //   - String: {"@type": "type.googleapis.com/google.protobuf.StringValue", "value": "active"}
-  //   - Number: {"@type": "type.googleapis.com/google.protobuf.Int64Value", "value": 100}
-  //   - Array: {"@type": "type.googleapis.com/google.protobuf.ListValue", "values": [...]}
-  // NOTE: For IS_NULL/IS_NOT_NULL operators, value should be omitted
-  google.protobuf.Any value = 3;
-}
-
-// LogicalFilter combines multiple filters using logical operators.
-// PATTERN: Enables complex nested queries like GraphQL.
-message LogicalFilter {
-  // Logical operator to apply. REQUIRED.
-  LogicalOperator operator = 1 [(buf.validate.field).enum.defined_only = true];
-
-  // Child filters to combine. REQUIRED.
-  // VALIDATION: At least 1 filter for AND/OR, exactly 1 for NOT
-  repeated Filter filters = 2 [(buf.validate.field).repeated = {
-    min_items: 1
-    max_items: 100
-  }];
-}
-
-// FilterOperator defines comparison operations for field filtering.
+// FilterOperator defines comparison operations.
 enum FilterOperator {
   FILTER_OPERATOR_UNSPECIFIED = 0;
-
-  // Equality operators
-  FILTER_OPERATOR_EQ = 1; // Equal: field == value
-  FILTER_OPERATOR_NE = 2; // Not equal: field != value
-
-  // Comparison operators (numeric, dates)
-  FILTER_OPERATOR_GT = 3; // Greater than: field > value
-  FILTER_OPERATOR_GTE = 4; // Greater than or equal: field >= value
-  FILTER_OPERATOR_LT = 5; // Less than: field < value
-  FILTER_OPERATOR_LTE = 6; // Less than or equal: field <= value
-
-  // Collection operators
-  FILTER_OPERATOR_IN = 7; // In array: field IN [value1, value2, ...]
-  FILTER_OPERATOR_NOT_IN = 8; // Not in array: field NOT IN [value1, value2, ...]
-
-  // String operators
-  FILTER_OPERATOR_CONTAINS = 9; // Contains substring (case-sensitive)
-  FILTER_OPERATOR_STARTS_WITH = 10; // Starts with prefix
-  FILTER_OPERATOR_ENDS_WITH = 11; // Ends with suffix
-  FILTER_OPERATOR_MATCHES = 12; // Regex match (use carefully, can be slow)
-
-  // Null operators
-  FILTER_OPERATOR_IS_NULL = 13; // Field is null/unset
-  FILTER_OPERATOR_IS_NOT_NULL = 14; // Field is not null
-
-  // Advanced operators
-  FILTER_OPERATOR_BETWEEN = 15; // Between two values (inclusive): value = [min, max]
-  FILTER_OPERATOR_EXISTS = 16; // Field exists (for optional/dynamic fields)
+  FILTER_OPERATOR_EQ = 1; // field = value
+  FILTER_OPERATOR_NE = 2; // field != value
+  FILTER_OPERATOR_GT = 3; // field > value
+  FILTER_OPERATOR_GTE = 4; // field >= value
+  FILTER_OPERATOR_LT = 5; // field < value
+  FILTER_OPERATOR_LTE = 6; // field <= value
+  FILTER_OPERATOR_IN = 7; // field IN (value) - comma-separated
+  FILTER_OPERATOR_NOT_IN = 8; // field NOT IN (value)
+  FILTER_OPERATOR_CONTAINS = 9; // field CONTAINS value
+  FILTER_OPERATOR_STARTS_WITH = 10; // field STARTS WITH value
+  FILTER_OPERATOR_ENDS_WITH = 11; // field ENDS WITH value
+  FILTER_OPERATOR_IS_NULL = 12; // field IS NULL
+  FILTER_OPERATOR_IS_NOT_NULL = 13; // field IS NOT NULL
 }
 
-// LogicalOperator defines logical operations for combining filters.
-enum LogicalOperator {
-  LOGICAL_OPERATOR_UNSPECIFIED = 0;
-  LOGICAL_OPERATOR_AND = 1; // All filters must match
-  LOGICAL_OPERATOR_OR = 2; // At least one filter must match
-  LOGICAL_OPERATOR_NOT = 3; // Negate the filter result (expects exactly 1 child filter)
+// Filter provides simple, composable filtering.
+// Server handles type conversion from string value.
+//
+// EXAMPLES:
+//   - Simple: {field: "status", op: EQ, value: "active"}
+//   - Date: {field: "created_at", op: GT, value: "2024-01-01"}
+//   - In list: {field: "role", op: IN, value: "admin,user,guest"}
+//   - Nested AND: {and: [{field: "status", op: EQ, value: "active"}, {field: "role", op: EQ, value: "admin"}]}
+//   - Nested OR: {or: [{field: "tier", op: EQ, value: "premium"}, {field: "tier", op: EQ, value: "enterprise"}]}
+message Filter {
+  // Field path to filter. Use dot notation for nested fields.
+  // EXAMPLES: "status", "user.email", "metadata.tier"
+  string field = 1 [(buf.validate.field).string.max_len = 128];
+
+  // Comparison operator.
+  FilterOperator op = 2;
+
+  // Value to compare (string, server converts to appropriate type).
+  // For IN/NOT_IN: comma-separated values "val1,val2,val3"
+  // For IS_NULL/IS_NOT_NULL: ignored
+  string value = 3 [(buf.validate.field).string.max_len = 2048];
+
+  // Combine filters with AND logic.
+  repeated Filter and = 4 [(buf.validate.field).repeated.max_items = 20];
+
+  // Combine filters with OR logic.
+  repeated Filter or = 5 [(buf.validate.field).repeated.max_items = 20];
 }
 
 // ==================== GENERIC REQUEST ====================
 
-// Request is the generic request wrapper for all operations.
-// PATTERN: Used for operations that don't fit standard CRUD (custom RPCs).
-// USAGE: Domain services can use this for flexible request handling.
-//
-// NOTE: This uses google.protobuf.Any for the data field to support any entity type.
-// For standard CRUD, prefer specific request types (CreateRequest, UpdateRequest, etc.).
-//
-// EXAMPLES:
-//   - VerifyEmail sends Request with VerificationToken in data
-//   - ResetPassword sends Request with PasswordResetRequest in data
-//   - Custom operations not covered by CRUD
+// Request is the generic wrapper for custom operations.
 message Request {
-  // The request payload data. OPTIONAL for operations without payload.
-  // TYPE: Domain-specific message
-  // SERIALIZATION: Uses google.protobuf.Any to support any message type
   google.protobuf.Any data = 1;
-
-  // Idempotency key for preventing duplicate operations. OPTIONAL.
-  string idempotency_key = 2 [(buf.validate.field).string = {
-    min_len: 1
-    max_len: 128
-    pattern: "^[a-zA-Z0-9_-]+$"
-  }];
-
-  // Dry run mode - validate without executing. OPTIONAL.
+  string idempotency_key = 2 [(buf.validate.field).string.max_len = 128];
   bool dry_run = 3;
-
-  // Return only specified fields in response. OPTIONAL.
   google.protobuf.FieldMask field_mask = 4;
-
-  // Error context if request validation failed client-side. OPTIONAL.
-  // USE CASE: Client pre-validation errors, provides context to server
-  geniustechspace.core.api.error.v1.ErrorContext error = 5;
-
-  // Additional request options as key-value pairs. OPTIONAL.
-  // EXAMPLES: {"locale": "en-US", "timezone": "America/New_York"}
-  map<string, string> options = 6 [(buf.validate.field).map.max_pairs = 50];
-
-  // Reserved for future options.
-  reserved 7 to 9;
+  map<string, string> options = 5 [(buf.validate.field).map.max_pairs = 20];
 }
 
-// ==================== CREATE REQUESTS ====================
+// ==================== CREATE ====================
 
-// CreateRequest is the generic request wrapper for create operations.
-// PATTERN: Used for single entity creation across all domains.
-// USAGE: Domain services receive their specific entity in the 'data' field.
-//
-// NOTE: This uses google.protobuf.Any for the data field to support any entity type.
-// In practice, services will know the expected type based on the RPC method.
-//
-// EXAMPLES:
-//   - CreateUser sends CreateRequest with User entity in data
-//   - CreateProfile sends CreateRequest with UserProfile entity in data
-//   - CreateGroup sends CreateRequest with Group entity in data
+// CreateRequest for single entity creation.
 message CreateRequest {
-  // The entity data to create. REQUIRED.
-  // TYPE: Domain-specific entity (User, Profile, Group, etc.)
-  // SERIALIZATION: Uses google.protobuf.Any to support any message type
-  // SERVER: Use TypeUrl to determine the message type, then unpack
   google.protobuf.Any data = 1 [(buf.validate.field).required = true];
-
-  // Idempotency key for preventing duplicate creates. OPTIONAL.
-  // COMPLIANCE: SOC 2 CC6.1 (data integrity)
-  // PATTERN: If same key sent within TTL, return existing entity
-  string idempotency_key = 2 [(buf.validate.field).string = {
-    min_len: 1
-    max_len: 128
-    pattern: "^[a-zA-Z0-9_-]+$"
-  }];
-
-  // Dry run mode - validate without persisting. OPTIONAL.
-  // USE CASE: Client-side validation, preview changes
+  string idempotency_key = 2 [(buf.validate.field).string.max_len = 128];
   bool dry_run = 3;
-
-  // Return only specified fields in response. OPTIONAL.
-  // PERFORMANCE: Reduce response payload size
-  // EXAMPLE: "user_id,email,created_at" (comma-separated)
   google.protobuf.FieldMask field_mask = 4;
-
-  // Reserved for future options (locale, validation_level, etc.).
-  reserved 5 to 9;
 }
 
-// BatchRequest for ...
-// PATTERN: Used for bulk operations across all domains.
-message BatchRequest {
-  // The entities to create. REQUIRED.
-  // VALIDATION: Max 1000 items per batch
+// BatchCreateRequest for bulk entity creation.
+message BatchCreateRequest {
   repeated google.protobuf.Any data = 1 [(buf.validate.field).repeated = {
     min_items: 1
     max_items: 1000
   }];
-
-  // Idempotency key for the entire batch. OPTIONAL.
-  string idempotency_key = 2 [(buf.validate.field).string = {
-    min_len: 1
-    max_len: 128
-    pattern: "^[a-zA-Z0-9_-]+$"
-  }];
-
-  // Continue on error - don't rollback on first failure. OPTIONAL.
-  // DEFAULT: false (all-or-nothing transaction)
+  string idempotency_key = 2 [(buf.validate.field).string.max_len = 128];
   bool continue_on_error = 3;
-
-  // Dry run mode - validate without persisting. OPTIONAL.
   bool dry_run = 4;
-
-  // Return only specified fields in response. OPTIONAL.
   google.protobuf.FieldMask field_mask = 5;
-
-  // Reserved for future options.
-  reserved 6 to 9;
 }
 
-// ==================== READ REQUESTS ====================
+// ==================== READ ====================
 
-// GetRequest for retrieving a single entity by identifier.
-// PATTERN: Used for Get operations across all domains.
+// GetRequest for retrieving a single entity.
 message GetRequest {
-  // Entity identifier. REQUIRED.
-  // EXAMPLES: user_id, profile_id, group_id
-  // VALIDATION: Service-specific ID format
   string id = 1 [(buf.validate.field).string = {
     min_len: 1
     max_len: 128
   }];
-
-  // Return only specified fields in response. OPTIONAL.
-  // PERFORMANCE: Reduce response payload size
   google.protobuf.FieldMask field_mask = 2;
-
-  // Include soft-deleted entities. OPTIONAL.
-  // DEFAULT: false (only active entities)
-  // AUTHORIZATION: Requires 'deleted:read' permission
   bool include_deleted = 3;
-
-  // Reserved for future options (consistency_level, etc.).
-  reserved 4 to 9;
 }
 
-// ListRequest for retrieving multiple entities with pagination.
-// PATTERN: Used for List operations across all domains.
+// ListRequest for retrieving multiple entities.
+// Uses the comprehensive Query system for filtering, sorting, pagination, etc.
 message ListRequest {
-  // Pagination parameters. REQUIRED.
-  // PATTERN: Cursor-based pagination with client-side caching
-  geniustechspace.core.api.pagination.v1.PaginationRequest pagination = 1 [(buf.validate.field).required = true];
-
-  // Sorting specification (Google AIP-132 standard). OPTIONAL.
-  // EXAMPLES: "created_at desc", "name", "priority desc, created_at"
-  // FORMAT: "field [asc|desc][, field [asc|desc]]*"
-  string order_by = 2 [(buf.validate.field).string.max_len = 256];
-
-  // Filter specification. OPTIONAL.
-  // PATTERN: Choose between string-based (filter) or structured (filters)
-  oneof filter_type {
-    // String-based filter (Google AIP-160 standard). LEGACY.
-    // EXAMPLES: "status='active'", "created_at > '2024-01-01'", "role IN ['admin','user']"
-    // USE CASE: Simple queries, backward compatibility
-    string filter = 3 [(buf.validate.field).string.max_len = 1024];
-
-    // Structured filter (GraphQL-like). RECOMMENDED.
-    // EXAMPLES: {field: {field: "status", operator: EQ, value: "active"}}
-    // USE CASE: Complex nested queries, type-safe filtering
-    Filter filters = 10;
-  }
-
-  // Return only specified fields in response. OPTIONAL.
-  google.protobuf.FieldMask field_mask = 4;
-
-  // Include soft-deleted entities. OPTIONAL.
-  bool include_deleted = 5;
-
-  // Reserved for future options.
-  reserved 6 to 9;
+  // Comprehensive query (filter, sort, pagination, projection, etc.)
+  geniustechspace.core.api.query.v1.Query query = 1;
 }
 
-// SearchRequest for full-text search operations.
-// PATTERN: Used for Search operations across all domains.
+// SearchRequest for full-text search.
+// Uses the comprehensive Query system with search capabilities.
 message SearchRequest {
-  // Search query string. REQUIRED.
-  // EXAMPLES: "john@example.com", "admin users", "active AND created:2024"
-  string query = 1 [(buf.validate.field).string = {
-    min_len: 1
-    max_len: 512
-  }];
-
-  // Pagination parameters. REQUIRED.
-  geniustechspace.core.api.pagination.v1.PaginationRequest pagination = 2 [(buf.validate.field).required = true];
-
-  // Search fields to query. OPTIONAL.
-  // EXAMPLES: ["email", "name"], ["title", "description"]
-  // DEFAULT: All searchable fields
-  repeated string search_fields = 3 [(buf.validate.field).repeated = {
-    max_items: 20
-    items: {
-      string: {
-        min_len: 1
-        max_len: 64
-      }
-    }
-  }];
-
-  // Sorting specification. OPTIONAL.
-  string order_by = 4 [(buf.validate.field).string.max_len = 256];
-
-  // Filter specification (applied after search). OPTIONAL.
-  // PATTERN: Choose between string-based (filter) or structured (filters)
-  oneof filter_type {
-    // String-based filter. LEGACY.
-    string filter = 5 [(buf.validate.field).string.max_len = 1024];
-
-    // Structured filter (GraphQL-like). RECOMMENDED.
-    Filter filters = 10;
-  }
-
-  // Return only specified fields in response. OPTIONAL.
-  google.protobuf.FieldMask field_mask = 6;
-
-  // Include soft-deleted entities. OPTIONAL.
-  bool include_deleted = 7;
-
-  // Reserved for future options (fuzzy_match, boost, etc.).
-  reserved 8 to 9;
+  // Comprehensive query with search
+  geniustechspace.core.api.query.v1.Query query = 1 [(buf.validate.field).required = true];
 }
 
-// ==================== UPDATE REQUESTS ====================
+// ==================== UPDATE ====================
 
 // UpdateRequest for updating a single entity.
-// PATTERN: Used for Update operations across all domains.
 message UpdateRequest {
-  // Entity identifier. REQUIRED.
   string id = 1 [(buf.validate.field).string = {
     min_len: 1
     max_len: 128
   }];
-
-  // Updated entity data. REQUIRED.
-  // NOTE: Only fields specified in field_mask will be updated
   google.protobuf.Any data = 2 [(buf.validate.field).required = true];
-
-  // Fields to update (Google AIP-134 standard). REQUIRED.
-  // EXAMPLES: "email,name", "status"
-  // NOTE: Prevents accidental full-entity replacement
   google.protobuf.FieldMask field_mask = 3 [(buf.validate.field).required = true];
-
-  // Optimistic locking version. OPTIONAL.
-  // COMPLIANCE: SOC 2 CC6.1 (concurrent modification protection)
-  // PATTERN: If version doesn't match, reject with ABORTED status
   int64 version = 4;
-
-  // Idempotency key for preventing duplicate updates. OPTIONAL.
-  string idempotency_key = 5 [(buf.validate.field).string = {
-    min_len: 1
-    max_len: 128
-    pattern: "^[a-zA-Z0-9_-]+$"
-  }];
-
-  // Dry run mode - validate without persisting. OPTIONAL.
+  string idempotency_key = 5 [(buf.validate.field).string.max_len = 128];
   bool dry_run = 6;
-
-  // Reserved for future options.
-  reserved 7 to 9;
 }
 
-// BatchUpdateRequest for updating multiple entities in one call.
-// PATTERN: Used for bulk updates across all domains.
+// BatchUpdateRequest for bulk updates.
 message BatchUpdateRequest {
-  // Update operations. REQUIRED.
-  // VALIDATION: Max 1000 items per batch
   repeated UpdateRequest updates = 1 [(buf.validate.field).repeated = {
     min_items: 1
     max_items: 1000
   }];
-
-  // Idempotency key for the entire batch. OPTIONAL.
-  string idempotency_key = 2 [(buf.validate.field).string = {
-    min_len: 1
-    max_len: 128
-    pattern: "^[a-zA-Z0-9_-]+$"
-  }];
-
-  // Continue on error - don't rollback on first failure. OPTIONAL.
+  string idempotency_key = 2 [(buf.validate.field).string.max_len = 128];
   bool continue_on_error = 3;
-
-  // Dry run mode - validate without persisting. OPTIONAL.
   bool dry_run = 4;
-
-  // Reserved for future options.
-  reserved 5 to 9;
 }
 
-// ==================== DELETE REQUESTS ====================
+// ==================== DELETE ====================
 
 // DeleteRequest for deleting a single entity.
-// PATTERN: Used for Delete operations across all domains.
 message DeleteRequest {
-  // Entity identifier. REQUIRED.
   string id = 1 [(buf.validate.field).string = {
     min_len: 1
     max_len: 128
   }];
-
-  // Hard delete (permanent) vs soft delete. OPTIONAL.
-  // DEFAULT: false (soft delete - set deleted_at timestamp)
-  // COMPLIANCE: GDPR Article 17 (right to erasure requires hard delete)
-  // AUTHORIZATION: Requires 'entity:hard_delete' permission
   bool hard_delete = 2;
-
-  // Optimistic locking version. OPTIONAL.
   int64 version = 3;
-
-  // Idempotency key for preventing duplicate deletes. OPTIONAL.
-  string idempotency_key = 4 [(buf.validate.field).string = {
-    min_len: 1
-    max_len: 128
-    pattern: "^[a-zA-Z0-9_-]+$"
-  }];
-
-  // Reserved for future options (cascade, etc.).
-  reserved 5 to 9;
+  string idempotency_key = 4 [(buf.validate.field).string.max_len = 128];
 }
 
-// BatchDeleteRequest for deleting multiple entities in one call.
-// PATTERN: Used for bulk deletes across all domains.
+// BatchDeleteRequest for bulk deletes.
 message BatchDeleteRequest {
-  // Entity identifiers. REQUIRED.
-  // VALIDATION: Max 1000 items per batch
   repeated string ids = 1 [(buf.validate.field).repeated = {
     min_items: 1
     max_items: 1000
@@ -469,139 +180,34 @@ message BatchDeleteRequest {
       }
     }
   }];
-
-  // Hard delete (permanent) vs soft delete. OPTIONAL.
   bool hard_delete = 2;
-
-  // Idempotency key for the entire batch. OPTIONAL.
-  string idempotency_key = 3 [(buf.validate.field).string = {
-    min_len: 1
-    max_len: 128
-    pattern: "^[a-zA-Z0-9_-]+$"
-  }];
-
-  // Continue on error - don't rollback on first failure. OPTIONAL.
+  string idempotency_key = 3 [(buf.validate.field).string.max_len = 128];
   bool continue_on_error = 4;
-
-  // Reserved for future options.
-  reserved 5 to 9;
 }
 
-// ==================== ADVANCED OPERATION REQUESTS ====================
+// ==================== UTILITIES ====================
 
-// RestoreRequest for restoring a soft-deleted entity.
-// PATTERN: Used for Restore operations across all domains.
+// RestoreRequest for restoring soft-deleted entities.
 message RestoreRequest {
-  // Entity identifier. REQUIRED.
   string id = 1 [(buf.validate.field).string = {
     min_len: 1
     max_len: 128
   }];
-
-  // Idempotency key. OPTIONAL.
-  string idempotency_key = 2 [(buf.validate.field).string = {
-    min_len: 1
-    max_len: 128
-    pattern: "^[a-zA-Z0-9_-]+$"
-  }];
-
-  // Reserved for future options.
-  reserved 3 to 9;
+  string idempotency_key = 2 [(buf.validate.field).string.max_len = 128];
 }
 
-// CountRequest for counting entities matching criteria.
-// PATTERN: Used for Count operations across all domains.
+// CountRequest for counting entities.
+// Uses the comprehensive Query system for filtering.
 message CountRequest {
-  // Filter specification. OPTIONAL.
-  // PATTERN: Choose between string-based (filter) or structured (filters)
-  oneof filter_type {
-    // String-based filter (Google AIP-160 standard). LEGACY.
-    // EXAMPLES: "status='active'", "created_at > '2024-01-01'"
-    string filter = 1 [(buf.validate.field).string.max_len = 1024];
-
-    // Structured filter (GraphQL-like). RECOMMENDED.
-    Filter filters = 10;
-  }
-
-  // Include soft-deleted entities. OPTIONAL.
-  bool include_deleted = 2;
-
-  // Reserved for future options.
-  reserved 3 to 9;
+  // Query for counting (only filter used)
+  geniustechspace.core.api.query.v1.Query query = 1;
 }
 
 // ExistsRequest for checking entity existence.
-// PATTERN: Used for Exists operations across all domains.
 message ExistsRequest {
-  // Entity identifier. REQUIRED.
   string id = 1 [(buf.validate.field).string = {
     min_len: 1
     max_len: 128
   }];
-
-  // Include soft-deleted entities. OPTIONAL.
   bool include_deleted = 2;
-
-  // Reserved for future options.
-  reserved 3 to 9;
-}
-
-// ExportRequest for exporting entities to external format.
-// PATTERN: Used for Export operations across all domains.
-message ExportRequest {
-  // Export format. REQUIRED.
-  // EXAMPLES: "csv", "json", "xlsx", "parquet"
-  string format = 1 [(buf.validate.field).string = {
-    min_len: 1
-    max_len: 16
-    pattern: "^[a-z0-9]+$"
-  }];
-
-  // Filter specification (entities to export). OPTIONAL.
-  // PATTERN: Choose between string-based (filter) or structured (filters)
-  oneof filter_type {
-    // String-based filter. LEGACY.
-    string filter = 2 [(buf.validate.field).string.max_len = 1024];
-
-    // Structured filter (GraphQL-like). RECOMMENDED.
-    Filter filters = 10;
-  }
-
-  // Fields to include in export. OPTIONAL.
-  // DEFAULT: All fields
-  google.protobuf.FieldMask field_mask = 3;
-
-  // Include soft-deleted entities. OPTIONAL.
-  bool include_deleted = 4;
-
-  // Reserved for future options (compression, chunk_size, etc.).
-  reserved 5 to 9;
-}
-
-// ImportRequest for importing entities from external format.
-// PATTERN: Used for Import operations across all domains.
-message ImportRequest {
-  // Import format. REQUIRED.
-  // EXAMPLES: "csv", "json", "xlsx"
-  string format = 1 [(buf.validate.field).string = {
-    min_len: 1
-    max_len: 16
-    pattern: "^[a-z0-9]+$"
-  }];
-
-  // Import data payload. REQUIRED.
-  // VALIDATION: Max 10MB per request
-  bytes data = 2 [(buf.validate.field).bytes = {
-    min_len: 1
-    max_len: 10485760
-  }];
-
-  // Continue on error - don't rollback on first failure. OPTIONAL.
-  bool continue_on_error = 3;
-
-  // Dry run mode - validate without persisting. OPTIONAL.
-  bool dry_run = 4;
-
-  // Reserved for future options (conflict_resolution, etc.).
-  reserved 5 to 9;
 }

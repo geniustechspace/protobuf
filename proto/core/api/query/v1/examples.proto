@@ -1,0 +1,331 @@
+// Core API Query - Usage Examples
+//
+// Comprehensive examples for common query patterns.
+
+syntax = "proto3";
+
+package geniustechspace.core.api.query.v1;
+
+import "core/api/query/v1/query.proto";
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/core/api/query/v1;queryv1";
+
+// Example patterns for building queries.
+// These messages are documentation-only (never instantiated).
+message Examples {
+  // ==================== BASIC PATTERNS ====================
+
+  // Simple equality filter
+  // Query{filter: {field: "status", op: EQ, value: {string: "active"}}}
+
+  // Multiple AND conditions
+  // Query{filter: {and: [
+  //   {field: "status", op: EQ, value: {string: "active"}},
+  //   {field: "tier", op: EQ, value: {string: "premium"}}
+  // ]}}
+
+  // OR conditions
+  // Query{filter: {or: [
+  //   {field: "role", op: EQ, value: {string: "admin"}},
+  //   {field: "role", op: EQ, value: {string: "owner"}}
+  // ]}}
+
+  // Complex AND/OR
+  // Query{filter: {and: [
+  //   {field: "status", op: EQ, value: {string: "active"}},
+  //   {or: [
+  //     {field: "tier", op: EQ, value: {string: "premium"}},
+  //     {field: "tier", op: EQ, value: {string: "enterprise"}}
+  //   ]}
+  // ]}}
+
+  // Negation (via NE)
+  // Query{filter: {field: "status", op: NE, value: {string: "deleted"}}}
+
+  // ==================== RANGE QUERIES ====================
+
+  // Date range
+  // Query{filter: {and: [
+  //   {field: "created_at", op: GTE, value: {string: "2024-01-01"}},
+  //   {field: "created_at", op: LT, value: {string: "2024-02-01"}}
+  // ]}}
+
+  // BETWEEN (simpler syntax)
+  // Query{filter: {
+  //   field: "price",
+  //   op: BETWEEN,
+  //   value: {string: "50,200"}
+  // }}
+
+  // ==================== STRING MATCHING ====================
+
+  // Contains substring
+  // Query{filter: {
+  //   field: "email",
+  //   op: CONTAINS,
+  //   value: {string: "@gmail.com"}
+  // }}
+
+  // Starts with
+  // Query{filter: {
+  //   field: "name",
+  //   op: STARTS_WITH,
+  //   value: {string: "John"}
+  // }}
+
+  // Case-insensitive like
+  // Query{filter: {
+  //   field: "description",
+  //   op: ILIKE,
+  //   value: {string: "%search term%"}
+  // }}
+
+  // Regex match
+  // Query{filter: {
+  //   field: "phone",
+  //   op: MATCHES,
+  //   value: {string: "^\\+1[0-9]{10}$"}
+  // }}
+
+  // ==================== IN QUERIES ====================
+
+  // IN list
+  // Query{filter: {
+  //   field: "status",
+  //   op: IN,
+  //   value: {string: "active,pending,approved"}
+  // }}
+
+  // NOT IN
+  // Query{filter: {
+  //   field: "role",
+  //   op: NOT_IN,
+  //   value: {string: "blocked,suspended"}
+  // }}
+
+  // ==================== NULL CHECKS ====================
+
+  // Is NULL
+  // Query{filter: {
+  //   field: "deleted_at",
+  //   op: IS_NULL
+  // }}
+
+  // Is NOT NULL
+  // Query{filter: {
+  //   field: "verified_at",
+  //   op: IS_NOT_NULL
+  // }}
+
+  // ==================== ARRAY OPERATIONS ====================
+
+  // Array contains value
+  // Query{filter: {
+  //   field: "tags",
+  //   op: ARRAY_CONTAINS,
+  //   value: {string: "featured"}
+  // }}
+
+  // Array contains any
+  // Query{filter: {
+  //   field: "permissions",
+  //   op: ARRAY_CONTAINS_ANY,
+  //   value: {string: "read,write,admin"}
+  // }}
+
+  // Array contains all
+  // Query{filter: {
+  //   field: "skills",
+  //   op: ARRAY_CONTAINS_ALL,
+  //   value: {string: "python,docker,kubernetes"}
+  // }}
+
+  // ==================== SORTING ====================
+
+  // Simple sort
+  // Query{
+  //   filter: {field: "status", op: EQ, value: {string: "active"}},
+  //   sort: {sorts: [{field: "created_at", direction: DESC}]}
+  // }
+
+  // Multi-field sort
+  // Query{sort: {sorts: [
+  //   {field: "priority", direction: DESC},
+  //   {field: "created_at", direction: ASC}
+  // ]}}
+
+  // Sort with null handling
+  // Query{sort: {sorts: [{
+  //   field: "completed_at",
+  //   direction: ASC,
+  //   null_handling: NULLS_LAST
+  // }]}}
+
+  // ==================== PROJECTION ====================
+
+  // Select specific fields
+  // Query{projection: {
+  //   mode: INCLUDE,
+  //   fields: ["id", "email", "name"]
+  // }}
+
+  // Exclude fields
+  // Query{projection: {
+  //   mode: EXCLUDE,
+  //   fields: ["password_hash", "internal_notes"]
+  // }}
+
+  // ==================== FULL-TEXT SEARCH ====================
+
+  // Natural language search
+  // Query{search: {
+  //   query: "machine learning tutorial",
+  //   fields: ["title", "description"],
+  //   options: {mode: NATURAL}
+  // }}
+
+  // Fuzzy search
+  // Query{search: {
+  //   query: "pythn",
+  //   fields: ["tags"],
+  //   options: {mode: FUZZY, fuzziness: 2}
+  // }}
+
+  // Phrase match
+  // Query{search: {
+  //   query: "artificial intelligence",
+  //   options: {mode: PHRASE}
+  // }}
+
+  // With field boosting
+  // Query{search: {
+  //   query: "kubernetes",
+  //   fields: ["title", "description"],
+  //   options: {
+  //     mode: NATURAL,
+  //     field_boosts: {"title": 2.0, "description": 1.0}
+  //   }
+  // }}
+
+  // ==================== AGGREGATION ====================
+
+  // Count by group
+  // Query{group_by: {
+  //   fields: ["status"],
+  //   aggregates: [{function: COUNT, alias: "count"}]
+  // }}
+
+  // Multiple aggregations
+  // Query{group_by: {
+  //   fields: ["category"],
+  //   aggregates: [
+  //     {function: COUNT, alias: "total"},
+  //     {function: SUM, field: "amount", alias: "revenue"},
+  //     {function: AVG, field: "rating", alias: "avg_rating"}
+  //   ]
+  // }}
+
+  // With HAVING filter
+  // Query{group_by: {
+  //   fields: ["user_id"],
+  //   aggregates: [{function: COUNT, alias: "order_count"}],
+  //   having: "order_count > 5"
+  // }}
+
+  // ==================== GEOSPATIAL ====================
+
+  // Near location
+  // Query{filter: {
+  //   field: "location",
+  //   op: GEO_NEAR,
+  //   value: {string: "40.7128,-74.0060,10"}  // lat,lng,distance_km
+  // }}
+
+  // Within area
+  // Query{filter: {
+  //   field: "location",
+  //   op: GEO_WITHIN,
+  //   value: {string: "[[40.7128,-74.0060],[40.7580,-73.9855]]"}  // bounding box
+  // }}
+
+  // ==================== RELATIONS ====================
+
+  // Load relations
+  // Query{
+  //   filter: {field: "id", op: EQ, value: {string: "123"}},
+  //   relations: {relations: ["user", "comments"]}
+  // }
+
+  // Nested relations
+  // Query{
+  //   filter: {field: "id", op: EQ, value: {string: "123"}},
+  //   relations: {
+  //     relations: ["user"],
+  //     nested: {"user": {relations: ["profile", "organization"]}}
+  //   }
+  // }
+
+  // Relations with filters
+  // Query{
+  //   filter: {field: "id", op: EQ, value: {string: "123"}},
+  //   relations: {
+  //     relations: ["comments"],
+  //     filters: {
+  //       "comments": {field: "approved", op: EQ, value: {string: "true"}}
+  //     }
+  //   }
+  // }
+
+  // ==================== COMPLEX EXAMPLES ====================
+
+  // E-commerce product search
+  // Query{
+  //   search: {
+  //     query: "wireless headphones",
+  //     fields: ["name", "description"],
+  //     options: {mode: FUZZY, fuzziness: 1}
+  //   },
+  //   filter: {and: [
+  //     {field: "price", op: BETWEEN, value: {string: "50,200"}},
+  //     {field: "in_stock", op: EQ, value: {string: "true"}},
+  //     {field: "rating", op: GTE, value: {string: "4.0"}}
+  //   ]},
+  //   sort: {sorts: [
+  //     {field: "popularity", direction: DESC},
+  //     {field: "price", direction: ASC}
+  //   ]},
+  //   pagination: {page_size: 20}
+  // }
+
+  // Analytics dashboard
+  // Query{
+  //   filter: {
+  //     field: "created_at",
+  //     op: GTE,
+  //     value: {string: "2024-01-01"}
+  //   },
+  //   group_by: {
+  //     fields: ["status", "category"],
+  //     aggregates: [
+  //       {function: COUNT, alias: "total"},
+  //       {function: SUM, field: "revenue", alias: "revenue"},
+  //       {function: AVG, field: "amount", alias: "avg"}
+  //     ]
+  //   }
+  // }
+
+  // Multi-tenant with relations
+  // Query{
+  //   filter: {and: [
+  //     {field: "tenant_id", op: EQ, value: {string: "tenant_123"}},
+  //     {field: "deleted_at", op: IS_NULL},
+  //     {or: [
+  //       {field: "status", op: EQ, value: {string: "active"}},
+  //       {field: "status", op: EQ, value: {string: "pending"}}
+  //     ]}
+  //   ]},
+  //   relations: {relations: ["created_by", "organization"]},
+  //   sort: {sorts: [{field: "created_at", direction: DESC}]},
+  //   pagination: {page_size: 50}
+  // }
+}

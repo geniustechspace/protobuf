@@ -1,0 +1,51 @@
+// Core API Query - Sort Module
+//
+// Storage-agnostic sorting for all query operations.
+
+syntax = "proto3";
+
+package geniustechspace.core.api.query.v1;
+
+import "buf/validate/validate.proto";
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/core/api/query/v1;queryv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.core.api.query.v1";
+
+// SortDirection defines sort order.
+enum SortDirection {
+  SORT_DIRECTION_UNSPECIFIED = 0;
+  ASC = 1; // Ascending
+  DESC = 2; // Descending
+}
+
+// SortNullHandling defines how to handle null values in sorting.
+enum SortNullHandling {
+  SORT_NULL_HANDLING_UNSPECIFIED = 0;
+  NULLS_FIRST = 1; // Nulls first
+  NULLS_LAST = 2; // Nulls last
+}
+
+// Sort defines a single sort criterion.
+// Also referred to as "Order" in some engines; this message covers both.
+message Sort {
+  // Field path to sort by
+  string field = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 256
+  }];
+
+  // Sort direction
+  SortDirection direction = 2;
+
+  // Null handling
+  SortNullHandling null_handling = 3;
+
+  // Case sensitivity (for string fields)
+  bool case_sensitive = 4;
+}
+
+// SortBy defines multiple sort criteria (applied in order).
+message SortBy {
+  repeated Sort sorts = 1 [(buf.validate.field).repeated.max_items = 10];
+}

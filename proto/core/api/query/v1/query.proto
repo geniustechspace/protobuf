@@ -1,0 +1,110 @@
+// Core API Query - Main Query Module
+//
+// Unified query interface for all storage systems.
+// Simple queries use 1-2 fields, complex queries combine multiple features.
+
+syntax = "proto3";
+
+package geniustechspace.core.api.query.v1;
+
+import "buf/validate/validate.proto";
+import "core/api/pagination/v1/messages.proto";
+import "core/api/query/v1/aggregation.proto";
+import "core/api/query/v1/filter.proto";
+import "core/api/query/v1/projection.proto";
+import "core/api/query/v1/relation.proto";
+import "core/api/query/v1/search.proto";
+import "core/api/query/v1/sort.proto";
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/core/api/query/v1;queryv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.core.api.query.v1";
+
+// Query is the unified query interface.
+// Start simple, add complexity as needed.
+//
+// SIMPLE: {filter: {field: "status", op: EQ, value: "active"}}
+// COMPLEX: Combine filter, sort, aggregation, search, joins
+message Query {
+  // Filter results
+  Filter filter = 1;
+
+  // Sorting/ordering results
+  SortBy sort = 2;
+
+  // Select fields (projection)
+  Projection projection = 3;
+
+  // Pagination
+  geniustechspace.core.api.pagination.v1.PaginationRequest pagination = 4;
+
+  // Full-text search
+  Search search = 5;
+
+  // Aggregation
+  GroupBy group_by = 6;
+
+  // Join related entities
+  repeated Join joins = 7 [(buf.validate.field).repeated.max_items = 10];
+
+  // Load relations (simpler than joins)
+  RelationLoad relations = 8;
+
+  // Query timeout (milliseconds)
+  int64 timeout_ms = 9 [(buf.validate.field).int64 = {
+    gte: 0
+    lte: 300000
+  }];
+
+  // Include soft-deleted entities
+  bool include_deleted = 10;
+
+  // Explain query execution (debugging)
+  bool explain = 11;
+
+  // Query options (storage-specific)
+  map<string, string> options = 12 [(buf.validate.field).map.max_pairs = 20];
+}
+
+// QueryBuilder provides fluent query construction hints.
+// This is documentation-only; actual builders generated in SDKs.
+//
+// EXAMPLES:
+//
+// Simple filter:
+//   Query{filter: {field: "status", op: EQ, value: "active"}}
+//
+// Filter + Sort:
+//   Query{
+//     filter: {field: "status", op: EQ, value: "active"},
+//     sort: {sorts: [{field: "created_at", direction: DESC}]}
+//   }
+//
+// Complex AND/OR:
+//   Query{filter: {and: [
+//     {field: "status", op: EQ, value: "active"},
+//     {or: [
+//       {field: "tier", op: EQ, value: "premium"},
+//       {field: "tier", op: EQ, value: "enterprise"}
+//     ]}
+//   ]}}
+//
+// Full-text search:
+//   Query{search: {
+//     query: "machine learning",
+//     fields: ["title", "description"],
+//     options: {mode: SEMANTIC, min_score: 0.7}
+//   }}
+//
+// Aggregation:
+//   Query{group_by: {
+//     fields: ["status"],
+//     aggregates: [{function: COUNT, alias: "count"}]
+//   }}
+//
+// With relations:
+//   Query{
+//     filter: {field: "id", op: EQ, value: "123"},
+//     relations: {relations: ["user", "comments"]}
+//   }
+message QueryBuilder {}

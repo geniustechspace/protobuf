@@ -1,0 +1,77 @@
+// Core API Query - Aggregation Module
+//
+// Aggregation operations for analytics and reporting.
+
+syntax = "proto3";
+
+package geniustechspace.core.api.query.v1;
+
+import "buf/validate/validate.proto";
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/core/api/query/v1;queryv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.core.api.query.v1";
+
+// AggregateFunction defines aggregation operations.
+enum AggregateFunction {
+  AGGREGATE_FUNCTION_UNSPECIFIED = 0;
+
+  // Counting
+  COUNT = 1; // Count rows
+  COUNT_DISTINCT = 2; // Count distinct values
+
+  // Numeric
+  SUM = 3; // Sum of values
+  AVG = 4; // Average
+  MIN = 5; // Minimum value
+  MAX = 6; // Maximum value
+
+  // Statistical
+  STDDEV = 7; // Standard deviation
+  VARIANCE = 8; // Variance
+  MEDIAN = 9; // Median value
+
+  // Array/Set
+  ARRAY_AGG = 10; // Aggregate into array
+  STRING_AGG = 11; // Concatenate strings
+
+  // First/Last
+  FIRST = 12; // First value
+  LAST = 13; // Last value
+
+  // Percentiles
+  PERCENTILE_50 = 14; // 50th percentile (median)
+  PERCENTILE_90 = 15; // 90th percentile
+  PERCENTILE_95 = 16; // 95th percentile
+  PERCENTILE_99 = 17; // 99th percentile
+}
+
+// Aggregate defines a single aggregation.
+message Aggregate {
+  // Aggregation function
+  AggregateFunction function = 1;
+
+  // Field to aggregate (empty for COUNT)
+  string field = 2 [(buf.validate.field).string.max_len = 256];
+
+  // Alias for result field
+  string alias = 3 [(buf.validate.field).string.max_len = 128];
+
+  // Distinct values only
+  bool distinct = 4;
+}
+
+// GroupBy defines grouping for aggregations.
+message GroupBy {
+  // Fields to group by
+  repeated string fields = 1 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 20
+  }];
+
+  // Aggregations to compute per group
+  repeated Aggregate aggregates = 2 [(buf.validate.field).repeated.max_items = 50];
+
+  // Filter groups (HAVING clause)
+  string having = 3 [(buf.validate.field).string.max_len = 1024];
+}

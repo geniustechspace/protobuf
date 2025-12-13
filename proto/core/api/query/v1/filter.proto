@@ -1,0 +1,111 @@
+// Core API Query - Filter Module
+//
+// Storage-agnostic filtering for all query operations.
+// Compatible with SQL, NoSQL, document stores, search engines, etc.
+
+syntax = "proto3";
+
+package geniustechspace.core.api.query.v1;
+
+import "buf/validate/validate.proto";
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/core/api/query/v1;queryv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.core.api.query.v1";
+
+// FilterOperator defines all comparison operations.
+enum FilterOperator {
+  FILTER_OPERATOR_UNSPECIFIED = 0;
+
+  // Equality
+  EQ = 1; // Equal
+  NE = 2; // Not equal
+
+  // Comparison
+  GT = 3; // Greater than
+  GTE = 4; // Greater than or equal
+  LT = 5; // Less than
+  LTE = 6; // Less than or equal
+
+  // Collection
+  IN = 7; // In list
+  NOT_IN = 8; // Not in list
+
+  // String matching
+  CONTAINS = 9; // Contains substring
+  NOT_CONTAINS = 10; // Does not contain
+  STARTS_WITH = 11; // Starts with prefix
+  ENDS_WITH = 12; // Ends with suffix
+  MATCHES = 13; // Regex match
+  ILIKE = 14; // Case-insensitive like
+
+  // Null checks
+  IS_NULL = 15; // Is null/unset
+  IS_NOT_NULL = 16; // Is not null
+
+  // Range
+  BETWEEN = 17; // Between two values
+
+  // Array operations
+  ARRAY_CONTAINS = 18; // Array contains value
+  ARRAY_CONTAINS_ANY = 19; // Array contains any of values
+  ARRAY_CONTAINS_ALL = 20; // Array contains all values
+
+  // Geospatial
+  GEO_NEAR = 21; // Near geographic point
+  GEO_WITHIN = 22; // Within geographic area
+  GEO_INTERSECTS = 23; // Intersects geographic shape
+
+  // Full-text search
+  TEXT_SEARCH = 24; // Full-text search match
+
+  // Existence
+  EXISTS = 25; // Field exists
+}
+
+// StringList wraps a list of string values for collection operators.
+message ListValue {
+  repeated string values = 1 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 1000
+  }];
+}
+
+// Filter provides composable filtering.
+// CEL validation ensures operator and value alignment.
+message Filter {
+  option (buf.validate.message).cel = {
+    id: "filter_value_required"
+    message: "value is required for non-null-check operators"
+    expression: "has(self.string) || has(self.list) || (self.op == 15) || (self.op == 16)" // IS_NULL=15, IS_NOT_NULL=16
+  };
+
+  option (buf.validate.message).cel = {
+    id: "filter_list_required_for_collection_ops"
+    message: "list required for collection operators (IN, NOT_IN, ARRAY_*)"
+    expression: "!((self.op == 7 || self.op == 8 || self.op == 18 || self.op == 19 || self.op == 20) && !has(self.list))" // IN=7, NOT_IN=8, ARRAY_*=18-20
+  };
+
+  // Field path (dot notation for nested: "user.profile.email")
+  string field = 1 [(buf.validate.field).string.max_len = 256];
+
+  // Comparison operator
+  FilterOperator op = 2;
+
+  // Value: choose one based on operator.
+  // - Scalar operators (EQ, NE, GT, GTE, LT, LTE, CONTAINS, etc.): use string
+  // - Collection operators (IN, NOT_IN, ARRAY_CONTAINS_ANY, etc.): use list
+  // Servers convert string to appropriate type based on schema/operator context.
+  oneof value {
+    string string = 3 [(buf.validate.field).string.max_len = 4096];
+    ListValue list = 4;
+  }
+
+  // Combine filters with AND logic
+  repeated Filter and = 11 [(buf.validate.field).repeated.max_items = 50];
+
+  // Combine filters with OR logic
+  repeated Filter or = 12 [(buf.validate.field).repeated.max_items = 50];
+
+  reserved 13;
+}

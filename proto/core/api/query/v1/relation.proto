@@ -1,0 +1,63 @@
+// Core API Query - Relation Module
+//
+// Joins and relation handling for complex queries.
+
+syntax = "proto3";
+
+package geniustechspace.core.api.query.v1;
+
+import "buf/validate/validate.proto";
+import "core/api/query/v1/filter.proto";
+import "core/api/query/v1/projection.proto";
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/core/api/query/v1;queryv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.core.api.query.v1";
+
+// JoinType defines join behavior.
+enum JoinType {
+  JOIN_TYPE_UNSPECIFIED = 0;
+  INNER = 1; // Inner join
+  LEFT = 2; // Left outer join
+  RIGHT = 3; // Right outer join
+  FULL = 4; // Full outer join
+}
+
+// Join defines a relation join.
+message Join {
+  // Join type
+  JoinType type = 1;
+
+  // Relation name (e.g., "user", "posts")
+  string relation = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 128
+  }];
+
+  // Local field (from main entity)
+  string local_field = 3 [(buf.validate.field).string.max_len = 128];
+
+  // Foreign field (from related entity)
+  string foreign_field = 4 [(buf.validate.field).string.max_len = 128];
+
+  // Additional filter on joined data
+  Filter filter = 5;
+
+  // Projection for joined data
+  Projection projection = 6;
+
+  // Alias for joined data in result
+  string alias = 7 [(buf.validate.field).string.max_len = 128];
+}
+
+// RelationLoad defines how to load related entities.
+message RelationLoad {
+  // Relations to load (e.g., ["user", "comments"])
+  repeated string relations = 1 [(buf.validate.field).repeated.max_items = 20];
+
+  // Nested relation loads (e.g., "user.profile")
+  map<string, RelationLoad> nested = 2;
+
+  // Filter for each relation
+  map<string, Filter> filters = 3;
+}

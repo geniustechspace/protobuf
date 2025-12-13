@@ -1,0 +1,66 @@
+// Core API Query - Search Module
+//
+// Full-text search and advanced search capabilities.
+
+syntax = "proto3";
+
+package geniustechspace.core.api.query.v1;
+
+import "buf/validate/validate.proto";
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/core/api/query/v1;queryv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.core.api.query.v1";
+
+// SearchMode defines search behavior.
+enum SearchMode {
+  SEARCH_MODE_UNSPECIFIED = 0;
+  NATURAL = 1; // Natural language search
+  BOOLEAN = 2; // Boolean operators (AND, OR, NOT)
+  PHRASE = 3; // Exact phrase match
+  WILDCARD = 4; // Wildcard matching
+  FUZZY = 5; // Fuzzy matching (typo tolerance)
+  SEMANTIC = 6; // Semantic/vector search
+}
+
+// SearchOptions defines search configuration.
+message SearchOptions {
+  // Search mode
+  SearchMode mode = 1;
+
+  // Minimum relevance score (0.0 to 1.0)
+  float min_score = 2 [(buf.validate.field).float = {
+    gte: 0.0
+    lte: 1.0
+  }];
+
+  // Fuzzy edit distance (for fuzzy search)
+  int32 fuzziness = 3 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 2
+  }];
+
+  // Highlight matches in results
+  bool highlight = 4;
+
+  // Boost specific fields (field -> boost factor)
+  map<string, float> field_boosts = 5;
+
+  // Language for stemming/stop words
+  string language = 6 [(buf.validate.field).string.max_len = 16];
+}
+
+// Search defines full-text search.
+message Search {
+  // Search query string
+  string query = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 1024
+  }];
+
+  // Fields to search (empty = all searchable fields)
+  repeated string fields = 2 [(buf.validate.field).repeated.max_items = 50];
+
+  // Search options
+  SearchOptions options = 3;
+}
