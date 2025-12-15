@@ -63,49 +63,52 @@ enum FilterOperator {
   EXISTS = 25; // Field exists
 }
 
-// StringList wraps a list of string values for collection operators.
-message ListValue {
-  repeated string values = 1 [(buf.validate.field).repeated = {
-    min_items: 1
-    max_items: 1000
-  }];
-}
-
-// Filter provides composable filtering.
-// CEL validation ensures operator and value alignment.
+// Filter provides composable filtering with type-safe values.
+//
+// Use 'value' for scalar operators (EQ, GT, CONTAINS, etc.)
+// Use 'values' for collection operators (IN, NOT_IN, ARRAY_CONTAINS_ANY, etc.)
+//
+// Server converts values to appropriate types based on schema and operator.
+// NOTE: Set only one of 'value' or 'values' based on operator type.
 message Filter {
   option (buf.validate.message).cel = {
-    id: "filter_value_required"
-    message: "value is required for non-null-check operators"
-    expression: "has(self.string) || has(self.list) || (self.op == 15) || (self.op == 16)" // IS_NULL=15, IS_NOT_NULL=16
+    id: "value_xor_values"
+    message: "Only one of 'value' or 'values' can be set, not both"
+    expression: "!(this.value != '' && this.values.size() > 0)"
   };
 
-  option (buf.validate.message).cel = {
-    id: "filter_list_required_for_collection_ops"
-    message: "list required for collection operators (IN, NOT_IN, ARRAY_*)"
-    expression: "!((self.op == 7 || self.op == 8 || self.op == 18 || self.op == 19 || self.op == 20) && !has(self.list))" // IN=7, NOT_IN=8, ARRAY_*=18-20
-  };
-
-  // Field path (dot notation for nested: "user.profile.email")
+  // Field path with dot notation for nested fields.
+  // Examples: "status", "user.email", "orders[].total"
+  // Supports relation auto-detection: "user.status" → auto-joins user table
   string field = 1 [(buf.validate.field).string.max_len = 256];
 
   // Comparison operator
   FilterOperator op = 2;
 
-  // Value: choose one based on operator.
-  // - Scalar operators (EQ, NE, GT, GTE, LT, LTE, CONTAINS, etc.): use string
-  // - Collection operators (IN, NOT_IN, ARRAY_CONTAINS_ANY, etc.): use list
-  // Servers convert string to appropriate type based on schema/operator context.
-  oneof value {
-    string string = 3 [(buf.validate.field).string.max_len = 4096];
-    ListValue list = 4;
-  }
+  // Single value for scalar operators (EQ, NE, GT, CONTAINS, etc.)
+  // Mutually exclusive with 'values' - set only one.
+  string value = 3 [(buf.validate.field).string.max_len = 4096];
+
+  // Multiple values for collection operators (IN, NOT_IN, ARRAY_*, BETWEEN, etc.)
+  // Mutually exclusive with 'value' - set only one.
+  repeated string values = 4 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 1000
+    items: {
+      string: {
+        min_len: 1
+        max_len: 500
+      }
+    }
+  }];
+
+  reserved 5 to 9;
 
   // Combine filters with AND logic
-  repeated Filter and = 11 [(buf.validate.field).repeated.max_items = 50];
+  repeated Filter and = 10 [(buf.validate.field).repeated.max_items = 50];
 
   // Combine filters with OR logic
-  repeated Filter or = 12 [(buf.validate.field).repeated.max_items = 50];
+  repeated Filter or = 11 [(buf.validate.field).repeated.max_items = 50];
 
-  reserved 13;
+  reserved 12 to 19;
 }

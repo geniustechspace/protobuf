@@ -51,6 +51,15 @@ message SearchOptions {
 }
 
 // Search defines full-text search.
+//
+// WILDCARD SUPPORT (PSL v1):
+// Fields array supports PSL wildcard patterns for dynamic field selection:
+// - ["**"] - Search all text fields
+// - ["logs.*"] - Search all top-level log fields
+// - ["**.description"] - Search all description fields recursively
+// - ["content[*]"] - Search all map values in content
+//
+// Server expands wildcards to concrete text fields based on schema.
 message Search {
   // Search query string
   string query = 1 [(buf.validate.field).string = {
@@ -58,8 +67,24 @@ message Search {
     max_len: 1024
   }];
 
-  // Fields to search (empty = all searchable fields)
-  repeated string fields = 2 [(buf.validate.field).repeated.max_items = 50];
+  // Fields to search in. Supports PSL wildcard patterns:
+  // - Simple: ["title", "description"]
+  // - Wildcard: ["**"] (all fields), ["logs.*"] (pattern match)
+  // - Nested: ["user.profile.bio", "**.content"]
+  //
+  // Server expands wildcards to text fields only.
+  // Max 100 fields after wildcard expansion.
+  // Empty array = search all searchable text fields.
+  repeated string fields = 2 [(buf.validate.field).repeated = {
+    max_items: 100
+    items: {
+      string: {
+        min_len: 1
+        max_len: 200
+        pattern: "^[A-Za-z_][A-Za-z0-9_.\\[\\]\\*`']*$"
+      }
+    }
+  }];
 
   // Search options
   SearchOptions options = 3;

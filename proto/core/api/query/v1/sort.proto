@@ -26,9 +26,9 @@ enum SortNullHandling {
   NULLS_LAST = 2; // Nulls last
 }
 
-// Sort defines a single sort criterion.
+// Sorting defines a single sort criterion.
 // Also referred to as "Order" in some engines; this message covers both.
-message Sort {
+message Sorting {
   // Field path to sort by
   string field = 1 [(buf.validate.field).string = {
     min_len: 1
@@ -43,9 +43,4 @@ message Sort {
 
   // Case sensitivity (for string fields)
   bool case_sensitive = 4;
-}
-
-// SortBy defines multiple sort criteria (applied in order).
-message SortBy {
-  repeated Sort sorts = 1 [(buf.validate.field).repeated.max_items = 10];
 }

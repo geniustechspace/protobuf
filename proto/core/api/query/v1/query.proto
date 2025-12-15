@@ -11,7 +11,6 @@ import "buf/validate/validate.proto";
 import "core/api/pagination/v1/messages.proto";
 import "core/api/query/v1/aggregation.proto";
 import "core/api/query/v1/filter.proto";
-import "core/api/query/v1/projection.proto";
 import "core/api/query/v1/relation.proto";
 import "core/api/query/v1/search.proto";
 import "core/api/query/v1/sort.proto";
@@ -23,32 +22,77 @@ option java_package = "com.geniustechspace.protobuf.core.api.query.v1";
 // Query is the unified query interface.
 // Start simple, add complexity as needed.
 //
+// DESIGN PHILOSOPHY:
+// - Filter supports dot notation for relations: "user.status" auto-joins user
+// - Include/exclude patterns infer relations: "user.name" auto-loads user
+// - Server detects needed joins from filter and projection paths
+// - Keep explicit Join for rare complex cases
+//
 // SIMPLE: {filter: {field: "status", op: EQ, value: "active"}}
-// COMPLEX: Combine filter, sort, aggregation, search, joins
+// RELATIONS: {filter: {field: "user.email", op: CONTAINS, value: "@company.com"}}
+// PROJECTION: {include: ["id", "user.name", "user.email"]}
 message Query {
-  // Filter results
+  // Filter results. Supports dot notation for relations.
+  // Values are type-safe: use 'value' for scalars, 'values' for lists.
+  // Examples:
+  //   {field: "status", op: EQ, value: "active"}  // Scalar
+  //   {field: "user.status", op: EQ, value: "verified"}  // Auto-join user
+  //   {field: "orders[].total", op: GT, value: "100"}  // List relation
+  //   {field: "role", op: IN, values: ["admin", "owner"]}  // List
   Filter filter = 1;
 
-  // Sorting/ordering results
-  SortBy sort = 2;
+  // Sorting/ordering results. Can reference relation fields.
+  // Example: [{field: "user.created_at", direction: DESC}]
+  repeated Sorting sorts = 2 [(buf.validate.field).repeated.max_items = 10];
 
-  // Select fields (projection)
-  Projection projection = 3;
+  // Field patterns to include (PSL v1 syntax).
+  // Empty = include all (then apply exclude).
+  // Server auto-detects and loads relations from paths.
+  //
+  // EXAMPLES:
+  //   ["id", "name", "email"]  // Simple fields
+  //   ["user.**"]  // Entire user relation subtree (auto-load user)
+  //   ["user.name", "user.email"]  // Specific user fields (auto-load user)
+  //   ["orders[].id", "orders[].total"]  // List relation (auto-load orders)
+  //   ["**.id"]  // All IDs recursively
+  //
+  // Relations are inferred - no need to specify separately!
+  repeated string include = 3 [(buf.validate.field).repeated = {
+    max_items: 200
+    items: {
+      string: {
+        min_len: 1
+        max_len: 500
+        pattern: "^[A-Za-z_][A-Za-z0-9_.\\[\\]\\*`']*$"
+      }
+    }
+  }];
+
+  // Field patterns to exclude. Applied after include.
+  // Use for security: exclude: ["**.password", "**.token"]
+  repeated string exclude = 4 [(buf.validate.field).repeated = {
+    max_items: 200
+    items: {
+      string: {
+        min_len: 1
+        max_len: 500
+        pattern: "^[A-Za-z_][A-Za-z0-9_.\\[\\]\\*`']*$"
+      }
+    }
+  }];
 
   // Pagination
-  geniustechspace.core.api.pagination.v1.PaginationRequest pagination = 4;
+  geniustechspace.core.api.pagination.v1.PaginationRequest pagination = 5;
 
   // Full-text search
-  Search search = 5;
+  Search search = 6;
 
-  // Aggregation
-  GroupBy group_by = 6;
+  // Aggregation and grouping
+  Grouping grouping = 7;
 
-  // Join related entities
-  repeated Join joins = 7 [(buf.validate.field).repeated.max_items = 10];
-
-  // Load relations (simpler than joins)
-  RelationLoad relations = 8;
+  // Explicit joins (rare - most cases use filter + include for auto-join).
+  // Use when you need fine control over join type, conditions, or aliases.
+  repeated Join joins = 8 [(buf.validate.field).repeated.max_items = 10];
 
   // Query timeout (milliseconds)
   int64 timeout_ms = 9 [(buf.validate.field).int64 = {
@@ -72,22 +116,36 @@ message Query {
 // EXAMPLES:
 //
 // Simple filter:
-//   Query{filter: {field: "status", op: EQ, value: "active"}}
+//   Query{filter: {field: "status", op: EQ, value: {string: "active"}}}
 //
-// Filter + Sort:
+// Filter + Projection:
 //   Query{
-//     filter: {field: "status", op: EQ, value: "active"},
-//     sort: {sorts: [{field: "created_at", direction: DESC}]}
+//     filter: {field: "status", op: EQ, value: {string: "active"}},
+//     include: ["id", "name", "email"]
 //   }
 //
-// Complex AND/OR:
+// Auto-join with relations:
+//   Query{
+//     filter: {field: "user.status", op: EQ, value: {string: "verified"}},
+//     include: ["id", "name", "user.email"]
+//   }
+//   // Server detects "user" relation from filter and include paths
+//
+// Complex AND/OR with relations:
 //   Query{filter: {and: [
-//     {field: "status", op: EQ, value: "active"},
+//     {field: "status", op: EQ, value: {string: "active"}},
+//     {field: "user.email", op: CONTAINS, value: {string: "@company.com"}},
 //     {or: [
-//       {field: "tier", op: EQ, value: "premium"},
-//       {field: "tier", op: EQ, value: "enterprise"}
+//       {field: "tier", op: EQ, value: {string: "premium"}},
+//       {field: "tier", op: EQ, value: {string: "enterprise"}}
 //     ]}
 //   ]}}
+//
+// Exclude sensitive fields:
+//   Query{
+//     include: ["user.**"],
+//     exclude: ["**.password", "**.token", "**.ssn"]
+//   }
 //
 // Full-text search:
 //   Query{search: {
@@ -97,14 +155,14 @@ message Query {
 //   }}
 //
 // Aggregation:
-//   Query{group_by: {
+//   Query{grouping: {
 //     fields: ["status"],
 //     aggregates: [{function: COUNT, alias: "count"}]
 //   }}
 //
-// With relations:
+// List relations:
 //   Query{
-//     filter: {field: "id", op: EQ, value: "123"},
-//     relations: {relations: ["user", "comments"]}
+//     filter: {field: "orders[].total", op: GT, value: {string: "100"}},
+//     include: ["id", "orders[].id", "orders[].total"]
 //   }
 message QueryBuilder {}

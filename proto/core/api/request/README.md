@@ -80,22 +80,22 @@ message CreateUserRequest {
 
 ### Request Types
 
-| Request Type | Purpose | Key Fields |
-|-------------|---------|------------|
-| **CreateRequest** | Create single entity | data, idempotency_key, dry_run, field_mask |
-| **BatchCreateRequest** | Create multiple entities | data (repeated), continue_on_error |
-| **GetRequest** | Retrieve by ID | id, field_mask, include_deleted |
-| **ListRequest** | Paginated list | pagination, order_by, filter, field_mask |
-| **SearchRequest** | Full-text search | query, search_fields, pagination, filter |
-| **UpdateRequest** | Update entity | id, data, field_mask (required), version |
-| **BatchUpdateRequest** | Update multiple | updates (repeated), continue_on_error |
-| **DeleteRequest** | Delete entity | id, hard_delete, version |
-| **BatchDeleteRequest** | Delete multiple | ids (repeated), hard_delete |
-| **RestoreRequest** | Restore soft-deleted | id, idempotency_key |
-| **CountRequest** | Count entities | filter, include_deleted |
-| **ExistsRequest** | Check existence | id, include_deleted |
-| **ExportRequest** | Export to format | format, filter, field_mask |
-| **ImportRequest** | Import from format | format, data (bytes), continue_on_error |
+| Request Type           | Purpose                  | Key Fields                                 |
+| ---------------------- | ------------------------ | ------------------------------------------ |
+| **CreateRequest**      | Create single entity     | data, idempotency_key, dry_run, field_mask |
+| **BatchCreateRequest** | Create multiple entities | data (repeated), continue_on_error         |
+| **GetRequest**         | Retrieve by ID           | id, field_mask, include_deleted            |
+| **ListRequest**        | Paginated list           | pagination, order_by, filter, field_mask   |
+| **SearchRequest**      | Full-text search         | query, search_fields, pagination, filter   |
+| **UpdateRequest**      | Update entity            | id, data, field_mask (required), version   |
+| **BatchUpdateRequest** | Update multiple          | updates (repeated), continue_on_error      |
+| **DeleteRequest**      | Delete entity            | id, hard_delete, version                   |
+| **BatchDeleteRequest** | Delete multiple          | ids (repeated), hard_delete                |
+| **RestoreRequest**     | Restore soft-deleted     | id, idempotency_key                        |
+| **CountRequest**       | Count entities           | filter, include_deleted                    |
+| **ExistsRequest**      | Check existence          | id, include_deleted                        |
+| **ExportRequest**      | Export to format         | format, filter, field_mask                 |
+| **ImportRequest**      | Import from format       | format, data (bytes), continue_on_error    |
 
 ### Usage Examples
 
@@ -131,123 +131,84 @@ resp, err := client.CreateUser(ctx, &CreateUserRequest{
 })
 ```
 
-#### List with Filtering
+#### List with Query System
 
 **Service Definition:**
 
 ```protobuf
 service UserService {
-  rpc ListUsers(ListUsersRequest) returns (ListUsersResponse);
+  rpc ListUsers(ListRequest) returns (ListUsersResponse);
 }
 
-message ListUsersRequest {
-  PaginationRequest pagination = 1;
-  string order_by = 2;
-  oneof filter_type {
-    string filter = 3;        // String-based (legacy)
-    Filter filters = 10;      // Structured (GraphQL-like)
-  }
-  google.protobuf.FieldMask field_mask = 4;
+// Use the standard ListRequest from request package
+message ListRequest {
+  // Comprehensive query from query package
+  core.api.query.v1.Query query = 1;
 }
 ```
 
-**Client (String-based filter - Legacy):**
+**Client - Simple Filter:**
 
 ```go
-resp, err := client.ListUsers(ctx, &ListUsersRequest{
-    Pagination: &PaginationRequest{
-        PageSize: 50,
-    },
-    OrderBy: "created_at desc",
-    FilterType: &ListUsersRequest_Filter{
-        Filter: "status='active' AND role IN ['admin','user']",
-    },
-    FieldMask: &fieldmaskpb.FieldMask{
-        Paths: []string{"user_id", "email", "name", "status"},
-    },
-})
-```
+import queryv1 "github.com/geniustechspace/protobuf/gen/go/core/api/query/v1"
 
-**Client (GraphQL-like filter - Recommended):**
-
-```go
-import "google.golang.org/protobuf/types/known/wrapperspb"
-
-// Simple field filter
-resp, err := client.ListUsers(ctx, &ListUsersRequest{
-    Pagination: &PaginationRequest{PageSize: 50},
-    OrderBy: "created_at desc",
-    FilterType: &ListUsersRequest_Filters{
-        Filters: &Filter{
-            Filter: &Filter_Field{
-                Field: &FieldFilter{
-                    Field:    "status",
-                    Operator: FilterOperator_FILTER_OPERATOR_EQ,
-                    Value:    mustAny(wrapperspb.String("active")),
-                },
-            },
+resp, err := client.ListUsers(ctx, &requestv1.ListRequest{
+    Query: &queryv1.Query{
+        Filter: &queryv1.Filter{
+            Field: "status",
+            Op:    queryv1.FilterOperator_EQ,
+            Value: "active",
+        },
+        Sorts: []*queryv1.Sorting{
+            {Field: "created_at", Direction: queryv1.SortDirection_DESC},
+        },
+        Include: []string{"user_id", "email", "name", "status"},
+        Pagination: &paginationv1.PaginationRequest{
+            PageSize: 50,
         },
     },
 })
+```
 
-// Complex nested filter: (status = 'active') AND (role IN ['admin','user'] OR created_at > '2024-01-01')
-resp, err := client.ListUsers(ctx, &ListUsersRequest{
-    Pagination: &PaginationRequest{PageSize: 50},
-    OrderBy: "created_at desc",
-    FilterType: &ListUsersRequest_Filters{
-        Filters: &Filter{
-            Filter: &Filter_Logical{
-                Logical: &LogicalFilter{
-                    Operator: LogicalOperator_LOGICAL_OPERATOR_AND,
-                    Filters: []*Filter{
-                        // status = 'active'
+**Client - Complex Nested Filter:**
+
+```go
+// (status = 'active') AND (role IN ['admin','user'] OR created_at > '2024-01-01')
+resp, err := client.ListUsers(ctx, &requestv1.ListRequest{
+    Query: &queryv1.Query{
+        Filter: &queryv1.Filter{
+            And: []*queryv1.Filter{
+                // status = 'active'
+                {
+                    Field: "status",
+                    Op:    queryv1.FilterOperator_EQ,
+                    Value: "active",
+                },
+                // role IN ['admin','user'] OR created_at > '2024-01-01'
+                {
+                    Or: []*queryv1.Filter{
+                        // role IN ['admin','user']
                         {
-                            Filter: &Filter_Field{
-                                Field: &FieldFilter{
-                                    Field:    "status",
-                                    Operator: FilterOperator_FILTER_OPERATOR_EQ,
-                                    Value:    mustAny(wrapperspb.String("active")),
-                                },
-                            },
+                            Field:  "role",
+                            Op:     queryv1.FilterOperator_IN,
+                            Values: []string{"admin", "user"},
                         },
-                        // role IN ['admin','user'] OR created_at > '2024-01-01'
+                        // created_at > '2024-01-01'
                         {
-                            Filter: &Filter_Logical{
-                                Logical: &LogicalFilter{
-                                    Operator: LogicalOperator_LOGICAL_OPERATOR_OR,
-                                    Filters: []*Filter{
-                                        // role IN ['admin','user']
-                                        {
-                                            Filter: &Filter_Field{
-                                                Field: &FieldFilter{
-                                                    Field:    "role",
-                                                    Operator: FilterOperator_FILTER_OPERATOR_IN,
-                                                    Value:    mustAny(&structpb.ListValue{
-                                                        Values: []*structpb.Value{
-                                                            structpb.NewStringValue("admin"),
-                                                            structpb.NewStringValue("user"),
-                                                        },
-                                                    }),
-                                                },
-                                            },
-                                        },
-                                        // created_at > '2024-01-01'
-                                        {
-                                            Filter: &Filter_Field{
-                                                Field: &FieldFilter{
-                                                    Field:    "created_at",
-                                                    Operator: FilterOperator_FILTER_OPERATOR_GT,
-                                                    Value:    mustAny(timestamppb.New(time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC))),
-                                                },
-                                            },
-                                        },
-                                    },
-                                },
-                            },
+                            Field: "created_at",
+                            Op:    queryv1.FilterOperator_GT,
+                            Value: "2024-01-01",
                         },
                     },
                 },
             },
+        },
+        Sorts: []*queryv1.Sorting{
+            {Field: "created_at", Direction: queryv1.SortDirection_DESC},
+        },
+        Include: []string{"user_id", "email", "name", "status"},
+        Pagination: &paginationv1.PaginationRequest{
+            PageSize: 50,
         },
     },
 })
@@ -310,7 +271,7 @@ resp, err := client.BatchCreateUsers(ctx, &BatchCreateUsersRequest{
 
 Internal data structure built by middleware - **NOT sent in proto messages.**
 
-### Architecture Pattern
+### Context Architecture Pattern
 
 ```text
 Proto Definition (Type Schema)
@@ -335,7 +296,7 @@ message RequestContext {
   string request_id = 1;
   string correlation_id = 2;
   string idempotency_key = 3;
-  
+
   // Request control (per-request, not session-stable)
   RequestProtocol protocol = 20;
   HTTPRequestMethod method = 21;
@@ -343,14 +304,14 @@ message RequestContext {
   RequestPriority priority = 23;
   RequestValidationMode validation = 24;
   RequestIdempotencyMode idempotency_mode = 26;
-  
+
   // Session (embedded - zero duplication)
   core.session.v1.Session session = 100;
-  
+
   // Request lifecycle
   google.protobuf.Timestamp created_at = 101;
   google.protobuf.Timestamp expires_at = 102;
-  
+
   // Request metadata
   map<string, string> metadata = 103;
 }
@@ -363,7 +324,7 @@ func (m *Middleware) buildRequestContext(ctx context.Context) (*requestv1.Reques
     // Extract from gRPC metadata
     md, _ := metadata.FromIncomingContext(ctx)
     sessionID := md.Get("x-session-id")[0]
-    
+
     // Lookup Session (cached 99.9% of requests)
     session, err := m.sessionService.Get(ctx, &GetSessionRequest{
         SessionId: sessionID,
@@ -371,7 +332,7 @@ func (m *Middleware) buildRequestContext(ctx context.Context) (*requestv1.Reques
     if err != nil {
         return nil, status.Error(codes.Unauthenticated, "invalid session")
     }
-    
+
     // Build RequestContext
     return &requestv1.RequestContext{
         RequestId:     md.Get("x-request-id")[0],
@@ -393,29 +354,29 @@ func (m *Middleware) buildRequestContext(ctx context.Context) (*requestv1.Reques
 func (s *UserService) CreateUser(ctx context.Context, req *CreateUserRequest) (*UserResponse, error) {
     // Extract RequestContext (built by middleware)
     reqCtx := getRequestContext(ctx)
-    
+
     // Zero-trust validation
     if reqCtx.Session.Status != sessionv1.SessionStatus_SESSION_STATUS_ACTIVE {
         return nil, status.Error(codes.Unauthenticated, "session not active")
     }
-    
+
     // Check permissions (from embedded Session)
     if !hasPermission(reqCtx.Session.Permissions, "users:create") {
         return nil, status.Error(codes.PermissionDenied, "missing permission")
     }
-    
+
     // Use request data + session context
     user := &User{
         TenantPath: reqCtx.Session.TenantPath,
         Email:      req.Data.Email,  // From request
         CreatedBy:  reqCtx.Session.UserId,  // From session
     }
-    
+
     // Handle idempotency
     if req.IdempotencyKey != "" && reqCtx.IdempotencyKey != req.IdempotencyKey {
         return nil, status.Error(codes.InvalidArgument, "idempotency key mismatch")
     }
-    
+
     // Dry run mode
     if req.DryRun {
         if err := s.validator.Validate(user); err != nil {
@@ -423,13 +384,13 @@ func (s *UserService) CreateUser(ctx context.Context, req *CreateUserRequest) (*
         }
         return &UserResponse{Message: "Validation passed (dry run)"}, nil
     }
-    
+
     // Persist entity
     created, err := s.repo.Create(ctx, user)
     if err != nil {
         return nil, err
     }
-    
+
     return &UserResponse{Data: created}, nil
 }
 ```
@@ -440,13 +401,13 @@ func (s *UserService) CreateUser(ctx context.Context, req *CreateUserRequest) (*
 
 **Why Structured Filters?**
 
-| Feature | String Filters (Legacy) | Structured Filters (GraphQL-like) |
-|---------|------------------------|-----------------------------------|
-| **Type Safety** | ❌ Parse errors at runtime | ✅ Compile-time validation |
-| **Nested Logic** | ⚠️ Limited by syntax | ✅ Unlimited nesting |
-| **Composability** | ❌ String concatenation | ✅ Object composition |
-| **Client Libraries** | ❌ Manual string building | ✅ Type-safe builders |
-| **Validation** | ⚠️ Server-side only | ✅ Proto validation rules |
+| Feature              | String Filters (Legacy)    | Structured Filters (GraphQL-like) |
+| -------------------- | -------------------------- | --------------------------------- |
+| **Type Safety**      | ❌ Parse errors at runtime | ✅ Compile-time validation        |
+| **Nested Logic**     | ⚠️ Limited by syntax       | ✅ Unlimited nesting              |
+| **Composability**    | ❌ String concatenation    | ✅ Object composition             |
+| **Client Libraries** | ❌ Manual string building  | ✅ Type-safe builders             |
+| **Validation**       | ⚠️ Server-side only        | ✅ Proto validation rules         |
 
 **Filter Operators:**
 
@@ -491,108 +452,58 @@ LOGICAL_OPERATOR_NOT  // Negate the filter (expects 1 child)
 **Examples:**
 
 ```go
+import queryv1 "github.com/geniustechspace/protobuf/gen/go/core/api/query/v1"
+
 // 1. Simple equality filter
-Filter{
-    Filter: &Filter_Field{
-        Field: &FieldFilter{
-            Field:    "status",
-            Operator: FILTER_OPERATOR_EQ,
-            Value:    mustAny(wrapperspb.String("active")),
-        },
-    },
+&queryv1.Filter{
+    Field: "status",
+    Op:    queryv1.FilterOperator_EQ,
+    Value: "active",
 }
 
 // 2. Range filter (created_at BETWEEN '2024-01-01' AND '2024-12-31')
-Filter{
-    Filter: &Filter_Field{
-        Field: &FieldFilter{
-            Field:    "created_at",
-            Operator: FILTER_OPERATOR_BETWEEN,
-            Value:    mustAny(&structpb.ListValue{
-                Values: []*structpb.Value{
-                    structpb.NewStringValue("2024-01-01T00:00:00Z"),
-                    structpb.NewStringValue("2024-12-31T23:59:59Z"),
-                },
-            }),
-        },
-    },
+&queryv1.Filter{
+    Field:  "created_at",
+    Op:     queryv1.FilterOperator_BETWEEN,
+    Values: []string{"2024-01-01T00:00:00Z", "2024-12-31T23:59:59Z"},
 }
 
 // 3. NOT filter (status != 'deleted')
-Filter{
-    Filter: &Filter_Logical{
-        Logical: &LogicalFilter{
-            Operator: LOGICAL_OPERATOR_NOT,
-            Filters: []*Filter{
-                {
-                    Filter: &Filter_Field{
-                        Field: &FieldFilter{
-                            Field:    "status",
-                            Operator: FILTER_OPERATOR_EQ,
-                            Value:    mustAny(wrapperspb.String("deleted")),
-                        },
-                    },
-                },
-            },
-        },
-    },
+&queryv1.Filter{
+    Field: "status",
+    Op:    queryv1.FilterOperator_NE,
+    Value: "deleted",
 }
 
 // 4. Complex nested: (tier = 'premium' OR tier = 'enterprise') AND (status = 'active') AND (created_at > '2024-01-01')
-Filter{
-    Filter: &Filter_Logical{
-        Logical: &LogicalFilter{
-            Operator: LOGICAL_OPERATOR_AND,
-            Filters: []*Filter{
-                // (tier = 'premium' OR tier = 'enterprise')
+&queryv1.Filter{
+    And: []*queryv1.Filter{
+        // (tier = 'premium' OR tier = 'enterprise')
+        {
+            Or: []*queryv1.Filter{
                 {
-                    Filter: &Filter_Logical{
-                        Logical: &LogicalFilter{
-                            Operator: LOGICAL_OPERATOR_OR,
-                            Filters: []*Filter{
-                                {
-                                    Filter: &Filter_Field{
-                                        Field: &FieldFilter{
-                                            Field:    "tier",
-                                            Operator: FILTER_OPERATOR_EQ,
-                                            Value:    mustAny(wrapperspb.String("premium")),
-                                        },
-                                    },
-                                },
-                                {
-                                    Filter: &Filter_Field{
-                                        Field: &FieldFilter{
-                                            Field:    "tier",
-                                            Operator: FILTER_OPERATOR_EQ,
-                                            Value:    mustAny(wrapperspb.String("enterprise")),
-                                        },
-                                    },
-                                },
-                            },
-                        },
-                    },
+                    Field: "tier",
+                    Op:    queryv1.FilterOperator_EQ,
+                    Value: "premium",
                 },
-                // status = 'active'
                 {
-                    Filter: &Filter_Field{
-                        Field: &FieldFilter{
-                            Field:    "status",
-                            Operator: FILTER_OPERATOR_EQ,
-                            Value:    mustAny(wrapperspb.String("active")),
-                        },
-                    },
-                },
-                // created_at > '2024-01-01'
-                {
-                    Filter: &Filter_Field{
-                        Field: &FieldFilter{
-                            Field:    "created_at",
-                            Operator: FILTER_OPERATOR_GT,
-                            Value:    mustAny(timestamppb.New(time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC))),
-                        },
-                    },
+                    Field: "tier",
+                    Op:    queryv1.FilterOperator_EQ,
+                    Value: "enterprise",
                 },
             },
+        },
+        // status = 'active'
+        {
+            Field: "status",
+            Op:    queryv1.FilterOperator_EQ,
+            Value: "active",
+        },
+        // created_at > '2024-01-01'
+        {
+            Field: "created_at",
+            Op:    queryv1.FilterOperator_GT,
+            Value: "2024-01-01",
         },
     },
 }
@@ -601,53 +512,65 @@ Filter{
 **Server-Side Processing:**
 
 ```go
-func applyFilter(query *gorm.DB, filter *Filter) *gorm.DB {
+import queryv1 "github.com/geniustechspace/protobuf/gen/go/core/api/query/v1"
+
+func applyFilter(query *gorm.DB, filter *queryv1.Filter) *gorm.DB {
     if filter == nil {
         return query
     }
-    
-    switch f := filter.Filter.(type) {
-    case *Filter_Field:
-        return applyFieldFilter(query, f.Field)
-    case *Filter_Logical:
-        return applyLogicalFilter(query, f.Logical)
-    }
-    return query
-}
 
-func applyFieldFilter(query *gorm.DB, filter *FieldFilter) *gorm.DB {
-    switch filter.Operator {
-    case FILTER_OPERATOR_EQ:
-        return query.Where(filter.Field + " = ?", extractValue(filter.Value))
-    case FILTER_OPERATOR_GT:
-        return query.Where(filter.Field + " > ?", extractValue(filter.Value))
-    case FILTER_OPERATOR_IN:
-        return query.Where(filter.Field + " IN ?", extractValues(filter.Value))
-    case FILTER_OPERATOR_CONTAINS:
-        return query.Where(filter.Field + " LIKE ?", "%"+extractValue(filter.Value).(string)+"%")
-    case FILTER_OPERATOR_IS_NULL:
-        return query.Where(filter.Field + " IS NULL")
-    // ... handle other operators
-    }
-    return query
-}
-
-func applyLogicalFilter(query *gorm.DB, filter *LogicalFilter) *gorm.DB {
-    switch filter.Operator {
-    case LOGICAL_OPERATOR_AND:
-        for _, f := range filter.Filters {
+    // Handle logical operators (AND/OR)
+    if len(filter.And) > 0 {
+        for _, f := range filter.And {
             query = applyFilter(query, f)
         }
         return query
-    case LOGICAL_OPERATOR_OR:
-        subQueries := make([]interface{}, 0, len(filter.Filters))
-        for _, f := range filter.Filters {
-            // Build sub-condition for each filter
-            subQueries = append(subQueries, buildCondition(f))
+    }
+
+    if len(filter.Or) > 0 {
+        orConditions := query.Session(&gorm.Session{})
+        for i, f := range filter.Or {
+            if i == 0 {
+                orConditions = applyFilter(orConditions, f)
+            } else {
+                orConditions = orConditions.Or(applyFilter(query.Session(&gorm.Session{}), f))
+            }
         }
-        return query.Where(strings.Join(subQueries, " OR "))
-    case LOGICAL_OPERATOR_NOT:
-        return query.Not(applyFilter(query, filter.Filters[0]))
+        return query.Where(orConditions)
+    }
+
+    // Handle field operators
+    switch filter.Op {
+    case queryv1.FilterOperator_EQ:
+        return query.Where(filter.Field + " = ?", filter.Value)
+    case queryv1.FilterOperator_NE:
+        return query.Where(filter.Field + " != ?", filter.Value)
+    case queryv1.FilterOperator_GT:
+        return query.Where(filter.Field + " > ?", filter.Value)
+    case queryv1.FilterOperator_GTE:
+        return query.Where(filter.Field + " >= ?", filter.Value)
+    case queryv1.FilterOperator_LT:
+        return query.Where(filter.Field + " < ?", filter.Value)
+    case queryv1.FilterOperator_LTE:
+        return query.Where(filter.Field + " <= ?", filter.Value)
+    case queryv1.FilterOperator_IN:
+        return query.Where(filter.Field + " IN ?", filter.Values)
+    case queryv1.FilterOperator_NOT_IN:
+        return query.Where(filter.Field + " NOT IN ?", filter.Values)
+    case queryv1.FilterOperator_CONTAINS:
+        return query.Where(filter.Field + " LIKE ?", "%"+filter.Value+"%")
+    case queryv1.FilterOperator_STARTS_WITH:
+        return query.Where(filter.Field + " LIKE ?", filter.Value+"%")
+    case queryv1.FilterOperator_ENDS_WITH:
+        return query.Where(filter.Field + " LIKE ?", "%"+filter.Value)
+    case queryv1.FilterOperator_IS_NULL:
+        return query.Where(filter.Field + " IS NULL")
+    case queryv1.FilterOperator_IS_NOT_NULL:
+        return query.Where(filter.Field + " IS NOT NULL")
+    case queryv1.FilterOperator_BETWEEN:
+        if len(filter.Values) == 2 {
+            return query.Where(filter.Field + " BETWEEN ? AND ?", filter.Values[0], filter.Values[1])
+        }
     }
     return query
 }

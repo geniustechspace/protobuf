@@ -46,8 +46,8 @@ enum AggregateFunction {
   PERCENTILE_99 = 17; // 99th percentile
 }
 
-// Aggregate defines a single aggregation.
-message Aggregate {
+// Aggregation defines a single aggregation.
+message Aggregation {
   // Aggregation function
   AggregateFunction function = 1;
 
@@ -58,11 +58,11 @@ message Aggregate {
   string alias = 3 [(buf.validate.field).string.max_len = 128];
 
   // Distinct values only
-  bool distinct = 4;
+  bool distinct_only = 4;
 }
 
-// GroupBy defines grouping for aggregations.
-message GroupBy {
+// Grouping defines grouping for aggregations.
+message Grouping {
   // Fields to group by
   repeated string fields = 1 [(buf.validate.field).repeated = {
     min_items: 1
@@ -70,7 +70,7 @@ message GroupBy {
   }];
 
   // Aggregations to compute per group
-  repeated Aggregate aggregates = 2 [(buf.validate.field).repeated.max_items = 50];
+  repeated Aggregation aggregates = 2 [(buf.validate.field).repeated.max_items = 50];
 
   // Filter groups (HAVING clause)
   string having = 3 [(buf.validate.field).string.max_len = 1024];

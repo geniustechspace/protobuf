@@ -8,7 +8,6 @@ package geniustechspace.core.api.query.v1;
 
 import "buf/validate/validate.proto";
 import "core/api/query/v1/filter.proto";
-import "core/api/query/v1/projection.proto";
 
 option go_package = "github.com/geniustechspace/protobuf/gen/go/core/api/query/v1;queryv1";
 option java_multiple_files = true;
@@ -43,21 +42,19 @@ message Join {
   // Additional filter on joined data
   Filter filter = 5;
 
-  // Projection for joined data
-  Projection projection = 6;
+  // Field patterns to include from joined data (PSL syntax).
+  // Empty = include all fields from joined entity.
+  // Examples: ["id", "name"], ["*"], ["profile.*"]
+  repeated string include = 6 [(buf.validate.field).repeated = {
+    max_items: 100
+    items: {
+      string: {
+        min_len: 1
+        max_len: 200
+      }
+    }
+  }];
 
   // Alias for joined data in result
   string alias = 7 [(buf.validate.field).string.max_len = 128];
-}
-
-// RelationLoad defines how to load related entities.
-message RelationLoad {
-  // Relations to load (e.g., ["user", "comments"])
-  repeated string relations = 1 [(buf.validate.field).repeated.max_items = 20];
-
-  // Nested relation loads (e.g., "user.profile")
-  map<string, RelationLoad> nested = 2;
-
-  // Filter for each relation
-  map<string, Filter> filters = 3;
 }

@@ -11,7 +11,6 @@ syntax = "proto3";
 package geniustechspace.core.api.request.v1;
 
 import "buf/validate/validate.proto";
-import "core/api/pagination/v1/messages.proto";
 import "core/api/query/v1/query.proto";
 import "google/protobuf/any.proto";
 import "google/protobuf/field_mask.proto";
@@ -21,64 +20,17 @@ option go_package = "github.com/geniustechspace/protobuf/gen/go/core/api/request
 option java_multiple_files = true;
 option java_package = "com.geniustechspace.protobuf.core.api.request.v1";
 
-// ==================== FILTERING ====================
-
-// FilterOperator defines comparison operations.
-enum FilterOperator {
-  FILTER_OPERATOR_UNSPECIFIED = 0;
-  FILTER_OPERATOR_EQ = 1; // field = value
-  FILTER_OPERATOR_NE = 2; // field != value
-  FILTER_OPERATOR_GT = 3; // field > value
-  FILTER_OPERATOR_GTE = 4; // field >= value
-  FILTER_OPERATOR_LT = 5; // field < value
-  FILTER_OPERATOR_LTE = 6; // field <= value
-  FILTER_OPERATOR_IN = 7; // field IN (value) - comma-separated
-  FILTER_OPERATOR_NOT_IN = 8; // field NOT IN (value)
-  FILTER_OPERATOR_CONTAINS = 9; // field CONTAINS value
-  FILTER_OPERATOR_STARTS_WITH = 10; // field STARTS WITH value
-  FILTER_OPERATOR_ENDS_WITH = 11; // field ENDS WITH value
-  FILTER_OPERATOR_IS_NULL = 12; // field IS NULL
-  FILTER_OPERATOR_IS_NOT_NULL = 13; // field IS NOT NULL
-}
-
-// Filter provides simple, composable filtering.
-// Server handles type conversion from string value.
-//
-// EXAMPLES:
-//   - Simple: {field: "status", op: EQ, value: "active"}
-//   - Date: {field: "created_at", op: GT, value: "2024-01-01"}
-//   - In list: {field: "role", op: IN, value: "admin,user,guest"}
-//   - Nested AND: {and: [{field: "status", op: EQ, value: "active"}, {field: "role", op: EQ, value: "admin"}]}
-//   - Nested OR: {or: [{field: "tier", op: EQ, value: "premium"}, {field: "tier", op: EQ, value: "enterprise"}]}
-message Filter {
-  // Field path to filter. Use dot notation for nested fields.
-  // EXAMPLES: "status", "user.email", "metadata.tier"
-  string field = 1 [(buf.validate.field).string.max_len = 128];
-
-  // Comparison operator.
-  FilterOperator op = 2;
-
-  // Value to compare (string, server converts to appropriate type).
-  // For IN/NOT_IN: comma-separated values "val1,val2,val3"
-  // For IS_NULL/IS_NOT_NULL: ignored
-  string value = 3 [(buf.validate.field).string.max_len = 2048];
-
-  // Combine filters with AND logic.
-  repeated Filter and = 4 [(buf.validate.field).repeated.max_items = 20];
-
-  // Combine filters with OR logic.
-  repeated Filter or = 5 [(buf.validate.field).repeated.max_items = 20];
-}
-
 // ==================== GENERIC REQUEST ====================
 
-// Request is the generic wrapper for custom operations.
+// Request is the generic contract for custom operations.
 message Request {
   google.protobuf.Any data = 1;
-  string idempotency_key = 2 [(buf.validate.field).string.max_len = 128];
-  bool dry_run = 3;
-  google.protobuf.FieldMask field_mask = 4;
-  map<string, string> options = 5 [(buf.validate.field).map.max_pairs = 20];
+  // Comprehensive query (filter, sort, pagination, projection, etc.)
+  geniustechspace.core.api.query.v1.Query query = 2;
+  string idempotency_key = 3 [(buf.validate.field).string.max_len = 128];
+  bool dry_run = 4;
+  google.protobuf.FieldMask field_mask = 5;
+  map<string, string> options = 6 [(buf.validate.field).map.max_pairs = 20];
 }
 
 // ==================== CREATE ====================
