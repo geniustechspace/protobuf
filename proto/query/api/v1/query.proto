@@ -1,0 +1,158 @@
+// DOMAIN: Query API
+// COMPLIANCE: SOC 2 CC6.1, GDPR Article 5 (data minimization via projection)
+// SECURITY: Authentication required, tenant isolation enforced
+// PII: No - Query structure only, not data values
+
+syntax = "proto3";
+
+package geniustechspace.query.api.v1;
+
+import "buf/validate/validate.proto";
+import "query/api/v1/aggregation.proto";
+import "query/api/v1/filter.proto";
+import "query/api/v1/pagination.proto";
+import "query/api/v1/relation.proto";
+import "query/api/v1/search.proto";
+import "query/api/v1/sort.proto";
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/query/api/v1;queryapiv1";
+
+// Query represents a complete query specification for data retrieval.
+// This is the unified, client-facing query message that composes all query capabilities.
+//
+// DESIGN PHILOSOPHY:
+// - Storage-agnostic: No SQL, MongoDB, or Elasticsearch concepts
+// - Composable: Filtering, searching, sorting, grouping work together
+// - Backward-compatible: Additive evolution only
+// - Human-friendly: Field paths are strings with dot notation
+//
+// TRANSFORMATION:
+// API Query → Parser/Validator → CQM (Canonical Query Model)
+//
+// EXAMPLE:
+//   Query {
+//     entity: "users"
+//     filter: { ... }
+//     search: { ... }
+//     projection: { include: ["id", "email", "profile.*"] }
+//     sort: [{ field: "created_at", direction: DESC }]
+//     pagination: { page_size: 50 }
+//   }
+//
+// COMPLIANCE: GDPR Article 5(1)(c) - data minimization via projection
+message Query {
+  // Entity or collection name to query. REQUIRED.
+  // Examples: "users", "orders", "products"
+  // VALIDATION: Must be non-empty, alphanumeric with underscores
+  string entity = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 100
+    pattern: "^[a-z][a-z0-9_]*$"
+  }];
+
+  // Filter conditions to apply. Optional.
+  // If omitted, no filtering is performed (retrieve all records within pagination).
+  Filter filter = 2;
+
+  // Full-text or semantic search specification. Optional.
+  // Can be combined with filters for hybrid queries.
+  Search search = 3;
+
+  // Field projection to include or exclude fields. Optional.
+  // If omitted, all fields are returned (subject to schema permissions).
+  Projection projection = 4;
+
+  // Sorting specification. Optional.
+  // Multiple sort fields are applied in order (stable sort).
+  repeated Sort sort = 5;
+
+  // Pagination specification. Optional.
+  // If omitted, default page size is applied by the service.
+  Pagination pagination = 6;
+
+  // Aggregation and grouping specification. Optional.
+  // If present, returns aggregated results instead of individual records.
+  Aggregation aggregation = 7;
+
+  // Explicit relation joins. Optional. Use sparingly as an escape hatch.
+  // Most queries should rely on implicit joins via dot-notation paths.
+  // Only use when you need control over join type or multiple paths to same entity.
+  repeated Relation relation = 8;
+
+  // Query execution options. Optional.
+  QueryOptions options = 9;
+}
+
+// Projection defines which fields to include or exclude in the result.
+// Uses string patterns with wildcards for flexibility.
+//
+// RULES:
+// - Cannot specify both include and exclude
+// - Wildcards supported: "profile.*" matches all nested fields
+// - Dot notation for nested fields: "address.city"
+// - Always returns primary key even if excluded
+//
+// EXAMPLES:
+//   Include only specific fields:
+//     { include: ["id", "email", "profile.name"] }
+//
+//   Exclude sensitive fields:
+//     { exclude: ["password_hash", "ssn", "payment.*"] }
+//
+// COMPLIANCE: GDPR Article 5(1)(c) - data minimization principle
+message Projection {
+  // Field patterns to include. If specified, only these fields are returned.
+  // Wildcards: "address.*" includes all address subfields.
+  repeated string include = 1 [(buf.validate.field).repeated = {max_items: 100}];
+
+  // Field patterns to exclude. If specified, these fields are omitted.
+  // Takes precedence over include if both are somehow specified.
+  repeated string exclude = 2 [(buf.validate.field).repeated = {max_items: 100}];
+}
+
+// QueryOptions contains execution preferences and control flags.
+message QueryOptions {
+  // Maximum execution time in milliseconds. Optional.
+  // Query is cancelled if it exceeds this duration.
+  // Default: service-level timeout (typically 30s).
+  // COMPLIANCE: SOC 2 CC7.2 - resource management
+  int32 timeout_ms = 1 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 300000 // 5 minutes max
+  }];
+
+  // If true, return query execution plan instead of results.
+  // Used for debugging, optimization, and cost estimation.
+  // AUTHORIZATION: May require elevated permissions
+  bool explain = 2;
+
+  // If true, count total matching records even with pagination.
+  // Warning: Expensive for large result sets.
+  // Default: false (only return current page count)
+  bool count_total = 3;
+
+  // Consistency level for the query. Optional.
+  // Default: EVENTUAL (best performance).
+  ConsistencyLevel consistency = 4;
+
+  // If true, query is read-only and cannot trigger side effects.
+  // Default: true for Query API (mutations use separate API).
+  bool read_only = 5;
+}
+
+// ConsistencyLevel defines read consistency requirements.
+// Maps to storage engine capabilities.
+enum ConsistencyLevel {
+  // Default: eventual consistency (best performance).
+  CONSISTENCY_LEVEL_UNSPECIFIED = 0;
+
+  // Eventual consistency. May read stale data.
+  CONSISTENCY_LEVEL_EVENTUAL = 1;
+
+  // Read from primary/leader. Guaranteed fresh data.
+  CONSISTENCY_LEVEL_STRONG = 2;
+
+  // Linearizable reads. Strongest guarantee.
+  // Not all storage engines support this.
+  CONSISTENCY_LEVEL_LINEARIZABLE = 3;
+}

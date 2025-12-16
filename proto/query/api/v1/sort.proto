@@ -1,0 +1,82 @@
+// DOMAIN: Query API - Sorting
+// COMPLIANCE: N/A (sorting does not affect data security)
+// SECURITY: N/A (sorting is read-only operation)
+// PII: No - Sort specification only, not data values
+
+syntax = "proto3";
+
+package geniustechspace.query.api.v1;
+
+import "buf/validate/validate.proto";
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/query/api/v1;queryapiv1";
+
+// Sort specifies ordering for query results.
+// Multiple sort fields create a stable multi-level sort (like SQL ORDER BY).
+//
+// BEHAVIOR:
+// - Sorts are applied in array order (first sort is primary, second is tiebreaker, etc.)
+// - Null values: NULLS_FIRST or NULLS_LAST can be specified
+// - Case sensitivity: For strings, case_sensitive flag controls behavior
+//
+// FIELD PATHS:
+// - Dot notation for nested fields: "user.profile.last_name"
+// - Array fields: Sorting by array field may be storage-engine specific
+//   Some engines sort by first element, others reject it
+//
+// EXAMPLES:
+//   Simple sort:
+//     { field: "created_at", direction: DESC }
+//
+//   Multi-level sort (newest first, then alphabetical by name):
+//     [
+//       { field: "created_at", direction: DESC },
+//       { field: "name", direction: ASC }
+//     ]
+//
+//   Custom null handling:
+//     { field: "last_login", direction: DESC, nulls: NULLS_LAST }
+message Sort {
+  // Field path to sort by. REQUIRED.
+  // Use dot notation for nested fields: "address.city"
+  string field = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 200
+  }];
+
+  // Sort direction. REQUIRED.
+  SortDirection direction = 2 [(buf.validate.field).enum.defined_only = true];
+
+  // Null value placement. Optional.
+  // Default behavior is storage-engine specific.
+  NullOrdering nulls = 3;
+
+  // Case sensitivity for string sorting. Optional.
+  // Default: true (case-sensitive, 'A' < 'a')
+  // If false, performs case-insensitive sort ('a' == 'A')
+  bool case_sensitive = 4;
+}
+
+// SortDirection defines ordering direction.
+enum SortDirection {
+  // Invalid default. Must be explicitly set.
+  SORT_DIRECTION_UNSPECIFIED = 0;
+
+  // Ascending order: 1, 2, 3... or A, B, C...
+  SORT_DIRECTION_ASC = 1;
+
+  // Descending order: 3, 2, 1... or C, B, A...
+  SORT_DIRECTION_DESC = 2;
+}
+
+// NullOrdering defines where null values appear in sort order.
+enum NullOrdering {
+  // Storage engine default (usually NULLS_LAST for ASC, NULLS_FIRST for DESC)
+  NULL_ORDERING_UNSPECIFIED = 0;
+
+  // Null values appear first in sort order
+  NULL_ORDERING_NULLS_FIRST = 1;
+
+  // Null values appear last in sort order
+  NULL_ORDERING_NULLS_LAST = 2;
+}

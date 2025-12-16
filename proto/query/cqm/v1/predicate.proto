@@ -1,0 +1,178 @@
+// DOMAIN: Query CQM - Predicates
+// COMPLIANCE: Internal-only, not exposed to clients
+// SECURITY: Must be constructed from validated API filters
+// PII: No - Predicate structure only, not data values
+
+syntax = "proto3";
+
+package geniustechspace.query.cqm.v1;
+
+import "buf/validate/validate.proto";
+import "query/cqm/v1/field.proto";
+import "query/cqm/v1/value.proto";
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/query/cqm/v1;querycqmv1";
+
+// Predicate represents a boolean expression in the canonical query model.
+// This is the INTERNAL representation of filter conditions after schema resolution.
+//
+// DESIGN PRINCIPLES:
+// - Strongly typed: Fields are FieldRef, values are TypedValue
+// - Normalized: Boolean logic is explicit (no implicit AND)
+// - Validated: Operator compatibility with field types is guaranteed
+// - Deterministic: No ambiguity, no wildcards, no string matching
+//
+// TRANSFORMATION:
+// API Filter → [Parser + Type Checker] → Predicate
+//
+// BOOLEAN LOGIC:
+// - CompoundPredicate for AND, OR, NOT
+// - ComparisonPredicate for leaf conditions
+// - No implicit conversions or coercions (done during transformation)
+//
+// TYPE SAFETY:
+// If a Predicate exists, it means:
+// ✓ Field exists in schema
+// ✓ Operator is valid for field type
+// ✓ Value type matches field type
+// ✓ No type coercion needed at execution time
+message Predicate {
+  // Predicate type. Exactly one must be set.
+  oneof predicate_type {
+    // Compound boolean expression (AND, OR, NOT).
+    CompoundPredicate compound = 1;
+
+    // Comparison expression (field-operator-value).
+    ComparisonPredicate comparison = 2;
+  }
+}
+
+// CompoundPredicate represents boolean logic composition.
+message CompoundPredicate {
+  // Boolean operator.
+  BooleanOperator operator = 1 [(buf.validate.field).enum.defined_only = true];
+
+  // Operands (nested predicates).
+  // For AND/OR: at least 2 operands required.
+  // For NOT: exactly 1 operand required.
+  repeated Predicate operands = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 100
+  }];
+}
+
+// BooleanOperator defines logical composition operators.
+enum BooleanOperator {
+  // Invalid default.
+  BOOLEAN_OPERATOR_UNSPECIFIED = 0;
+
+  // Logical AND: all operands must be true.
+  BOOLEAN_OPERATOR_AND = 1;
+
+  // Logical OR: at least one operand must be true.
+  BOOLEAN_OPERATOR_OR = 2;
+
+  // Logical NOT: invert operand (requires exactly 1 operand).
+  BOOLEAN_OPERATOR_NOT = 3;
+}
+
+// ComparisonPredicate represents a leaf comparison condition.
+//
+// STRUCTURE:
+// - left: Always a field reference
+// - operator: Comparison operator
+// - right: Value or values (depending on operator)
+//
+// TYPE VALIDATION:
+// Operator must be compatible with left field type:
+// - Numeric operators (LT, GT, etc.): Numeric types only
+// - String operators (CONTAINS, etc.): String type only
+// - Set operators (IN, etc.): Any type
+// - Array operators: Array types only
+//
+// OPERAND CARDINALITY:
+// - Single value: EQ, NE, LT, LTE, GT, GTE, CONTAINS, STARTS_WITH, ENDS_WITH, MATCHES, ARRAY_CONTAINS
+// - Multiple values: IN, NOT_IN, ARRAY_CONTAINS_ANY, ARRAY_CONTAINS_ALL
+// - No value: IS_NULL, IS_NOT_NULL
+message ComparisonPredicate {
+  // Left operand (field reference). REQUIRED.
+  FieldRef left = 1 [(buf.validate.field).required = true];
+
+  // Comparison operator. REQUIRED.
+  ComparisonOperator operator = 2 [(buf.validate.field).enum.defined_only = true];
+
+  // Right operand (single value).
+  // Used by: EQ, NE, LT, LTE, GT, GTE, CONTAINS, STARTS_WITH, ENDS_WITH, MATCHES, ARRAY_CONTAINS
+  TypedValue value = 3;
+
+  // Right operands (multiple values).
+  // Used by: IN, NOT_IN, ARRAY_CONTAINS_ANY, ARRAY_CONTAINS_ALL
+  repeated TypedValue values = 4;
+
+  // Case sensitivity (for string operations).
+  bool case_sensitive = 5;
+}
+
+// ComparisonOperator defines comparison operations.
+// These are the CANONICAL operators after API operator transformation.
+enum ComparisonOperator {
+  // Invalid default.
+  COMPARISON_OPERATOR_UNSPECIFIED = 0;
+
+  // Equality: left == right
+  COMPARISON_OPERATOR_EQ = 1;
+
+  // Inequality: left != right
+  COMPARISON_OPERATOR_NE = 2;
+
+  // Less than: left < right
+  // Type compatibility: Numeric, Date, Timestamp, String (lexicographic)
+  COMPARISON_OPERATOR_LT = 3;
+
+  // Less than or equal: left <= right
+  COMPARISON_OPERATOR_LTE = 4;
+
+  // Greater than: left > right
+  COMPARISON_OPERATOR_GT = 5;
+
+  // Greater than or equal: left >= right
+  COMPARISON_OPERATOR_GTE = 6;
+
+  // Set membership: left IN (right1, right2, ...)
+  COMPARISON_OPERATOR_IN = 7;
+
+  // Set exclusion: left NOT IN (right1, right2, ...)
+  COMPARISON_OPERATOR_NOT_IN = 8;
+
+  // Substring containment: left CONTAINS right
+  // Type compatibility: String only
+  COMPARISON_OPERATOR_CONTAINS = 9;
+
+  // Prefix match: left STARTS_WITH right
+  COMPARISON_OPERATOR_STARTS_WITH = 10;
+
+  // Suffix match: left ENDS_WITH right
+  COMPARISON_OPERATOR_ENDS_WITH = 11;
+
+  // Pattern match: left MATCHES right (regex)
+  // Pattern syntax: RE2 (validated during transformation)
+  COMPARISON_OPERATOR_MATCHES = 12;
+
+  // Null check: left IS NULL
+  COMPARISON_OPERATOR_IS_NULL = 13;
+
+  // Not null check: left IS NOT NULL
+  COMPARISON_OPERATOR_IS_NOT_NULL = 14;
+
+  // Array containment: right IN left (left must be array)
+  COMPARISON_OPERATOR_ARRAY_CONTAINS = 15;
+
+  // Array intersection: ANY(right) IN left
+  COMPARISON_OPERATOR_ARRAY_CONTAINS_ANY = 16;
+
+  // Array superset: ALL(right) IN left
+  COMPARISON_OPERATOR_ARRAY_CONTAINS_ALL = 17;
+
+  // Reserved for future operators (geospatial, vector, etc.)
+  reserved 18 to 30;
+}

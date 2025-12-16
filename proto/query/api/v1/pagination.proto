@@ -1,0 +1,85 @@
+// DOMAIN: Query API - Pagination
+// COMPLIANCE: N/A (pagination does not affect data security)
+// SECURITY: N/A (pagination is read-only operation)
+// PII: No - Pagination specification only, not data values
+
+syntax = "proto3";
+
+package geniustechspace.query.api.v1;
+
+import "buf/validate/validate.proto";
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/query/api/v1;queryapiv1";
+
+// Pagination defines result set pagination strategy.
+//
+// SUPPORTED STRATEGIES:
+// 1. Cursor-based (recommended): Efficient, consistent, supports real-time changes
+// 2. Offset-based (legacy): Simple but inefficient for large offsets
+//
+// CURSOR-BASED PAGINATION (recommended):
+// - Use for: Large result sets, real-time data, mobile/web apps
+// - Pros: O(log n) performance, consistent during inserts/deletes
+// - Cons: Cannot jump to arbitrary page, cursor is opaque
+//
+// OFFSET-BASED PAGINATION (legacy):
+// - Use for: Small datasets, admin tools, reporting
+// - Pros: Simple, supports page numbers
+// - Cons: O(n) performance, inconsistent during data changes
+//
+// EXAMPLES:
+//   First page (cursor-based):
+//     { page_size: 50 }  // Returns first 50 + next cursor
+//
+//   Next page (cursor-based):
+//     { page_size: 50, cursor: "eyJpZCI6MTIzfQ==" }
+//
+//   Offset-based:
+//     { page_size: 50, offset: 100 }  // Skip 100, return next 50
+message Pagination {
+  // Number of records per page. REQUIRED.
+  // Default: 50 (if both page_size and offset are 0)
+  // Max: 1000 (enforced by service)
+  int32 page_size = 1 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 1000
+  }];
+
+  // Opaque cursor for next page (cursor-based pagination). Optional.
+  // Returned by previous query response.
+  // Encodes position in result set (implementation-defined).
+  // Client should not parse or modify cursor.
+  string cursor = 2 [(buf.validate.field).string = {max_len: 500}];
+
+  // Number of records to skip (offset-based pagination). Optional.
+  // WARNING: Inefficient for large offsets. Use cursor-based when possible.
+  // If both cursor and offset are specified, cursor takes precedence.
+  int32 offset = 3 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 1000000
+  }];
+}
+
+// PaginationResponse contains pagination metadata returned with results.
+// Included in query response to enable navigation.
+message PaginationResponse {
+  // Total number of records matching query (before pagination). Optional.
+  // Only included if count_total option was set to true.
+  // WARNING: Expensive to compute for large result sets.
+  int64 total_count = 1;
+
+  // Number of records in current page.
+  int32 page_size = 2;
+
+  // Cursor for next page. Empty if no more results.
+  // Client should pass this as cursor in next request.
+  string next_cursor = 3;
+
+  // Cursor for previous page. Empty if on first page.
+  // Optional: Not all implementations support backward pagination.
+  string prev_cursor = 4;
+
+  // If true, there are more results available.
+  // Equivalent to: next_cursor != ""
+  bool has_more = 5;
+}

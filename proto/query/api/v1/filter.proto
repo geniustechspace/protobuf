@@ -1,0 +1,209 @@
+// DOMAIN: Query API - Filtering
+// COMPLIANCE: SOC 2 CC6.1 (data access controls)
+// SECURITY: Filter predicates must be validated for injection attacks
+// PII: No - Filter structure only, not data values
+
+syntax = "proto3";
+
+package geniustechspace.query.api.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/struct.proto";
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/query/api/v1;queryapiv1";
+
+// Filter represents a tree of conditions for selecting records.
+// Uses recursive boolean logic (AND, OR, NOT) with leaf-level predicates.
+//
+// DESIGN PRINCIPLES:
+// - Recursive: Supports arbitrary nesting of boolean operators
+// - Type-flexible: Field paths are strings, values are loosely typed
+// - Storage-agnostic: No SQL WHERE or MongoDB $match syntax
+// - Composable: Can be built programmatically or from user input
+//
+// VALIDATION:
+// - Operator-operand compatibility is checked during CQM transformation
+// - Field path existence is validated against schema
+// - Value types are coerced or rejected based on field schema type
+//
+// EXAMPLE:
+//   Filter {
+//     and: {
+//       conditions: [
+//         { condition: { field: "status", operator: EQ, value: "active" } },
+//         { or: { conditions: [
+//           { condition: { field: "role", operator: IN, values: ["admin", "owner"] } },
+//           { condition: { field: "created_at", operator: GT, value: "2024-01-01" } }
+//         ]}}
+//       ]
+//     }
+//   }
+message Filter {
+  // Filter node type. Exactly one must be set.
+  oneof filter_type {
+    // Logical AND: all nested conditions must be true.
+    AndFilter and = 1;
+
+    // Logical OR: at least one nested condition must be true.
+    OrFilter or = 2;
+
+    // Logical NOT: inverts the nested condition.
+    NotFilter not = 3;
+
+    // Leaf condition: field-operator-value predicate.
+    Condition condition = 4;
+  }
+}
+
+// AndFilter represents logical conjunction (all conditions must be true).
+message AndFilter {
+  // Nested filter conditions. REQUIRED (at least 2).
+  // Empty AND is logically invalid and will be rejected.
+  repeated Filter conditions = 1 [(buf.validate.field).repeated = {
+    min_items: 2
+    max_items: 100
+  }];
+}
+
+// OrFilter represents logical disjunction (any condition can be true).
+message OrFilter {
+  // Nested filter conditions. REQUIRED (at least 2).
+  // Empty OR is logically invalid and will be rejected.
+  repeated Filter conditions = 1 [(buf.validate.field).repeated = {
+    min_items: 2
+    max_items: 100
+  }];
+}
+
+// NotFilter represents logical negation (inverts condition result).
+message NotFilter {
+  // Nested filter condition to negate. REQUIRED.
+  Filter condition = 1 [(buf.validate.field).required = true];
+}
+
+// Condition represents a leaf-level predicate: field-operator-value(s).
+//
+// OPERATOR SEMANTICS:
+// - Comparison operators (EQ, NE, LT, etc.): require single value
+// - Set operators (IN, NOT_IN): require values array
+// - String operators (CONTAINS, STARTS_WITH, etc.): require single string value
+// - Null operators (IS_NULL, IS_NOT_NULL): no value required
+// - Array operators (ARRAY_CONTAINS, etc.): require value or values depending on operator
+//
+// FIELD PATH FORMAT:
+// - Dot notation for nested fields: "address.city"
+// - Array indexing not supported at API layer (use CQM for that)
+// - Wildcards not supported in conditions (use in projection only)
+//
+// VALUE TYPES:
+// - Loosely typed at API layer (JSON-like)
+// - Validated against schema during CQM transformation
+// - Null represented by omitting value field
+//
+// EXAMPLES:
+//   String equality: { field: "status", operator: EQ, value: "active" }
+//   Numeric range: { field: "age", operator: GTE, value: 18 }
+//   Set membership: { field: "role", operator: IN, values: ["admin", "owner"] }
+//   Null check: { field: "deleted_at", operator: IS_NULL }
+//   Pattern match: { field: "email", operator: MATCHES, value: ".*@example\\.com" }
+message Condition {
+  // Field path to evaluate. REQUIRED.
+  // Use dot notation for nested fields: "user.profile.age"
+  string field = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 200
+  }];
+
+  // Comparison operator to apply. REQUIRED.
+  Operator operator = 2 [(buf.validate.field).enum.defined_only = true];
+
+  // Single value for operators that expect one operand.
+  // Used by: EQ, NE, LT, LTE, GT, GTE, CONTAINS, STARTS_WITH, ENDS_WITH, MATCHES, ARRAY_CONTAINS
+  google.protobuf.Value value = 3;
+
+  // Multiple values for operators that expect a set.
+  // Used by: IN, NOT_IN, ARRAY_CONTAINS_ANY, ARRAY_CONTAINS_ALL
+  repeated google.protobuf.Value values = 4;
+
+  // Case sensitivity for string operations. Optional.
+  // Default: true (case-sensitive)
+  // Applies to: CONTAINS, STARTS_WITH, ENDS_WITH, MATCHES
+  bool case_sensitive = 5;
+}
+
+// Operator defines comparison and logical operations for filter conditions.
+//
+// OPERAND REQUIREMENTS:
+// - Single value: EQ, NE, LT, LTE, GT, GTE, CONTAINS, STARTS_WITH, ENDS_WITH, MATCHES, ARRAY_CONTAINS
+// - Multiple values: IN, NOT_IN, ARRAY_CONTAINS_ANY, ARRAY_CONTAINS_ALL
+// - No value: IS_NULL, IS_NOT_NULL
+//
+// TYPE COMPATIBILITY:
+// - Comparison (LT, GT, etc.): Numeric, Date, Timestamp
+// - String operators: String only
+// - Set operators: Any type
+// - Array operators: Array fields only
+//
+// FUTURE EXTENSIONS:
+// - GEO_WITHIN, GEO_NEAR for geospatial queries
+// - FULL_TEXT for full-text search (may deprecate in favor of Search message)
+// - VECTOR_SIMILAR for vector similarity (may deprecate in favor of Search message)
+enum Operator {
+  // Invalid default. Must be explicitly set.
+  OPERATOR_UNSPECIFIED = 0;
+
+  // Equality: field == value
+  OPERATOR_EQ = 1;
+
+  // Inequality: field != value
+  OPERATOR_NE = 2;
+
+  // Less than: field < value
+  OPERATOR_LT = 3;
+
+  // Less than or equal: field <= value
+  OPERATOR_LTE = 4;
+
+  // Greater than: field > value
+  OPERATOR_GT = 5;
+
+  // Greater than or equal: field >= value
+  OPERATOR_GTE = 6;
+
+  // Set membership: field IN (value1, value2, ...)
+  OPERATOR_IN = 7;
+
+  // Set exclusion: field NOT IN (value1, value2, ...)
+  OPERATOR_NOT_IN = 8;
+
+  // Substring match: field contains value (case-sensitive by default)
+  OPERATOR_CONTAINS = 9;
+
+  // Prefix match: field starts with value
+  OPERATOR_STARTS_WITH = 10;
+
+  // Suffix match: field ends with value
+  OPERATOR_ENDS_WITH = 11;
+
+  // Regex match: field matches pattern
+  // Pattern syntax: RE2 (safe, no catastrophic backtracking)
+  OPERATOR_MATCHES = 12;
+
+  // Null check: field IS NULL
+  OPERATOR_IS_NULL = 13;
+
+  // Not null check: field IS NOT NULL
+  OPERATOR_IS_NOT_NULL = 14;
+
+  // Array contains single value: value IN field (field must be array)
+  OPERATOR_ARRAY_CONTAINS = 15;
+
+  // Array contains any of values: ANY(values) IN field
+  OPERATOR_ARRAY_CONTAINS_ANY = 16;
+
+  // Array contains all of values: ALL(values) IN field
+  OPERATOR_ARRAY_CONTAINS_ALL = 17;
+
+  // Reserved for future geospatial and vector operations
+  reserved 18 to 25;
+}

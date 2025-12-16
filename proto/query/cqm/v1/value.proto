@@ -1,0 +1,222 @@
+// DOMAIN: Query CQM - Typed Values
+// COMPLIANCE: Internal-only, not exposed to clients
+// SECURITY: Values must be sanitized during API transformation
+// PII: No - Value type specification only, not actual data
+
+syntax = "proto3";
+
+package geniustechspace.query.cqm.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/query/cqm/v1;querycqmv1";
+
+// TypedValue represents a strongly-typed value in the canonical query model.
+// This is the INTERNAL representation of values after type validation.
+//
+// DESIGN PRINCIPLES:
+// - Strongly typed: Exact type is known and encoded
+// - No ambiguity: No "auto-detect type from string" logic
+// - Validated: Type matches field schema type
+// - Efficient: Direct mapping to storage engine types
+//
+// TRANSFORMATION:
+// API Value (google.protobuf.Value) → [Type Coercion + Validation] → TypedValue
+//
+// TYPE SYSTEM:
+// Aligned with common storage engine type systems:
+// - Scalar: bool, int32, int64, float, double, string, bytes
+// - Temporal: timestamp, date, time, duration
+// - Complex: array, map (not typically used in predicates)
+// - Special: null
+//
+// NULL HANDLING:
+// - Null is represented by null_value field
+// - All other value types are non-null
+// - No implicit null coercion
+//
+// VALIDATION:
+// If a TypedValue exists, it means:
+// ✓ Type is compatible with field schema type
+// ✓ Value is within valid range (e.g., timestamp is valid)
+// ✓ No type conversion needed at execution time
+message TypedValue {
+  // Value type. Exactly one must be set.
+  oneof value {
+    // Null value.
+    NullValue null_value = 1;
+
+    // Boolean value.
+    bool bool_value = 2;
+
+    // 32-bit signed integer.
+    int32 int32_value = 3;
+
+    // 64-bit signed integer.
+    int64 int64_value = 4;
+
+    // 32-bit floating point.
+    float float_value = 5;
+
+    // 64-bit floating point.
+    double double_value = 6;
+
+    // UTF-8 string.
+    string string_value = 7;
+
+    // Byte array (binary data).
+    bytes bytes_value = 8;
+
+    // Timestamp (UTC).
+    google.protobuf.Timestamp timestamp_value = 9;
+
+    // Date (year, month, day, no timezone).
+    Date date_value = 10;
+
+    // Time (hour, minute, second, no timezone).
+    Time time_value = 11;
+
+    // Duration (interval).
+    Duration duration_value = 12;
+
+    // UUID (canonical string format).
+    string uuid_value = 13 [(buf.validate.field).string.uuid = true];
+
+    // Array of values (homogeneous type).
+    ArrayValue array_value = 14;
+  }
+
+  // Reserved for future types (geo, vector, etc.)
+  reserved 15 to 20;
+}
+
+// NullValue represents SQL NULL or JSON null.
+enum NullValue {
+  NULL_VALUE_UNSPECIFIED = 0;
+}
+
+// Date represents a calendar date (year, month, day).
+// No timezone information (treat as local or UTC depending on context).
+message Date {
+  // Year (e.g., 2024)
+  int32 year = 1 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 9999
+  }];
+
+  // Month (1-12)
+  int32 month = 2 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 12
+  }];
+
+  // Day of month (1-31)
+  int32 day = 3 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 31
+  }];
+}
+
+// Time represents time of day (hour, minute, second).
+// No date or timezone information.
+message Time {
+  // Hour (0-23)
+  int32 hour = 1 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 23
+  }];
+
+  // Minute (0-59)
+  int32 minute = 2 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 59
+  }];
+
+  // Second (0-59, or 60 for leap second)
+  int32 second = 3 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 60
+  }];
+
+  // Nanosecond (0-999999999)
+  int32 nanosecond = 4 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 999999999
+  }];
+}
+
+// Duration represents a time interval.
+// Can be positive or negative.
+message Duration {
+  // Total seconds in duration (may be negative).
+  int64 seconds = 1;
+
+  // Nanosecond adjustment (0-999999999).
+  // Always positive, added to seconds.
+  int32 nanoseconds = 2 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 999999999
+  }];
+}
+
+// ArrayValue represents a homogeneous array of values.
+// All elements must have the same type.
+message ArrayValue {
+  // Array elements (homogeneous type).
+  repeated TypedValue elements = 1;
+
+  // Element type (for type checking).
+  ValueType element_type = 2 [(buf.validate.field).enum.defined_only = true];
+}
+
+// ValueType enumerates supported value types for schema validation.
+enum ValueType {
+  // Invalid/unknown type.
+  VALUE_TYPE_UNSPECIFIED = 0;
+
+  // Null type.
+  VALUE_TYPE_NULL = 1;
+
+  // Boolean.
+  VALUE_TYPE_BOOL = 2;
+
+  // 32-bit signed integer.
+  VALUE_TYPE_INT32 = 3;
+
+  // 64-bit signed integer.
+  VALUE_TYPE_INT64 = 4;
+
+  // 32-bit floating point.
+  VALUE_TYPE_FLOAT = 5;
+
+  // 64-bit floating point.
+  VALUE_TYPE_DOUBLE = 6;
+
+  // UTF-8 string.
+  VALUE_TYPE_STRING = 7;
+
+  // Byte array.
+  VALUE_TYPE_BYTES = 8;
+
+  // Timestamp (UTC).
+  VALUE_TYPE_TIMESTAMP = 9;
+
+  // Date (year, month, day).
+  VALUE_TYPE_DATE = 10;
+
+  // Time (hour, minute, second).
+  VALUE_TYPE_TIME = 11;
+
+  // Duration (interval).
+  VALUE_TYPE_DURATION = 12;
+
+  // UUID.
+  VALUE_TYPE_UUID = 13;
+
+  // Array.
+  VALUE_TYPE_ARRAY = 14;
+
+  // Reserved for future types.
+  reserved 15 to 20;
+}

@@ -1,0 +1,131 @@
+// DOMAIN: Query API - Relations
+// COMPLIANCE: N/A (relation specification does not involve data)
+// SECURITY: Join operations must enforce tenant isolation
+// PII: No - Relation specification only, not data values
+
+syntax = "proto3";
+
+package geniustechspace.query.api.v1;
+
+import "buf/validate/validate.proto";
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/query/api/v1;queryapiv1";
+
+// Relation defines an explicit join between entities.
+//
+// WHEN TO USE:
+// - Most queries should use implicit joins via dot notation (e.g., "user.profile.name")
+// - Use explicit Relation only when you need:
+//   1. Control over join type (inner vs outer)
+//   2. Multiple paths to the same related entity
+//   3. Complex join conditions beyond foreign key equality
+//
+// IMPLICIT vs EXPLICIT JOINS:
+//   Implicit (preferred):
+//     filter: { field: "user.organization.name", operator: EQ, value: "Acme" }
+//
+//   Explicit (when needed):
+//     relation: {
+//       entity: "organization",
+//       type: LEFT_OUTER,
+//       on: "user.organization_id = organization.id"
+//     }
+//
+// JOIN EXECUTION:
+// - Relations are resolved during CQM transformation based on schema metadata
+// - Join order and optimization is determined by query planner
+// - All joins must respect tenant isolation boundaries
+//
+// EXAMPLES:
+//   Simple inner join:
+//     { entity: "orders", type: INNER, on: "user.id = orders.user_id" }
+//
+//   Left outer join with alias:
+//     {
+//       entity: "profiles",
+//       alias: "user_profile",
+//       type: LEFT_OUTER,
+//       on: "user.id = user_profile.user_id"
+//     }
+//
+//   Complex join condition:
+//     {
+//       entity: "order_items",
+//       type: INNER,
+//       on: "orders.id = order_items.order_id AND order_items.status = 'active'"
+//     }
+message Relation {
+  // Related entity or collection name. REQUIRED.
+  // Examples: "orders", "profiles", "organizations"
+  string entity = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 100
+    pattern: "^[a-z][a-z0-9_]*$"
+  }];
+
+  // Alias for the related entity in the query. Optional.
+  // Useful when joining the same entity multiple times.
+  // Example: "manager" for a self-join on users table
+  string alias = 2 [(buf.validate.field).string = {
+    max_len: 100
+    pattern: "^[a-z][a-z0-9_]*$"
+  }];
+
+  // Join type. REQUIRED.
+  JoinType type = 3 [(buf.validate.field).enum.defined_only = true];
+
+  // Join condition as a string expression. REQUIRED.
+  // Format: "{left_field} {op} {right_field} [AND ...]"
+  // Operators: =, !=, <, <=, >, >=
+  // Examples:
+  //   "user.id = orders.user_id"
+  //   "a.id = b.parent_id AND b.status = 'active'"
+  //
+  // VALIDATION:
+  // - Parsed and validated during CQM transformation
+  // - Field references must exist in schema
+  // - Type compatibility is enforced
+  string on = 4 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 500
+  }];
+
+  // If true, fetch related entity eagerly (single query with join).
+  // If false, may use separate queries and stitch results (depends on planner).
+  // Default: true
+  bool eager = 5;
+}
+
+// JoinType defines the type of join operation.
+//
+// SEMANTICS:
+// - INNER: Only return records with matching related records
+// - LEFT_OUTER: Return all left records, with nulls for missing related records
+// - RIGHT_OUTER: Return all right records, with nulls for missing left records
+// - FULL_OUTER: Return all records from both sides, with nulls for missing matches
+// - CROSS: Cartesian product (rarely used, potentially dangerous)
+//
+// STORAGE ENGINE SUPPORT:
+// - Not all storage engines support all join types
+// - Planner may reject unsupported join types
+// - CROSS joins may be rejected for safety
+enum JoinType {
+  // Invalid default. Must be explicitly set.
+  JOIN_TYPE_UNSPECIFIED = 0;
+
+  // Inner join: only matching records.
+  JOIN_TYPE_INNER = 1;
+
+  // Left outer join: all left records, with nulls for missing right records.
+  JOIN_TYPE_LEFT_OUTER = 2;
+
+  // Right outer join: all right records, with nulls for missing left records.
+  JOIN_TYPE_RIGHT_OUTER = 3;
+
+  // Full outer join: all records from both sides, with nulls for missing matches.
+  JOIN_TYPE_FULL_OUTER = 4;
+
+  // Cross join: Cartesian product (use with extreme caution).
+  // May be rejected by planner for safety reasons.
+  JOIN_TYPE_CROSS = 5;
+}

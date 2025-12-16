@@ -1,0 +1,325 @@
+// DOMAIN: Query CQM - Canonical Query Model
+// COMPLIANCE: Internal-only, not exposed to clients
+// SECURITY: Must be validated from API layer, never accept from clients
+// PII: No - Query structure only, not data values
+
+syntax = "proto3";
+
+package geniustechspace.query.cqm.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/timestamp.proto";
+import "query/cqm/v1/field.proto";
+import "query/cqm/v1/predicate.proto";
+import "query/cqm/v1/projection.proto";
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/query/cqm/v1;querycqmv1";
+
+// CanonicalQuery represents the semantic, schema-resolved query.
+// This is the INTERNAL representation after parsing and validating the API Query.
+//
+// DESIGN PRINCIPLES:
+// - Strongly typed: All fields resolved to schema IDs and types
+// - Deterministic: No ambiguity, no wildcards, no string DSLs
+// - Storage-agnostic: No SQL, MongoDB, or Elasticsearch concepts
+// - Semantic: Represents WHAT to query, not HOW to execute
+//
+// TRANSFORMATION:
+// API Query → [Parser + Schema Resolver] → Canonical Query
+// Canonical Query → [Query Planner] → Logical Plan
+//
+// KEY DIFFERENCES FROM API QUERY:
+// - Field paths resolved to FieldRef with IDs
+// - Values strongly typed via TypedValue
+// - Operators validated for field type compatibility
+// - Projections resolved (wildcards expanded)
+// - Implicit joins made explicit via FieldRef chains
+// - All semantic validation complete
+//
+// NEVER:
+// - Accept this from clients (security risk)
+// - Expose this in public APIs (internal representation)
+// - Add client ergonomics or convenience features
+// - Include execution hints or cost estimates (those go in Plan)
+//
+// VALIDATION STATE:
+// If a CanonicalQuery exists, it means:
+// ✓ All fields exist in schema
+// ✓ All types are compatible with operators
+// ✓ All references are resolvable
+// ✓ No ambiguity remains
+message CanonicalQuery {
+  // Query ID for tracing and debugging. REQUIRED.
+  // Generated during transformation.
+  string query_id = 1 [(buf.validate.field).string.uuid = true];
+
+  // Entity being queried (schema-resolved). REQUIRED.
+  EntityRef entity = 2 [(buf.validate.field).required = true];
+
+  // Root predicate (filter conditions). Optional.
+  // If omitted, no filtering (all records).
+  Predicate predicate = 3;
+
+  // Search specification (full-text or vector). Optional.
+  SearchSpec search = 4;
+
+  // Projection (field selection). REQUIRED.
+  // Always present (even if "select *" → all fields listed explicitly).
+  Projection projection = 5 [(buf.validate.field).required = true];
+
+  // Sort specifications. Optional.
+  repeated SortSpec sort = 6;
+
+  // Pagination specification. REQUIRED.
+  PaginationSpec pagination = 7 [(buf.validate.field).required = true];
+
+  // Aggregation specification. Optional.
+  // If present, this is an aggregate query (returns grouped/aggregated results).
+  AggregationSpec aggregation = 8;
+
+  // Explicit relations (joins). Optional.
+  // Most joins are implicit via FieldRef chains.
+  repeated RelationSpec relations = 9;
+
+  // Query metadata and options.
+  QueryMetadata metadata = 10 [(buf.validate.field).required = true];
+}
+
+// EntityRef references a schema entity (table, collection, type).
+// Fully resolved with schema ID and version.
+message EntityRef {
+  // Schema entity ID. REQUIRED.
+  // Immutable identifier from schema registry.
+  string entity_id = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 200
+  }];
+
+  // Entity name (for human readability). REQUIRED.
+  // Examples: "users", "orders", "products"
+  string entity_name = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 100
+  }];
+
+  // Schema version. REQUIRED.
+  // Used to detect schema evolution and handle migrations.
+  string schema_version = 3 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 50
+  }];
+
+  // Alias for this entity in the query. Optional.
+  // Used when same entity appears multiple times (self-joins).
+  string alias = 4;
+}
+
+// SearchSpec represents resolved search parameters.
+message SearchSpec {
+  // Search type.
+  SearchType type = 1 [(buf.validate.field).enum.defined_only = true];
+
+  // Original query text.
+  string query_text = 2;
+
+  // Fields to search (resolved to FieldRefs).
+  repeated FieldRef fields = 3;
+
+  // Vector field for semantic search.
+  FieldRef vector_field = 4;
+
+  // Embedding vector (normalized).
+  repeated float embedding = 5;
+
+  // Minimum score threshold.
+  float min_score = 6;
+
+  // Field-level boosting (field_id → boost factor).
+  map<string, float> field_boost = 7;
+
+  // Fuzziness level (0-2).
+  int32 fuzziness = 8;
+
+  // Search operator (AND/OR).
+  SearchOperator operator = 9;
+}
+
+enum SearchType {
+  SEARCH_TYPE_UNSPECIFIED = 0;
+  SEARCH_TYPE_FULL_TEXT = 1;
+  SEARCH_TYPE_SEMANTIC = 2;
+  SEARCH_TYPE_HYBRID = 3;
+}
+
+enum SearchOperator {
+  SEARCH_OPERATOR_UNSPECIFIED = 0;
+  SEARCH_OPERATOR_OR = 1;
+  SEARCH_OPERATOR_AND = 2;
+}
+
+// SortSpec represents a single sort specification.
+message SortSpec {
+  // Field to sort by (resolved).
+  FieldRef field = 1 [(buf.validate.field).required = true];
+
+  // Sort direction.
+  SortDirection direction = 2 [(buf.validate.field).enum.defined_only = true];
+
+  // Null ordering.
+  NullOrdering nulls = 3;
+
+  // Case sensitivity (for string sorts).
+  bool case_sensitive = 4;
+}
+
+enum SortDirection {
+  SORT_DIRECTION_UNSPECIFIED = 0;
+  SORT_DIRECTION_ASC = 1;
+  SORT_DIRECTION_DESC = 2;
+}
+
+enum NullOrdering {
+  NULL_ORDERING_UNSPECIFIED = 0;
+  NULL_ORDERING_NULLS_FIRST = 1;
+  NULL_ORDERING_NULLS_LAST = 2;
+}
+
+// PaginationSpec represents resolved pagination parameters.
+message PaginationSpec {
+  // Page size.
+  int32 page_size = 1 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 1000
+  }];
+
+  // Decoded cursor (if cursor-based pagination).
+  CursorPosition cursor = 2;
+
+  // Offset (if offset-based pagination).
+  int64 offset = 3;
+
+  // Pagination strategy.
+  PaginationStrategy strategy = 4;
+}
+
+// CursorPosition encodes position in result set.
+// Implementation-defined, opaque to clients.
+message CursorPosition {
+  // Serialized cursor data (implementation-specific).
+  bytes data = 1;
+
+  // Cursor version for format evolution.
+  int32 version = 2;
+}
+
+enum PaginationStrategy {
+  PAGINATION_STRATEGY_UNSPECIFIED = 0;
+  PAGINATION_STRATEGY_CURSOR = 1;
+  PAGINATION_STRATEGY_OFFSET = 2;
+}
+
+// AggregationSpec represents resolved aggregation parameters.
+message AggregationSpec {
+  // Fields to group by (resolved).
+  repeated FieldRef group_by = 1;
+
+  // Aggregate functions to compute.
+  repeated AggregateSpec aggregates = 2 [(buf.validate.field).repeated.min_items = 1];
+
+  // Having predicate (filters aggregated results).
+  Predicate having = 3;
+}
+
+// AggregateSpec represents a single aggregate function.
+message AggregateSpec {
+  // Aggregate function.
+  AggregateFunction function = 1 [(buf.validate.field).enum.defined_only = true];
+
+  // Field to aggregate (resolved). Optional for COUNT.
+  FieldRef field = 2;
+
+  // Result alias.
+  string alias = 3 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 100
+  }];
+
+  // Percentile value (for PERCENTILE function).
+  float percentile = 4;
+
+  // Distinct flag (for COUNT).
+  bool distinct = 5;
+}
+
+enum AggregateFunction {
+  AGGREGATE_FUNCTION_UNSPECIFIED = 0;
+  AGGREGATE_FUNCTION_COUNT = 1;
+  AGGREGATE_FUNCTION_COUNT_DISTINCT = 2;
+  AGGREGATE_FUNCTION_SUM = 3;
+  AGGREGATE_FUNCTION_AVG = 4;
+  AGGREGATE_FUNCTION_MIN = 5;
+  AGGREGATE_FUNCTION_MAX = 6;
+  AGGREGATE_FUNCTION_STDDEV = 7;
+  AGGREGATE_FUNCTION_VARIANCE = 8;
+  AGGREGATE_FUNCTION_PERCENTILE = 9;
+}
+
+// RelationSpec represents an explicit join.
+message RelationSpec {
+  // Related entity (resolved).
+  EntityRef entity = 1 [(buf.validate.field).required = true];
+
+  // Join type.
+  JoinType type = 2 [(buf.validate.field).enum.defined_only = true];
+
+  // Join predicate (condition).
+  Predicate on = 3 [(buf.validate.field).required = true];
+
+  // Eager loading flag.
+  bool eager = 4;
+}
+
+enum JoinType {
+  JOIN_TYPE_UNSPECIFIED = 0;
+  JOIN_TYPE_INNER = 1;
+  JOIN_TYPE_LEFT_OUTER = 2;
+  JOIN_TYPE_RIGHT_OUTER = 3;
+  JOIN_TYPE_FULL_OUTER = 4;
+  JOIN_TYPE_CROSS = 5;
+}
+
+// QueryMetadata contains query execution metadata.
+message QueryMetadata {
+  // Query creation timestamp.
+  google.protobuf.Timestamp created_at = 1 [(buf.validate.field).required = true];
+
+  // Timeout in milliseconds.
+  int32 timeout_ms = 2;
+
+  // Explain flag.
+  bool explain = 3;
+
+  // Count total flag.
+  bool count_total = 4;
+
+  // Consistency level.
+  ConsistencyLevel consistency = 5;
+
+  // Tenant ID for multi-tenancy. REQUIRED.
+  // All queries must be tenant-scoped.
+  string tenant_id = 6 [(buf.validate.field).string.uuid = true];
+
+  // User/actor ID who issued the query. Optional.
+  // Used for audit trails and authorization.
+  string user_id = 7;
+
+  // Correlation ID for distributed tracing.
+  string correlation_id = 8;
+}
+
+enum ConsistencyLevel {
+  CONSISTENCY_LEVEL_UNSPECIFIED = 0;
+  CONSISTENCY_LEVEL_EVENTUAL = 1;
+  CONSISTENCY_LEVEL_STRONG = 2;
+  CONSISTENCY_LEVEL_LINEARIZABLE = 3;
+}

@@ -1,0 +1,231 @@
+// DOMAIN: Query Plan - Explain
+// COMPLIANCE: Internal-only, may be exposed to authorized users
+// SECURITY: May reveal index and schema information
+// PII: No - Query plan explanation only, not data values
+
+syntax = "proto3";
+
+package geniustechspace.query.plan.v1;
+
+import "buf/validate/validate.proto";
+import "query/plan/v1/logical_plan.proto";
+import "query/plan/v1/physical_plan.proto";
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/query/plan/v1;queryplanv1";
+
+// ExplainResult contains comprehensive query execution plan explanation.
+// Returned when QueryOptions.explain is true.
+//
+// PURPOSE:
+// - Debugging: Understand why query is slow
+// - Optimization: Identify missing indexes or inefficient operations
+// - Cost estimation: Predict query performance before execution
+// - Education: Learn how query planner works
+//
+// CONTENTS:
+// - Logical plan (what the query does)
+// - Physical plan (how the query executes)
+// - Cost estimates and statistics
+// - Optimization recommendations
+// - Visual representation (tree or graph)
+//
+// SECURITY:
+// - May reveal schema structure and indexes
+// - Should require elevated permissions in production
+// - Safe to expose in development environments
+message ExplainResult {
+  // Query ID.
+  string query_id = 1 [(buf.validate.field).string.uuid = true];
+
+  // Original query summary (for context).
+  QuerySummary query = 2 [(buf.validate.field).required = true];
+
+  // Logical plan (declarative).
+  LogicalPlan logical_plan = 3 [(buf.validate.field).required = true];
+
+  // Physical plan (executable). Optional.
+  // May be omitted if query failed before optimization.
+  PhysicalPlan physical_plan = 4;
+
+  // Cost breakdown.
+  CostBreakdown cost = 5;
+
+  // Optimization recommendations.
+  repeated Recommendation recommendations = 6;
+
+  // Visual representation (tree format).
+  PlanTree tree = 7;
+
+  // Execution timeline (if query was actually executed).
+  repeated ExecutionEvent timeline = 8;
+}
+
+// QuerySummary provides human-readable query description.
+message QuerySummary {
+  // Entity being queried.
+  string entity = 1;
+
+  // Number of filter conditions.
+  int32 filter_count = 2;
+
+  // Number of sort fields.
+  int32 sort_count = 3;
+
+  // Number of projected fields.
+  int32 projection_count = 4;
+
+  // If true, query includes aggregation.
+  bool has_aggregation = 5;
+
+  // If true, query includes joins.
+  bool has_joins = 6;
+
+  // Estimated result size.
+  int64 estimated_results = 7;
+}
+
+// CostBreakdown provides detailed cost analysis.
+message CostBreakdown {
+  // Total estimated cost (abstract units).
+  double total_cost = 1;
+
+  // Cost breakdown by operation type.
+  repeated CostComponent components = 2;
+
+  // Estimated execution time in milliseconds.
+  int64 estimated_time_ms = 3;
+
+  // Actual execution time in milliseconds (if executed).
+  int64 actual_time_ms = 4;
+
+  // Cost model version.
+  string cost_model = 5;
+}
+
+// CostComponent represents cost for a single operation.
+message CostComponent {
+  // Operation name (e.g., "index_scan", "hash_join").
+  string operation = 1;
+
+  // Cost for this operation.
+  double cost = 2;
+
+  // Percentage of total cost.
+  double percentage = 3;
+
+  // Estimated rows processed.
+  int64 rows = 4;
+
+  // Operator ID (links to plan node).
+  string operator_id = 5;
+}
+
+// Recommendation suggests query optimizations.
+message Recommendation {
+  // Severity level.
+  Severity severity = 1;
+
+  // Recommendation type.
+  RecommendationType type = 2;
+
+  // Human-readable message.
+  string message = 3;
+
+  // Detailed explanation.
+  string details = 4;
+
+  // Potential impact (e.g., "2x faster", "50% less memory").
+  string impact = 5;
+
+  // Action to take (e.g., "CREATE INDEX ON users(email)").
+  string action = 6;
+}
+
+enum Severity {
+  SEVERITY_UNSPECIFIED = 0;
+  SEVERITY_INFO = 1; // Informational, no action needed
+  SEVERITY_WARNING = 2; // Potential issue, consider fixing
+  SEVERITY_ERROR = 3; // Serious issue, should fix
+  SEVERITY_CRITICAL = 4; // Critical issue, fix immediately
+}
+
+enum RecommendationType {
+  RECOMMENDATION_TYPE_UNSPECIFIED = 0;
+  RECOMMENDATION_TYPE_MISSING_INDEX = 1; // Create index
+  RECOMMENDATION_TYPE_UNUSED_INDEX = 2; // Drop index
+  RECOMMENDATION_TYPE_FULL_TABLE_SCAN = 3; // Avoid full scan
+  RECOMMENDATION_TYPE_INEFFICIENT_JOIN = 4; // Rewrite join
+  RECOMMENDATION_TYPE_LARGE_RESULT_SET = 5; // Add pagination
+  RECOMMENDATION_TYPE_EXPENSIVE_SORT = 6; // Use indexed sort
+  RECOMMENDATION_TYPE_SUBOPTIMAL_FILTER = 7; // Rewrite filter
+}
+
+// PlanTree provides visual tree representation of query plan.
+message PlanTree {
+  // Root node.
+  PlanTreeNode root = 1 [(buf.validate.field).required = true];
+
+  // Total tree depth.
+  int32 depth = 2;
+
+  // Total number of nodes.
+  int32 node_count = 3;
+}
+
+// PlanTreeNode represents a single node in the plan tree visualization.
+message PlanTreeNode {
+  // Node ID.
+  string id = 1;
+
+  // Operation name (e.g., "Index Scan", "Hash Join").
+  string operation = 2;
+
+  // Entity or table name (if applicable).
+  string entity = 3;
+
+  // Operation details (e.g., "using index idx_email").
+  string details = 4;
+
+  // Estimated cost for this node.
+  double cost = 5;
+
+  // Estimated rows output by this node.
+  int64 rows = 6;
+
+  // Child nodes.
+  repeated PlanTreeNode children = 7;
+
+  // Node depth in tree (0 = root).
+  int32 depth = 8;
+}
+
+// ExecutionEvent represents a single event in query execution timeline.
+message ExecutionEvent {
+  // Event timestamp (milliseconds since query start).
+  int64 timestamp_ms = 1;
+
+  // Event type.
+  EventType type = 2;
+
+  // Operator ID that generated this event.
+  string operator_id = 3;
+
+  // Event message.
+  string message = 4;
+
+  // Event metadata (operation-specific).
+  map<string, string> metadata = 5;
+}
+
+enum EventType {
+  EVENT_TYPE_UNSPECIFIED = 0;
+  EVENT_TYPE_OPERATOR_START = 1; // Operator started executing
+  EVENT_TYPE_OPERATOR_END = 2; // Operator finished executing
+  EVENT_TYPE_INDEX_LOOKUP = 3; // Index lookup performed
+  EVENT_TYPE_TABLE_SCAN = 4; // Table scan performed
+  EVENT_TYPE_CACHE_HIT = 5; // Cache hit
+  EVENT_TYPE_CACHE_MISS = 6; // Cache miss
+  EVENT_TYPE_NETWORK_CALL = 7; // Network call (distributed query)
+  EVENT_TYPE_DISK_READ = 8; // Disk I/O
+  EVENT_TYPE_SORT_SPILL = 9; // Sort spilled to disk
+}

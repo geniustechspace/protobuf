@@ -1,0 +1,293 @@
+// DOMAIN: Query Plan - Physical Plan
+// COMPLIANCE: Internal-only, not exposed to clients
+// SECURITY: Plans may contain storage-specific details
+// PII: No - Query plan structure only, not data values
+
+syntax = "proto3";
+
+package geniustechspace.query.plan.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/struct.proto";
+import "query/plan/v1/logical_plan.proto";
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/query/plan/v1;queryplanv1";
+
+// PhysicalPlan represents the concrete, storage-specific execution plan.
+// This is the OUTPUT of the optimizer after analyzing the Logical Plan.
+//
+// DESIGN PRINCIPLES:
+// - Concrete: Specifies HOW to execute (algorithms, indexes, etc.)
+// - Storage-specific: May contain engine-specific operators
+// - Optimized: Best execution strategy based on statistics and cost model
+// - Executable: Ready for execution engine
+//
+// TRANSFORMATION:
+// Logical Plan → [Optimizer] → Physical Plan → [Executor]
+//
+// OPERATOR TYPES:
+// - Index Scan: Use index for efficient lookup
+// - Table Scan: Sequential scan of all rows
+// - Hash Join: Join using hash table
+// - Merge Join: Join using sorted inputs
+// - Nested Loop Join: Join using nested loops
+// - Hash Aggregate: Aggregation using hash table
+// - Sort Aggregate: Aggregation using sorted input
+//
+// EXECUTION STRATEGIES:
+// - Sequential: Single-threaded execution
+// - Parallel: Multi-threaded execution with degree of parallelism
+// - Distributed: Cross-node execution with shuffle/broadcast
+//
+// VALIDATION:
+// If a PhysicalPlan exists, it means:
+// ✓ Logical plan has been optimized
+// ✓ Indexes and algorithms have been selected
+// ✓ Execution cost has been estimated
+// ✓ Plan is ready for execution
+message PhysicalPlan {
+  // Plan ID for tracing and debugging. REQUIRED.
+  string plan_id = 1 [(buf.validate.field).string.uuid = true];
+
+  // Root operator of the plan tree. REQUIRED.
+  PhysicalOperator root = 2 [(buf.validate.field).required = true];
+
+  // Estimated execution cost (optimizer-specific units). Optional.
+  double estimated_cost = 3;
+
+  // Actual execution cost (populated after execution). Optional.
+  double actual_cost = 4;
+
+  // Plan metadata.
+  PhysicalPlanMetadata metadata = 5;
+
+  // Execution statistics (populated after execution). Optional.
+  ExecutionStats stats = 6;
+}
+
+// PhysicalOperator represents a concrete execution operator.
+message PhysicalOperator {
+  // Operator ID (unique within plan). REQUIRED.
+  string operator_id = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 100
+  }];
+
+  // Operator type. Exactly one must be set.
+  oneof operator_type {
+    // Index scan.
+    IndexScanOperator index_scan = 2;
+
+    // Table scan.
+    TableScanOperator table_scan = 3;
+
+    // Filter.
+    FilterOperator filter = 4;
+
+    // Project.
+    ProjectOperator project = 5;
+
+    // Sort.
+    SortOperator sort = 6;
+
+    // Limit.
+    LimitOperator limit = 7;
+
+    // Hash aggregate.
+    HashAggregateOperator hash_aggregate = 8;
+
+    // Sort aggregate.
+    SortAggregateOperator sort_aggregate = 9;
+
+    // Hash join.
+    HashJoinOperator hash_join = 10;
+
+    // Merge join.
+    MergeJoinOperator merge_join = 11;
+
+    // Nested loop join.
+    NestedLoopJoinOperator nested_loop_join = 12;
+  }
+
+  // Child operators (inputs).
+  repeated PhysicalOperator children = 13;
+
+  // Estimated output cardinality.
+  int64 estimated_cardinality = 14;
+
+  // Actual output cardinality (populated after execution).
+  int64 actual_cardinality = 15;
+
+  // Execution time in milliseconds (populated after execution).
+  int64 execution_time_ms = 16;
+}
+
+// IndexScanOperator reads data using an index.
+message IndexScanOperator {
+  // Entity name.
+  string entity = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Index name. REQUIRED.
+  string index = 2 [(buf.validate.field).string.min_len = 1];
+
+  // Scan type.
+  IndexScanType scan_type = 3;
+
+  // Index key predicates (for range scans).
+  google.protobuf.Struct key_predicates = 4;
+}
+
+enum IndexScanType {
+  INDEX_SCAN_TYPE_UNSPECIFIED = 0;
+  INDEX_SCAN_TYPE_UNIQUE = 1; // Unique index lookup (1 row)
+  INDEX_SCAN_TYPE_RANGE = 2; // Range scan (multiple rows)
+  INDEX_SCAN_TYPE_FULL = 3; // Full index scan
+}
+
+// TableScanOperator reads all rows from entity.
+message TableScanOperator {
+  // Entity name.
+  string entity = 1 [(buf.validate.field).string.min_len = 1];
+
+  // If true, scan is parallelized.
+  bool parallel = 2;
+
+  // Degree of parallelism (if parallel).
+  int32 parallelism = 3;
+}
+
+// FilterOperator applies predicates.
+message FilterOperator {
+  // Predicate expression.
+  google.protobuf.Struct predicate = 1 [(buf.validate.field).required = true];
+
+  // Selectivity estimate (0.0 to 1.0).
+  // Fraction of rows expected to pass filter.
+  double selectivity = 2;
+}
+
+// ProjectOperator selects fields.
+message ProjectOperator {
+  // Fields to project.
+  repeated string fields = 1 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// SortOperator orders results.
+message SortOperator {
+  // Sort specifications.
+  repeated geniustechspace.query.plan.v1.SortSpec sorts = 1 [(buf.validate.field).repeated.min_items = 1];
+
+  // Sort algorithm.
+  SortAlgorithm algorithm = 2;
+
+  // If true, sort is external (spills to disk).
+  bool external = 3;
+}
+
+enum SortAlgorithm {
+  SORT_ALGORITHM_UNSPECIFIED = 0;
+  SORT_ALGORITHM_QUICKSORT = 1;
+  SORT_ALGORITHM_MERGE_SORT = 2;
+  SORT_ALGORITHM_HEAP_SORT = 3;
+}
+
+// LimitOperator limits results.
+message LimitOperator {
+  int32 limit = 1 [(buf.validate.field).int32.gt = 0];
+  int64 offset = 2;
+}
+
+// HashAggregateOperator performs hash-based aggregation.
+message HashAggregateOperator {
+  repeated string group_by = 1;
+  repeated geniustechspace.query.plan.v1.AggregateSpec aggregates = 2;
+
+  // Hash table size hint.
+  int64 hash_table_size = 3;
+}
+
+// SortAggregateOperator performs sort-based aggregation.
+message SortAggregateOperator {
+  repeated string group_by = 1;
+  repeated geniustechspace.query.plan.v1.AggregateSpec aggregates = 2;
+}
+
+// HashJoinOperator performs hash-based join.
+message HashJoinOperator {
+  geniustechspace.query.plan.v1.JoinType type = 1;
+
+  // Build side (smaller input, used to build hash table).
+  BuildSide build_side = 2;
+
+  // Join keys.
+  repeated string left_keys = 3;
+  repeated string right_keys = 4;
+
+  // Hash table size hint.
+  int64 hash_table_size = 5;
+}
+
+enum BuildSide {
+  BUILD_SIDE_UNSPECIFIED = 0;
+  BUILD_SIDE_LEFT = 1; // Build hash table from left input
+  BUILD_SIDE_RIGHT = 2; // Build hash table from right input
+}
+
+// MergeJoinOperator performs sort-merge join.
+message MergeJoinOperator {
+  geniustechspace.query.plan.v1.JoinType type = 1;
+
+  // Join keys (must be sorted).
+  repeated string left_keys = 2;
+  repeated string right_keys = 3;
+}
+
+// NestedLoopJoinOperator performs nested loop join.
+message NestedLoopJoinOperator {
+  geniustechspace.query.plan.v1.JoinType type = 1;
+
+  // Join condition.
+  google.protobuf.Struct condition = 2;
+}
+
+// ExecutionStats contains post-execution statistics.
+message ExecutionStats {
+  // Total execution time in milliseconds.
+  int64 total_time_ms = 1;
+
+  // Number of rows returned.
+  int64 rows_returned = 2;
+
+  // Number of rows scanned (before filtering).
+  int64 rows_scanned = 3;
+
+  // Number of bytes processed.
+  int64 bytes_processed = 4;
+
+  // Number of index lookups.
+  int64 index_lookups = 5;
+
+  // Cache hit ratio (0.0 to 1.0).
+  double cache_hit_ratio = 6;
+}
+
+// PhysicalPlanMetadata extends base plan metadata with physical plan specifics.
+message PhysicalPlanMetadata {
+  // Query ID (links to CQM).
+  string query_id = 1 [(buf.validate.field).string.uuid = true];
+
+  // Logical plan ID (links to LogicalPlan).
+  string logical_plan_id = 2 [(buf.validate.field).string.uuid = true];
+
+  // Optimizer version.
+  string optimizer_version = 3;
+
+  // Plan creation timestamp.
+  string created_at = 4;
+
+  // Storage engine type.
+  string storage_engine = 5;
+
+  // Tenant ID.
+  string tenant_id = 6 [(buf.validate.field).string.uuid = true];
+}

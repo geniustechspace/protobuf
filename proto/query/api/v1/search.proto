@@ -1,0 +1,124 @@
+// DOMAIN: Query API - Search
+// COMPLIANCE: N/A (search does not inherently involve PII)
+// SECURITY: Query text should be sanitized for injection attacks
+// PII: No - Search specification only, not data values
+
+syntax = "proto3";
+
+package geniustechspace.query.api.v1;
+
+import "buf/validate/validate.proto";
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/query/api/v1;queryapiv1";
+
+// Search defines full-text or vector-based search specifications.
+// Can be combined with filters for hybrid queries.
+//
+// SEARCH TYPES:
+// 1. Full-text: Traditional keyword-based search with relevance scoring
+// 2. Semantic: Vector similarity search using embeddings
+// 3. Hybrid: Combines full-text and semantic (requires both implementations)
+//
+// BEHAVIOR:
+// - Search results are ranked by relevance score
+// - Can be combined with filters (apply filters first, then search)
+// - Boosting allows tuning field importance
+//
+// EXAMPLES:
+//   Simple full-text search:
+//     { query: "machine learning", type: FULL_TEXT, fields: ["title", "description"] }
+//
+//   Semantic search with embedding:
+//     {
+//       query: "how to deploy kubernetes",
+//       type: SEMANTIC,
+//       embedding: [0.123, -0.456, ...],
+//       vector_field: "content_embedding"
+//     }
+//
+//   Hybrid search:
+//     {
+//       query: "python async",
+//       type: HYBRID,
+//       fields: ["title", "body"],
+//       vector_field: "embedding"
+//     }
+message Search {
+  // Search query text. REQUIRED for FULL_TEXT and HYBRID.
+  // Optional for SEMANTIC if embedding is provided directly.
+  string query = 1 [(buf.validate.field).string = {max_len: 1000}];
+
+  // Search type. REQUIRED.
+  SearchType type = 2 [(buf.validate.field).enum.defined_only = true];
+
+  // Fields to search in (full-text search). Optional for FULL_TEXT/HYBRID.
+  // If omitted, searches all indexed text fields.
+  repeated string fields = 3 [(buf.validate.field).repeated = {max_items: 50}];
+
+  // Vector field name for semantic search. REQUIRED for SEMANTIC/HYBRID.
+  // Must reference a field with vector/embedding type.
+  string vector_field = 4 [(buf.validate.field).string = {max_len: 200}];
+
+  // Pre-computed embedding vector for semantic search. Optional.
+  // If omitted, service will generate embedding from query text.
+  // Must match dimensionality of vector_field schema.
+  repeated float embedding = 5 [(buf.validate.field).repeated = {
+    max_items: 4096 // Reasonable max for current embedding models
+  }];
+
+  // Minimum relevance score threshold (0.0 to 1.0). Optional.
+  // Results below this score are filtered out.
+  // Default: 0.0 (no filtering)
+  float min_score = 6 [(buf.validate.field).float = {
+    gte: 0.0
+    lte: 1.0
+  }];
+
+  // Field-level boosting for relevance tuning. Optional.
+  // Higher values increase importance of matches in that field.
+  // Example: { "title": 2.0, "description": 1.0 } makes title matches twice as important
+  map<string, float> boost = 7;
+
+  // Fuzzy matching tolerance (0 = exact, 1 = very fuzzy, 2 = max fuzzy). Optional.
+  // Allows typos and minor spelling variations.
+  // Default: 0 (exact match)
+  // Only applies to FULL_TEXT search.
+  int32 fuzziness = 8 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 2
+  }];
+
+  // Search operator for multi-term queries. Optional.
+  // Default: OR (match any term)
+  SearchOperator operator = 9;
+}
+
+// SearchType defines the search algorithm to use.
+enum SearchType {
+  // Invalid default. Must be explicitly set.
+  SEARCH_TYPE_UNSPECIFIED = 0;
+
+  // Full-text keyword search using inverted index.
+  // Best for exact term matching and traditional search.
+  SEARCH_TYPE_FULL_TEXT = 1;
+
+  // Semantic vector similarity search using embeddings.
+  // Best for conceptual matching and natural language queries.
+  SEARCH_TYPE_SEMANTIC = 2;
+
+  // Hybrid: combines full-text and semantic search scores.
+  // Best for comprehensive search coverage.
+  SEARCH_TYPE_HYBRID = 3;
+}
+
+// SearchOperator defines how multiple search terms are combined.
+enum SearchOperator {
+  // Default: OR (match any term)
+  SEARCH_OPERATOR_UNSPECIFIED = 0;
+
+  // OR: Match any search term (union)
+  SEARCH_OPERATOR_OR = 1;
+
+  // AND: Match all search terms (intersection)
+  SEARCH_OPERATOR_AND = 2;
+}

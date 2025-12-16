@@ -1,0 +1,264 @@
+// DOMAIN: Query Plan - Logical Plan
+// COMPLIANCE: Internal-only, not exposed to clients
+// SECURITY: Plans may contain sensitive execution details
+// PII: No - Query plan structure only, not data values
+
+syntax = "proto3";
+
+package geniustechspace.query.plan.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/struct.proto";
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/query/plan/v1;queryplanv1";
+
+// LogicalPlan represents the declarative, storage-agnostic query execution plan.
+// This is the OUTPUT of the query planner after analyzing the Canonical Query Model.
+//
+// DESIGN PRINCIPLES:
+// - Declarative: Describes WHAT operations to perform, not HOW
+// - Storage-agnostic: No SQL, MongoDB, or Elasticsearch concepts
+// - Optimizable: Can be transformed into multiple physical plans
+// - Explainable: Human-readable representation for debugging
+//
+// TRANSFORMATION:
+// Canonical Query → [Query Planner] → Logical Plan → [Optimizer] → Physical Plan
+//
+// NODE TYPES:
+// - Scan: Read data from entity
+// - Filter: Apply predicates
+// - Project: Select fields
+// - Sort: Order results
+// - Limit: Pagination/limit
+// - Aggregate: Grouping and aggregation
+// - Join: Combine entities
+// - Union: Combine result sets
+//
+// TREE STRUCTURE:
+// - Plan is a tree of nodes
+// - Each node has 0+ children
+// - Leaf nodes are scans
+// - Root node produces final result
+//
+// VALIDATION:
+// If a LogicalPlan exists, it means:
+// ✓ CQM has been validated
+// ✓ Plan is semantically correct
+// ✓ Plan can be executed (may not be optimal)
+// ✗ Plan is NOT optimized yet (that's Physical Plan's job)
+message LogicalPlan {
+  // Plan ID for tracing and debugging. REQUIRED.
+  string plan_id = 1 [(buf.validate.field).string.uuid = true];
+
+  // Root node of the plan tree. REQUIRED.
+  LogicalNode root = 2 [(buf.validate.field).required = true];
+
+  // Estimated cost (planner-specific units). Optional.
+  // Used for plan comparison and selection.
+  double estimated_cost = 3;
+
+  // Plan metadata.
+  PlanMetadata metadata = 4;
+}
+
+// LogicalNode represents a single operation in the logical plan.
+message LogicalNode {
+  // Node ID (unique within plan). REQUIRED.
+  string node_id = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 100
+  }];
+
+  // Node type. Exactly one must be set.
+  oneof node_type {
+    // Scan entity.
+    ScanNode scan = 2;
+
+    // Apply filter.
+    FilterNode filter = 3;
+
+    // Project fields.
+    ProjectNode project = 4;
+
+    // Sort results.
+    SortNode sort = 5;
+
+    // Limit/offset.
+    LimitNode limit = 6;
+
+    // Aggregate/group.
+    AggregateNode aggregate = 7;
+
+    // Join entities.
+    JoinNode join = 8;
+
+    // Union result sets.
+    UnionNode union = 9;
+
+    // Distinct (deduplicate).
+    DistinctNode distinct = 10;
+  }
+
+  // Child nodes (inputs to this operation).
+  repeated LogicalNode children = 11;
+
+  // Estimated output cardinality (number of rows).
+  int64 estimated_cardinality = 12;
+}
+
+// ScanNode reads data from an entity.
+message ScanNode {
+  // Entity name. REQUIRED.
+  string entity = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Entity alias (for joins). Optional.
+  string alias = 2;
+
+  // If true, scan is full table scan (no index).
+  // If false, may use index (optimizer decides).
+  bool full_scan = 3;
+
+  // Suggested index name (hint for optimizer). Optional.
+  string index_hint = 4;
+}
+
+// FilterNode applies predicates to filter rows.
+message FilterNode {
+  // Predicate expression (serialized CQM Predicate). REQUIRED.
+  // Stored as JSON for cross-language compatibility.
+  google.protobuf.Struct predicate = 1 [(buf.validate.field).required = true];
+
+  // If true, filter can be pushed down to storage engine.
+  // Optimization hint for physical plan.
+  bool pushdown_eligible = 2;
+}
+
+// ProjectNode selects fields to output.
+message ProjectNode {
+  // Field names to project. REQUIRED.
+  repeated string fields = 1 [(buf.validate.field).repeated.min_items = 1];
+
+  // If true, project all fields (select *).
+  bool select_all = 2;
+}
+
+// SortNode orders results.
+message SortNode {
+  // Sort specifications. REQUIRED.
+  repeated SortSpec sorts = 1 [(buf.validate.field).repeated.min_items = 1];
+}
+
+message SortSpec {
+  // Field name to sort by.
+  string field = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Sort direction.
+  SortDirection direction = 2;
+
+  // Null ordering.
+  NullOrdering nulls = 3;
+}
+
+enum SortDirection {
+  SORT_DIRECTION_UNSPECIFIED = 0;
+  SORT_DIRECTION_ASC = 1;
+  SORT_DIRECTION_DESC = 2;
+}
+
+enum NullOrdering {
+  NULL_ORDERING_UNSPECIFIED = 0;
+  NULL_ORDERING_NULLS_FIRST = 1;
+  NULL_ORDERING_NULLS_LAST = 2;
+}
+
+// LimitNode limits and offsets results (pagination).
+message LimitNode {
+  // Maximum number of rows to return. REQUIRED.
+  int32 limit = 1 [(buf.validate.field).int32.gt = 0];
+
+  // Number of rows to skip. Optional.
+  int64 offset = 2;
+}
+
+// AggregateNode performs grouping and aggregation.
+message AggregateNode {
+  // Fields to group by. Optional (if empty, aggregate entire set).
+  repeated string group_by = 1;
+
+  // Aggregate functions. REQUIRED.
+  repeated AggregateSpec aggregates = 2 [(buf.validate.field).repeated.min_items = 1];
+}
+
+message AggregateSpec {
+  // Aggregate function.
+  AggregateFunction function = 1;
+
+  // Field to aggregate. Optional for COUNT.
+  string field = 2;
+
+  // Output alias.
+  string alias = 3 [(buf.validate.field).string.min_len = 1];
+}
+
+enum AggregateFunction {
+  AGGREGATE_FUNCTION_UNSPECIFIED = 0;
+  AGGREGATE_FUNCTION_COUNT = 1;
+  AGGREGATE_FUNCTION_SUM = 2;
+  AGGREGATE_FUNCTION_AVG = 3;
+  AGGREGATE_FUNCTION_MIN = 4;
+  AGGREGATE_FUNCTION_MAX = 5;
+  AGGREGATE_FUNCTION_STDDEV = 6;
+  AGGREGATE_FUNCTION_VARIANCE = 7;
+}
+
+// JoinNode combines two entities.
+message JoinNode {
+  // Join type.
+  JoinType type = 1;
+
+  // Left entity (from child[0]).
+  string left_entity = 2 [(buf.validate.field).string.min_len = 1];
+
+  // Right entity (from child[1]).
+  string right_entity = 3 [(buf.validate.field).string.min_len = 1];
+
+  // Join condition (serialized predicate).
+  google.protobuf.Struct condition = 4;
+}
+
+enum JoinType {
+  JOIN_TYPE_UNSPECIFIED = 0;
+  JOIN_TYPE_INNER = 1;
+  JOIN_TYPE_LEFT_OUTER = 2;
+  JOIN_TYPE_RIGHT_OUTER = 3;
+  JOIN_TYPE_FULL_OUTER = 4;
+  JOIN_TYPE_CROSS = 5;
+}
+
+// UnionNode combines multiple result sets.
+message UnionNode {
+  // If true, remove duplicates (UNION).
+  // If false, keep duplicates (UNION ALL).
+  bool distinct = 1;
+}
+
+// DistinctNode removes duplicate rows.
+message DistinctNode {
+  // Fields to consider for distinctness. Optional (if empty, all fields).
+  repeated string fields = 1;
+}
+
+// PlanMetadata contains plan creation and execution metadata.
+message PlanMetadata {
+  // Query ID (links to CQM).
+  string query_id = 1 [(buf.validate.field).string.uuid = true];
+
+  // Planner version.
+  string planner_version = 2;
+
+  // Plan creation timestamp.
+  string created_at = 3;
+
+  // Tenant ID.
+  string tenant_id = 4 [(buf.validate.field).string.uuid = true];
+}

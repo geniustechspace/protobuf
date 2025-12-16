@@ -1,0 +1,79 @@
+// DOMAIN: Query CQM - Projection
+// COMPLIANCE: Internal-only, not exposed to clients
+// SECURITY: Projection must respect field-level access control
+// PII: No - Projection specification only, not data values
+
+syntax = "proto3";
+
+package geniustechspace.query.cqm.v1;
+
+import "buf/validate/validate.proto";
+import "query/cqm/v1/field.proto";
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/query/cqm/v1;querycqmv1";
+
+// Projection represents the resolved set of fields to return in query results.
+// This is the INTERNAL representation after wildcard expansion and schema resolution.
+//
+// DESIGN PRINCIPLES:
+// - Explicit: All fields listed explicitly (no wildcards)
+// - Resolved: All FieldRef are schema-validated
+// - Optimized: Minimal field set for efficiency
+// - Permissioned: Only includes fields user has access to
+//
+// TRANSFORMATION:
+// API Projection (include/exclude patterns) → [Schema Resolver] → Projection
+// Examples:
+//   API: { include: ["id", "profile.*"] }
+//   CQM: { fields: [FieldRef(id), FieldRef(profile.name), FieldRef(profile.age), ...] }
+//
+//   API: { exclude: ["password_hash"] }
+//   CQM: { fields: [all fields except password_hash] }
+//
+// WILDCARD EXPANSION:
+// - API wildcards ("profile.*") are expanded to explicit fields
+// - Expansion respects schema version and permissions
+// - Nested wildcards expand recursively
+//
+// PRIMARY KEY GUARANTEE:
+// - Primary key fields are ALWAYS included (even if excluded in API)
+// - Enables result set stitching and pagination cursor generation
+//
+// VALIDATION:
+// If a Projection exists, it means:
+// ✓ All fields exist in schema
+// ✓ User has permission to access all fields
+// ✓ No wildcards remain
+// ✓ Primary key is included
+message Projection {
+  // Fields to include in result. REQUIRED (at least primary key).
+  // All wildcards have been expanded to explicit FieldRef.
+  repeated FieldRef fields = 1 [(buf.validate.field).repeated.min_items = 1];
+
+  // If true, this is a "select *" projection (all fields included).
+  // Optimization hint: May skip explicit field enumeration in some storage engines.
+  bool select_all = 2;
+
+  // Primary key fields (guaranteed to be in fields list). REQUIRED.
+  // Used for pagination cursor generation and result stitching.
+  repeated FieldRef primary_key = 3 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// ProjectionHint provides optimization hints for query planner.
+// Separated from Projection to keep core model clean.
+message ProjectionHint {
+  // If true, only count records (no field data needed).
+  // Optimization: Can use covering index or skip materialization.
+  bool count_only = 1;
+
+  // If true, only check existence (no field data needed).
+  // Optimization: Can short-circuit after first match.
+  bool exists_only = 2;
+
+  // Expected result size (hint for buffer allocation).
+  int32 expected_results = 3;
+
+  // Fields used in filters (for index selection).
+  // Planner can choose covering indexes that include these.
+  repeated FieldRef filter_fields = 4;
+}

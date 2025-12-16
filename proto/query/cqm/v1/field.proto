@@ -1,0 +1,159 @@
+// DOMAIN: Query CQM - Field References
+// COMPLIANCE: Internal-only, not exposed to clients
+// SECURITY: Field access must be validated against schema permissions
+// PII: No - Field reference structure only, not data values
+
+syntax = "proto3";
+
+package geniustechspace.query.cqm.v1;
+
+import "buf/validate/validate.proto";
+import "query/cqm/v1/value.proto";
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/query/cqm/v1;querycqmv1";
+
+// FieldRef represents a resolved reference to a schema field.
+// This is the INTERNAL representation after schema resolution.
+//
+// DESIGN PRINCIPLES:
+// - Schema-bound: References specific field ID in schema registry
+// - Strongly typed: Field type is known and encoded
+// - Unambiguous: No dot notation, wildcards, or string paths
+// - Traversable: Supports nested field access via path
+//
+// TRANSFORMATION:
+// API Field Path (string) → [Schema Resolver] → FieldRef
+// Example: "user.profile.name" → FieldRef with path [user, profile, name]
+//
+// FIELD PATHS:
+// - Root fields: path has 1 element
+// - Nested fields: path has 2+ elements (traversal through objects)
+// - Array elements: special handling (see array_index)
+//
+// SCHEMA BINDING:
+// - field_id is immutable identifier from schema registry
+// - field_name is human-readable (may change with schema evolution)
+// - Use field_id for execution, field_name for display
+//
+// TYPE INFORMATION:
+// - field_type enables operator validation
+// - is_array, is_nullable affect query semantics
+// - is_indexed hints query planner (but doesn't dictate execution)
+//
+// VALIDATION:
+// If a FieldRef exists, it means:
+// ✓ Field exists in schema
+// ✓ Path is valid (no broken nested references)
+// ✓ Type information is accurate
+// ✓ Access is permitted (schema-level permission check done)
+message FieldRef {
+  // Field path (list of field names from root to leaf).
+  // Examples:
+  //   ["email"] - root field
+  //   ["user", "profile", "name"] - nested field
+  //   ["orders", "items", "price"] - through arrays
+  repeated string path = 1 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 10
+  }];
+
+  // Leaf field ID (schema registry identifier). REQUIRED.
+  // Immutable, used for schema evolution compatibility.
+  string field_id = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 200
+  }];
+
+  // Leaf field name (human-readable). REQUIRED.
+  // May change across schema versions (use field_id for stability).
+  string field_name = 3 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 100
+  }];
+
+  // Field value type. REQUIRED.
+  ValueType field_type = 4 [(buf.validate.field).enum.defined_only = true];
+
+  // If true, field is an array/list type.
+  bool is_array = 5;
+
+  // If true, field is nullable (can be NULL).
+  bool is_nullable = 6;
+
+  // If true, field is indexed (hint for query planner).
+  // Does NOT guarantee index will be used.
+  bool is_indexed = 7;
+
+  // Entity alias (for joins). Optional.
+  // When query involves multiple entities, identifies which entity this field belongs to.
+  string entity_alias = 8;
+
+  // Array index (for array element access). Optional.
+  // Example: orders[0].total accesses first order
+  // Most queries use array predicates instead of direct indexing.
+  int32 array_index = 9;
+}
+
+// FieldMetadata contains additional field information for query execution.
+// Separated from FieldRef to keep FieldRef lightweight.
+message FieldMetadata {
+  // Field reference.
+  FieldRef field = 1 [(buf.validate.field).required = true];
+
+  // Default value (if field is null or missing). Optional.
+  TypedValue default_value = 2;
+
+  // Validation constraints (min, max, pattern, etc.). Optional.
+  // Used for runtime validation if needed.
+  repeated FieldConstraint constraints = 3;
+
+  // Display name (localized, human-readable). Optional.
+  string display_name = 4;
+
+  // Field description. Optional.
+  string description = 5;
+
+  // If true, field contains PII (for compliance/audit).
+  bool is_pii = 6;
+
+  // If true, field is encrypted at rest.
+  bool is_encrypted = 7;
+}
+
+// FieldConstraint represents a validation constraint on a field.
+message FieldConstraint {
+  // Constraint type.
+  ConstraintType type = 1 [(buf.validate.field).enum.defined_only = true];
+
+  // Constraint parameters (type-specific).
+  oneof parameter {
+    // For MIN/MAX constraints.
+    TypedValue value = 2;
+
+    // For PATTERN constraint (regex).
+    string pattern = 3;
+
+    // For LENGTH constraint.
+    LengthConstraint length = 4;
+  }
+}
+
+// ConstraintType defines validation constraint types.
+enum ConstraintType {
+  CONSTRAINT_TYPE_UNSPECIFIED = 0;
+  CONSTRAINT_TYPE_MIN = 1; // Minimum value
+  CONSTRAINT_TYPE_MAX = 2; // Maximum value
+  CONSTRAINT_TYPE_PATTERN = 3; // Regex pattern
+  CONSTRAINT_TYPE_LENGTH = 4; // String/array length
+  CONSTRAINT_TYPE_REQUIRED = 5; // Non-null
+  CONSTRAINT_TYPE_UNIQUE = 6; // Unique across entity
+}
+
+// LengthConstraint defines string or array length constraints.
+message LengthConstraint {
+  // Minimum length (inclusive). Optional.
+  int32 min = 1;
+
+  // Maximum length (inclusive). Optional.
+  int32 max = 2;
+}

@@ -1,0 +1,154 @@
+// DOMAIN: Query API - Aggregation
+// COMPLIANCE: N/A (aggregation does not inherently involve PII)
+// SECURITY: N/A (aggregation is read-only operation)
+// PII: No - Aggregation specification only, not data values
+
+syntax = "proto3";
+
+package geniustechspace.query.api.v1;
+
+import "buf/validate/validate.proto";
+import "query/api/v1/filter.proto";
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/query/api/v1;queryapiv1";
+
+// Aggregation defines grouping and aggregate function specifications.
+// When present in a Query, returns aggregated results instead of individual records.
+//
+// BEHAVIOR:
+// - Group by one or more fields
+// - Apply aggregate functions (count, sum, avg, min, max, etc.)
+// - Having clause filters aggregated results (like SQL HAVING)
+//
+// AGGREGATION PIPELINE:
+// 1. Apply filters (from Filter message)
+// 2. Group by specified fields
+// 3. Compute aggregate functions
+// 4. Apply having conditions
+// 5. Sort aggregated results
+// 6. Paginate
+//
+// EXAMPLES:
+//   Count users by country:
+//     {
+//       group_by: ["country"],
+//       aggregates: [{ function: COUNT, alias: "user_count" }]
+//     }
+//
+//   Average order value by customer, for orders > $100:
+//     {
+//       group_by: ["customer_id"],
+//       aggregates: [{
+//         function: AVG,
+//         field: "total_amount",
+//         alias: "avg_order_value"
+//       }],
+//       having: {
+//         condition: {
+//           field: "avg_order_value",
+//           operator: GT,
+//           value: 100
+//         }
+//       }
+//     }
+message Aggregation {
+  // Fields to group by. Optional.
+  // If omitted, aggregates are computed over entire result set.
+  // Use dot notation for nested fields: "address.country"
+  repeated string group_by = 1 [(buf.validate.field).repeated = {max_items: 20}];
+
+  // Aggregate functions to compute. REQUIRED (at least one).
+  repeated Aggregate aggregates = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 50
+  }];
+
+  // Filter conditions applied to aggregated results (like SQL HAVING). Optional.
+  // References aggregate aliases, not original fields.
+  // Note: Uses same Filter message as main query, but semantics differ.
+  Filter having = 3;
+}
+
+// Aggregate defines a single aggregate function to compute.
+//
+// FIELD REQUIREMENTS:
+// - COUNT, COUNT_DISTINCT: field optional (if omitted, counts rows)
+// - SUM, AVG, MIN, MAX, STDDEV, VARIANCE: field required
+// - PERCENTILE: field required, percentile value required
+//
+// RESULT NAMING:
+// - alias is used to reference result in having clause and output
+// - If alias omitted, auto-generated as "{function}_{field}" or "{function}"
+//
+// TYPE COMPATIBILITY:
+// - Numeric functions (SUM, AVG, etc.): Numeric fields only
+// - MIN, MAX: Any ordered type (numeric, date, string)
+// - COUNT: Any type
+message Aggregate {
+  // Aggregate function to apply. REQUIRED.
+  AggregateFunction function = 1 [(buf.validate.field).enum.defined_only = true];
+
+  // Field to aggregate over. Optional for COUNT, required for others.
+  // Use dot notation for nested fields: "order.total_amount"
+  string field = 2 [(buf.validate.field).string = {max_len: 200}];
+
+  // Result alias for referencing in having clause and output. Optional.
+  // If omitted, auto-generated as "{function}_{field}"
+  // Examples: "avg_price", "total_revenue", "user_count"
+  string alias = 3 [(buf.validate.field).string = {
+    max_len: 100
+    pattern: "^[a-z][a-z0-9_]*$"
+  }];
+
+  // Percentile value for PERCENTILE function (0.0 to 1.0). Optional.
+  // Required when function = PERCENTILE.
+  // Examples: 0.5 (median), 0.95 (95th percentile), 0.99 (99th percentile)
+  float percentile = 4 [(buf.validate.field).float = {
+    gte: 0.0
+    lte: 1.0
+  }];
+
+  // If true, only count distinct values (for COUNT function). Optional.
+  // Default: false
+  bool distinct = 5;
+}
+
+// Note: Having clause uses Filter message from filter.proto.
+// The same Filter structure is used, but field references resolve to
+// aggregate aliases instead of original entity fields.
+
+// AggregateFunction defines supported aggregate operations.
+enum AggregateFunction {
+  // Invalid default. Must be explicitly set.
+  AGGREGATE_FUNCTION_UNSPECIFIED = 0;
+
+  // Count records. Field optional (if omitted, counts all rows).
+  AGGREGATE_FUNCTION_COUNT = 1;
+
+  // Count distinct values. Field required.
+  AGGREGATE_FUNCTION_COUNT_DISTINCT = 2;
+
+  // Sum of values. Field required, must be numeric.
+  AGGREGATE_FUNCTION_SUM = 3;
+
+  // Average of values. Field required, must be numeric.
+  AGGREGATE_FUNCTION_AVG = 4;
+
+  // Minimum value. Field required, must be ordered type.
+  AGGREGATE_FUNCTION_MIN = 5;
+
+  // Maximum value. Field required, must be ordered type.
+  AGGREGATE_FUNCTION_MAX = 6;
+
+  // Standard deviation. Field required, must be numeric.
+  AGGREGATE_FUNCTION_STDDEV = 7;
+
+  // Variance. Field required, must be numeric.
+  AGGREGATE_FUNCTION_VARIANCE = 8;
+
+  // Percentile (requires percentile field). Field required, must be numeric.
+  AGGREGATE_FUNCTION_PERCENTILE = 9;
+
+  // Reserved for future aggregate functions
+  reserved 10 to 15;
+}
