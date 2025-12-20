@@ -9,6 +9,7 @@ package geniustechspace.multitenancy.v1;
 
 import "buf/validate/validate.proto";
 import "google/protobuf/timestamp.proto";
+import "multitenancy/v1/tenant.proto";
 
 option csharp_namespace = "GeniusTechSpace.Protobuf.Multitenancy.V1";
 option go_package = "github.com/geniustechspace/protobuf/gen/go/multitenancy/v1;multitenancyv1";

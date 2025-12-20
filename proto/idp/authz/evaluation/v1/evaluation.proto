@@ -44,6 +44,9 @@ message AuthorizationRequest {
 }
 
 // TenantScope - tenant context for policy evaluation.
+// NOTE: Intentionally a standalone type (not importing multitenancy types)
+// to keep authz evaluation decoupled from the multitenancy domain.
+// The caller maps from TenantContext to TenantScope.
 message TenantScope {
   // Tenant ID for the current request.
   string tenant_id = 1;
