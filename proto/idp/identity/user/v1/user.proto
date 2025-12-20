@@ -2,6 +2,7 @@
 // COMPLIANCE: GDPR Article 5, ISO 27001 A.9.2, SOC 2 CC6.1
 // SECURITY: PII data - encryption at rest required
 // PII: Yes - contains personal identifiers
+// ARCHITECTURE: Tenant-agnostic domain entity; tenant scoping via TenantContext in API layer
 
 syntax = "proto3";
 
@@ -16,26 +17,27 @@ option java_multiple_files = true;
 option java_package = "com.geniustechspace.protobuf.idp.identity.user.v1";
 
 // User entity - represents a user account in the system.
-// MULTI-TENANCY: All users belong to a tenant for data isolation.
+// ARCHITECTURE: Tenant-agnostic domain entity following DDD principles.
+// - Tenant scoping is handled via TenantContext in the API layer
+// - This enables domain models to be independent of multi-tenancy concerns
+// - Supports easy switching between tenant isolation modes without schema changes
 // AUTHENTICATION: Users authenticate via credentials (password, WebAuthn, etc.).
 // AUTHORIZATION: Users gain permissions through roles and group memberships.
 message User {
   // User ID. Optional - server generates if omitted. Can be any string format (UUID, ULID, custom).
   string user_id = 1 [(buf.validate.field).string.max_len = 512];
 
-  // Hierarchical tenant path for nested multi-tenancy. Optional - defaults to root if omitted.
-  // Examples: "acme-corp", "acme-corp/customer-1", "acme-corp/customer-1/sub-org"
-  // ISOLATION: Supports unlimited nesting levels for complex B2B2B... scenarios.
-  string tenant_path = 2 [(buf.validate.field).string.max_len = 512];
+  reserved 2; // Removed: tenant_path - handled by TenantContext in API layer
+  reserved "tenant_path";
 
-  // Username. Optional. Unique within tenant.
+  // Username. Optional. Unique within scope.
   string username = 3 [(buf.validate.field).string = {
     min_len: 3
     max_len: 64
     pattern: "^[a-zA-Z0-9_-]+$"
   }];
 
-  // Email address. Required. Unique within tenant when verified.
+  // Email address. Required. Unique within scope when verified.
   // PII: Yes - GDPR Article 4(1). Encryption required at rest.
   string email = 4 [(buf.validate.field).string.email = true];
 

@@ -2,6 +2,7 @@
 // COMPLIANCE: SOC 2 CC6.1 (Access Control), GDPR Article 5 (Data Accuracy), ISO 27001 A.12.1.2
 // SECURITY: Authentication required, tenant isolation enforced
 // PII: Yes - Registrant contact information may contain personal identifiers
+// ARCHITECTURE: Tenant-agnostic domain entity; tenant scoping via TenantContext in API layer
 
 syntax = "proto3";
 
@@ -16,8 +17,9 @@ import "google/protobuf/timestamp.proto";
 option go_package = "github.com/geniustechspace/protobuf/gen/go/dns/domain/v1;dnsdomainv1";
 
 // Domain represents a registered domain name with full registrar metadata.
+// ARCHITECTURE: Tenant-agnostic domain entity following DDD principles.
+// - Tenant scoping is handled via TenantContext in the API layer
 // COMPLIANCE: SOC 2 CC6.1 (Domain ownership), ICANN requirements
-// SECURITY: Tenant isolation enforced via tenant_path
 // PII: Yes - Contact information contains personal identifiers
 message Domain {
   // Unique domain identifier. IMMUTABLE.
@@ -26,13 +28,8 @@ message Domain {
   // Example: "01HQZX123456789ABCDEFGHJKM"
   string domain_id = 1 [(buf.validate.field).string.min_len = 1];
 
-  // Hierarchical tenant path for multi-tenancy isolation. REQUIRED.
-  // SECURITY: Enforces tenant isolation at application layer
-  // COMPLIANCE: SOC 2 CC6.1 (Logical access controls)
-  // FORMAT: Hierarchical path with forward slashes
-  // VALIDATION: Maximum 512 characters
-  // Examples: "acme-corp", "acme-corp/customer-1", "acme-corp/customer-1/project-alpha"
-  string tenant_path = 2 [(buf.validate.field).string.max_len = 512];
+  reserved 2; // Removed: tenant_path - handled by TenantContext in API layer
+  reserved "tenant_path";
 
   // Fully qualified domain name. REQUIRED.
   // FORMAT: Valid DNS domain name (RFC 1035)

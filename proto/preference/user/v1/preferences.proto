@@ -2,6 +2,7 @@
 // COMPLIANCE: GDPR Article 7 (Consent), SOC 2 CC6.1
 // SECURITY: Non-PII configuration data
 // PII: No - preferences and settings are not personal identifiers
+// ARCHITECTURE: Tenant-agnostic domain entity; tenant scoping via TenantContext in API layer
 
 syntax = "proto3";
 
@@ -16,6 +17,8 @@ option java_multiple_files = true;
 option java_package = "com.geniustechspace.protobuf.preference.user.v1";
 
 // UserPreferences - user preferences and settings.
+// ARCHITECTURE: Tenant-agnostic domain entity following DDD principles.
+// - Tenant scoping is handled via TenantContext in the API layer
 // Non-PII: Configuration data, not personal identifiers.
 // ONE-TO-ONE: Each user has one preferences record.
 // USAGE: UI customization, localization, notifications, privacy, accessibility.
@@ -26,10 +29,8 @@ message UserPreferences {
   // User ID. Foreign key to identity system (one-to-one relationship).
   string user_id = 2 [(buf.validate.field).string.max_len = 512];
 
-  // Hierarchical tenant path for nested multi-tenancy.
-  // Examples: "acme-corp", "acme-corp/customer-1", "acme-corp/customer-1/sub-org"
-  // ISOLATION: Supports unlimited nesting levels for complex B2B2B... scenarios.
-  string tenant_path = 3 [(buf.validate.field).string.max_len = 512];
+  reserved 3; // Removed: tenant_path - handled by TenantContext in API layer
+  reserved "tenant_path";
 
   // Preferred language (ISO 639-1 code: en, es, fr, etc.).
   // COMPLIANCE: GDPR Article 7 - user consent for communication language.

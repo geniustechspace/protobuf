@@ -1,7 +1,8 @@
 // DOMAIN: Identity - Organization
 // COMPLIANCE: ISO 27001 A.7.1, SOC 2 CC6.1
 // SECURITY: Organization-level data isolation and configuration
-// PURPOSE: Multi-organization tenant support
+// PURPOSE: Organization structure and hierarchy management
+// ARCHITECTURE: Tenant-agnostic domain entity; tenant scoping via TenantContext in API layer
 
 syntax = "proto3";
 
@@ -15,24 +16,24 @@ option go_package = "github.com/geniustechspace/protobuf/gen/go/idp/identity/org
 option java_multiple_files = true;
 option java_package = "com.geniustechspace.protobuf.idp.identity.organization.v1";
 
-// Organization entity - company or organizational unit within a tenant.
+// Organization entity - company or organizational unit.
+// ARCHITECTURE: Tenant-agnostic domain entity following DDD principles.
+// - Tenant scoping is handled via TenantContext in the API layer
+// - Organizations can be mapped to tenants via TenantMembership
 // HIERARCHICAL: Organizations can have parent/child relationships.
-// MULTI-TENANT: Multiple organizations per tenant for enterprise customers.
 // DOMAIN OWNERSHIP: Organizations can claim email domains for auto-join.
 // INVARIANTS:
-// - Name unique within tenant
+// - Name unique within scope
 // - Circular parent references not allowed
 // - Domain ownership exclusive (one org per domain)
 message Organization {
   // Organization ID. Immutable unique identifier.
   string id = 1 [(buf.validate.field).string.max_len = 512];
 
-  // Hierarchical tenant path for nested multi-tenancy. Immutable.
-  // Examples: "acme-corp", "acme-corp/customer-1", "acme-corp/customer-1/sub-org"
-  // ISOLATION: Supports unlimited nesting levels for complex B2B2B... scenarios.
-  string tenant_path = 2 [(buf.validate.field).string.max_len = 512];
+  reserved 2; // Removed: tenant_path - handled by TenantContext in API layer
+  reserved "tenant_path";
 
-  // Organization name. Required. Must be unique within tenant.
+  // Organization name. Required. Must be unique within scope.
   string name = 3 [(buf.validate.field).string.max_len = 512];
 
   // Display name (human-readable, may include spaces/special chars).

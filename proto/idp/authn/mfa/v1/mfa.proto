@@ -2,6 +2,7 @@
 // COMPLIANCE: NIST 800-63B AAL2/AAL3
 // SECURITY: Multi-factor authentication configurations
 // DDD: Value Objects - MFA enrollment and verification
+// ARCHITECTURE: Tenant-agnostic domain entity; tenant scoping via TenantContext in API layer
 
 syntax = "proto3";
 
@@ -16,6 +17,8 @@ option java_multiple_files = true;
 option java_package = "com.geniustechspace.protobuf.idp.authn.mfa.v1";
 
 // MfaEnrollment value object - MFA method enrollment.
+// ARCHITECTURE: Tenant-agnostic domain entity following DDD principles.
+// - Tenant scoping is handled via TenantContext in the API layer
 message MfaEnrollment {
   // Enrollment ID.
   string id = 1 [(buf.validate.field).string.max_len = 512];
@@ -23,8 +26,8 @@ message MfaEnrollment {
   // User ID.
   string user_id = 2 [(buf.validate.field).string.max_len = 512];
 
-  // Tenant path.
-  string tenant_path = 3 [(buf.validate.field).string.max_len = 512];
+  reserved 3; // Removed: tenant_path - handled by TenantContext in API layer
+  reserved "tenant_path";
 
   // MFA method type.
   MfaMethod method = 4 [(buf.validate.field).enum.defined_only = true];
@@ -168,6 +171,7 @@ message WebAuthnEnrollment {
 }
 
 // MfaChallenge value object - MFA verification challenge.
+// ARCHITECTURE: Tenant-agnostic; tenant context provided via API layer.
 message MfaChallenge {
   // Challenge ID.
   string id = 1 [(buf.validate.field).string.max_len = 512];
@@ -175,8 +179,8 @@ message MfaChallenge {
   // User ID.
   string user_id = 2 [(buf.validate.field).string.max_len = 512];
 
-  // Tenant path.
-  string tenant_path = 3 [(buf.validate.field).string.max_len = 512];
+  reserved 3; // Removed: tenant_path - handled by TenantContext in API layer
+  reserved "tenant_path";
 
   // Required MFA methods.
   repeated MfaMethod required_methods = 4;

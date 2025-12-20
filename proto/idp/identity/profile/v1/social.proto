@@ -2,6 +2,7 @@
 // COMPLIANCE: GDPR Article 5, SOC 2 CC6.1
 // SECURITY: PII data - can reveal personal information
 // PII: Yes - social media profiles are personal identifiers
+// ARCHITECTURE: Tenant-agnostic domain entity; tenant scoping via TenantContext in API layer
 
 syntax = "proto3";
 
@@ -16,6 +17,8 @@ option java_multiple_files = true;
 option java_package = "com.geniustechspace.protobuf.idp.identity.profile.v1";
 
 // UserSocialProfile - user's social media profiles (separate entity).
+// ARCHITECTURE: Tenant-agnostic domain entity following DDD principles.
+// - Tenant scoping is handled via TenantContext in the API layer
 // PII: Yes - can reveal personal information.
 // MULTI-RECORD: Users can have multiple social profiles (GitHub, LinkedIn, Twitter, etc.).
 message UserSocialProfile {
@@ -25,10 +28,8 @@ message UserSocialProfile {
   // User ID. Foreign key.
   string user_id = 2 [(buf.validate.field).string.max_len = 512];
 
-  // Hierarchical tenant path for nested multi-tenancy.
-  // Examples: "acme-corp", "acme-corp/customer-1", "acme-corp/customer-1/sub-org"
-  // ISOLATION: Supports unlimited nesting levels for complex B2B2B... scenarios.
-  string tenant_path = 3 [(buf.validate.field).string.max_len = 512];
+  reserved 3; // Removed: tenant_path - handled by TenantContext in API layer
+  reserved "tenant_path";
 
   // Provider (github, linkedin, twitter, facebook, etc.).
   string provider = 4 [(buf.validate.field).string = {
