@@ -1,0 +1,426 @@
+// DOMAIN: DNS - Record Management
+// COMPLIANCE: SOC 2 CC6.1 (Access Control), RFC 1035, ISO 27001 A.12.1.2
+// SECURITY: Authentication required, tenant isolation enforced
+// PII: No - Avoid storing secrets or personal data in record values
+
+syntax = "proto3";
+
+package geniustechspace.dns.record.v1;
+
+import "buf/validate/validate.proto";
+import "core/api/pagination/v1/messages.proto";
+import "dns/record/v1/enums.proto";
+import "google/protobuf/duration.proto";
+import "google/protobuf/field_mask.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/dns/record/v1;dnsrecordv1";
+
+// Record represents a DNS resource record with full metadata and health tracking.
+// COMPLIANCE: RFC 1035, SOC 2 CC6.1 (Resource management), SOC 2 CC7.2 (Monitoring)
+// SECURITY: Tenant isolation enforced via tenant_path
+// PII: No - Do not store secrets or personal data in record values
+message Record {
+  // Unique record identifier. IMMUTABLE.
+  // FORMAT: UUID v4 or ULID
+  // Example: "01HQZX123456789ABCDEFGHJKM"
+  string record_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Hierarchical tenant path for multi-tenancy isolation. REQUIRED.
+  // SECURITY: Enforces tenant isolation at application layer
+  // COMPLIANCE: SOC 2 CC6.1 (Logical access controls)
+  // VALIDATION: Maximum 512 characters
+  // Examples: "acme-corp", "acme-corp/customer-1"
+  string tenant_path = 2 [(buf.validate.field).string.max_len = 512];
+
+  // Foreign key to Domain.domain_id. REQUIRED.
+  // RELATIONSHIP: Each record belongs to exactly one domain
+  // CASCADE: When domain is deleted, associated records should be deleted
+  string domain_id = 3 [(buf.validate.field).string.min_len = 1];
+
+  // Record name (label or subdomain). REQUIRED.
+  // FORMAT: DNS label per RFC 1035 or '@' for apex/root
+  // VALIDATION: Alphanumeric and hyphens, max 63 chars per label
+  // SPECIAL: Use '@' or empty string for domain apex
+  // Examples: "www", "mail", "@", "_dmarc", "*.wildcard"
+  string name = 4 [(buf.validate.field).string = {
+    max_len: 253
+    pattern: "^(@|\\*|\\_[a-z0-9]+|[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)$"
+  }];
+
+  // Fully qualified domain name. COMPUTED.
+  // FORMAT: Complete DNS name including domain
+  // NORMALIZATION: Always lowercase
+  // USAGE: Computed from name + domain for queries
+  // Examples: "www.example.com", "example.com" (apex), "*.example.com" (wildcard)
+  string fqdn = 5 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 253
+    pattern: "^(\\*\\.)?[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$"
+  }];
+
+  // DNS record type. REQUIRED.
+  // VALIDATION: Must be defined enum value
+  // COMPLIANCE: Per IANA DNS Parameters registry
+  RecordType type = 6 [(buf.validate.field).enum.defined_only = true];
+
+  // DNS record class. OPTIONAL.
+  // DEFAULT: RECORD_CLASS_IN (Internet)
+  // NOTE: Only IN class is commonly used in modern DNS
+  RecordClass class = 7 [(buf.validate.field).enum.defined_only = true];
+
+  // Time to live in seconds. REQUIRED.
+  // VALIDATION: 60 seconds (1 min) to 86400 seconds (24 hours)
+  // RECOMMENDATION: 300-3600 for frequently changing, 3600-86400 for static
+  // COMPLIANCE: Affects DNS cache behavior and propagation time
+  // DEFAULT: 3600 (1 hour)
+  int32 ttl = 8 [(buf.validate.field).int32 = {
+    gte: 60
+    lte: 86400
+  }];
+
+  // Record data value. REQUIRED.
+  // FORMAT: Varies by record type, validated separately
+  // VALIDATION: Type-specific format rules enforced
+  // SECURITY: Do not store secrets or sensitive data
+  // MAX LENGTH: 64KB for TXT records, varies by type
+  //
+  // Format by type:
+  // - A: IPv4 address (e.g., "192.0.2.1")
+  // - AAAA: IPv6 address (e.g., "2001:db8::1")
+  // - CNAME: Target hostname (e.g., "target.example.com")
+  // - MX: Mail server hostname (e.g., "mail.example.com")
+  // - TXT: Text content (e.g., "v=spf1 include:_spf.google.com ~all")
+  // - NS: Nameserver hostname (e.g., "ns1.example.com")
+  // - SRV: Target hostname (e.g., "server.example.com")
+  // - CAA: CAA record value (e.g., "0 issue letsencrypt.org")
+  string value = 9 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 65535
+  }];
+
+  // Priority for MX and SRV records. CONDITIONAL.
+  // REQUIRED FOR: MX, SRV record types
+  // VALIDATION: 0-65535 (lower number = higher priority)
+  // USAGE: MX records use priority for mail routing preference
+  // DEFAULT: 0 if not specified
+  uint32 priority = 10 [(buf.validate.field).uint32.lte = 65535];
+
+  // Weight for SRV records. CONDITIONAL.
+  // REQUIRED FOR: SRV record type
+  // VALIDATION: 0-65535
+  // USAGE: Load balancing weight for same priority SRV records
+  uint32 weight = 11 [(buf.validate.field).uint32.lte = 65535];
+
+  // Port for SRV records. CONDITIONAL.
+  // REQUIRED FOR: SRV record type
+  // VALIDATION: 1-65535
+  // USAGE: Target service port number
+  uint32 port = 12 [(buf.validate.field).uint32 = {
+    gte: 1
+    lte: 65535
+  }];
+
+  // Current lifecycle status. REQUIRED.
+  // COMPLIANCE: SOC 2 CC6.3 (Change tracking)
+  // DEFAULT: RECORD_STATUS_PENDING_PROPAGATION for new records
+  RecordStatus status = 13 [(buf.validate.field).enum.defined_only = true];
+
+  // Health check status. OPTIONAL.
+  // COMPLIANCE: SOC 2 CC7.2 (System monitoring)
+  // USAGE: Track record resolution and target availability
+  HealthCheckStatus health_status = 14 [(buf.validate.field).enum.defined_only = true];
+
+  // Last health check timestamp.
+  // USAGE: Track when health status was last evaluated
+  google.protobuf.Timestamp health_checked_at = 15;
+
+  // Health check failure reason. OPTIONAL.
+  // POPULATED WHEN: health_status is UNHEALTHY or DEGRADED
+  // USAGE: Diagnostic information for troubleshooting
+  // Examples: "DNS resolution timeout", "Target host unreachable"
+  string health_check_message = 16 [(buf.validate.field).string.max_len = 1000];
+
+  // DNS propagation status tracking.
+  // USAGE: Monitor global DNS propagation progress
+  // COMPLIANCE: SOC 2 CC7.2 (System monitoring)
+  PropagationStatus propagation = 17;
+
+  // Tags for organization and filtering. OPTIONAL.
+  // USAGE: Custom categorization, environment markers
+  // VALIDATION: Maximum 10 tags, each max 50 chars
+  // Examples: ["production", "web-server", "load-balanced"]
+  repeated string tags = 18 [(buf.validate.field).repeated = {
+    max_items: 10
+    items: {
+      string: {
+        min_len: 1
+        max_len: 50
+        pattern: "^[a-z0-9-]+$"
+      }
+    }
+  }];
+
+  // Additional metadata and custom fields. OPTIONAL.
+  // USAGE: Custom key-value pairs for integration
+  // Examples: {"environment": "production", "app": "web-server"}
+  map<string, string> metadata = 19;
+
+  // Record comment or description. OPTIONAL.
+  // USAGE: Human-readable notes about record purpose
+  // VALIDATION: Maximum 500 characters
+  // Example: "CDN endpoint for main website"
+  string comment = 20 [(buf.validate.field).string.max_len = 500];
+
+  // Record timestamp when entity was created. IMMUTABLE.
+  // COMPLIANCE: SOC 2 CC6.3, GDPR Article 30 (audit trail)
+  google.protobuf.Timestamp created_at = 21 [(buf.validate.field).required = true];
+
+  // Record timestamp when entity was last updated.
+  // COMPLIANCE: SOC 2 CC6.3 (change tracking)
+  google.protobuf.Timestamp updated_at = 22;
+
+  // Soft deletion timestamp. If set, entity is considered deleted.
+  // COMPLIANCE: GDPR Article 17, SOC 2 CC6.3 (audit trail)
+  // QUERY: Use "WHERE deleted_at IS NULL" for active records
+  google.protobuf.Timestamp deleted_at = 23;
+
+  // Optimistic locking version counter. Incremented on each update.
+  // COMPLIANCE: SOC 2 CC6.1 (Data integrity)
+  // USAGE: Prevents lost updates in concurrent modification
+  int64 version = 24;
+}
+
+// PropagationStatus tracks DNS record propagation across nameservers.
+// COMPLIANCE: SOC 2 CC7.2 (System monitoring)
+// USAGE: Monitor global DNS propagation progress
+message PropagationStatus {
+  // Overall propagation status. REQUIRED.
+  // COMPUTED: Based on nameserver check results
+  PropagationState state = 1 [(buf.validate.field).enum.defined_only = true];
+
+  // Percentage of nameservers with propagated record.
+  // RANGE: 0-100
+  // USAGE: Track propagation progress
+  uint32 percentage = 2 [(buf.validate.field).uint32.lte = 100];
+
+  // Number of nameservers checked.
+  uint32 checked_count = 3;
+
+  // Number of nameservers with correct record.
+  uint32 success_count = 4;
+
+  // Time elapsed since record creation/update.
+  google.protobuf.Duration elapsed = 5;
+
+  // Estimated time until full propagation.
+  // NULL: When already fully propagated
+  google.protobuf.Duration estimated_completion = 6;
+}
+
+// PropagationState represents DNS propagation status.
+enum PropagationState {
+  PROPAGATION_STATE_UNSPECIFIED = 0;
+  PROPAGATION_STATE_NOT_STARTED = 1;
+  PROPAGATION_STATE_IN_PROGRESS = 2;
+  PROPAGATION_STATE_COMPLETED = 3;
+  PROPAGATION_STATE_FAILED = 4;
+}
+
+// CreateRecordRequest creates a new DNS record.
+// AUTHENTICATION: Required - valid bearer token
+// AUTHORIZATION: Requires 'dns:records:create' permission
+// COMPLIANCE: SOC 2 CC6.1, RFC 1035
+// RATE LIMIT: 100/min per tenant
+message CreateRecordRequest {
+  // Hierarchical tenant path. REQUIRED.
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Domain ID to create record under. REQUIRED.
+  string domain_id = 2 [(buf.validate.field).string.min_len = 1];
+
+  // Record name/label. REQUIRED.
+  string name = 3 [(buf.validate.field).string = {
+    max_len: 253
+    pattern: "^(@|\\*|\\_[a-z0-9]+|[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)$"
+  }];
+
+  // Record type. REQUIRED.
+  RecordType type = 4 [(buf.validate.field).enum.defined_only = true];
+
+  // Record class. OPTIONAL, defaults to IN.
+  RecordClass class = 5 [(buf.validate.field).enum.defined_only = true];
+
+  // TTL in seconds. REQUIRED.
+  int32 ttl = 6 [(buf.validate.field).int32 = {
+    gte: 60
+    lte: 86400
+  }];
+
+  // Record value. REQUIRED.
+  string value = 7 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 65535
+  }];
+
+  // Priority (MX, SRV). CONDITIONAL.
+  uint32 priority = 8 [(buf.validate.field).uint32.lte = 65535];
+
+  // Weight (SRV). CONDITIONAL.
+  uint32 weight = 9 [(buf.validate.field).uint32.lte = 65535];
+
+  // Port (SRV). CONDITIONAL.
+  uint32 port = 10 [(buf.validate.field).uint32 = {
+    gte: 1
+    lte: 65535
+  }];
+
+  // Tags. OPTIONAL.
+  repeated string tags = 11 [(buf.validate.field).repeated = {
+    max_items: 10
+    items: {
+      string: {
+        min_len: 1
+        max_len: 50
+        pattern: "^[a-z0-9-]+$"
+      }
+    }
+  }];
+
+  // Metadata. OPTIONAL.
+  map<string, string> metadata = 12;
+
+  // Comment. OPTIONAL.
+  string comment = 13 [(buf.validate.field).string.max_len = 500];
+}
+
+// CreateRecordResponse returns created record.
+message CreateRecordResponse {
+  // Created record entity. REQUIRED.
+  Record record = 1 [(buf.validate.field).required = true];
+}
+
+// GetRecordRequest retrieves single record by ID.
+// AUTHENTICATION: Required - valid bearer token
+// AUTHORIZATION: Requires 'dns:records:read' permission
+// RATE LIMIT: 1000/min per tenant
+message GetRecordRequest {
+  // Hierarchical tenant path. REQUIRED.
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Record identifier. REQUIRED.
+  string record_id = 2 [(buf.validate.field).string.min_len = 1];
+}
+
+// ListRecordsRequest lists records with pagination and filtering.
+// AUTHENTICATION: Required - valid bearer token
+// AUTHORIZATION: Requires 'dns:records:list' permission
+// RATE LIMIT: 100/min per tenant
+message ListRecordsRequest {
+  // Hierarchical tenant path. REQUIRED.
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Filter by domain ID. OPTIONAL.
+  string domain_id = 2;
+
+  // Pagination parameters. REQUIRED.
+  geniustechspace.core.api.pagination.v1.PaginationRequest pagination = 3 [(buf.validate.field).required = true];
+
+  // Sorting specification. OPTIONAL.
+  // ALLOWED FIELDS: name, type, ttl, status, created_at
+  // Example: "name asc", "created_at desc"
+  string order_by = 4;
+
+  // Filter specification. OPTIONAL.
+  // ALLOWED FIELDS: type, status, health_status, tags
+  // Examples: "type='RECORD_TYPE_A'", "status='RECORD_STATUS_ACTIVE'"
+  string filter = 5;
+}
+
+// ListRecordsResponse returns paginated records.
+message ListRecordsResponse {
+  // List of records.
+  repeated Record records = 1;
+
+  // Pagination metadata. REQUIRED.
+  geniustechspace.core.api.pagination.v1.PaginationResponse pagination = 2 [(buf.validate.field).required = true];
+}
+
+// UpdateRecordRequest updates existing record.
+// AUTHENTICATION: Required - valid bearer token
+// AUTHORIZATION: Requires 'dns:records:update' permission
+// RATE LIMIT: 100/min per tenant
+message UpdateRecordRequest {
+  // Hierarchical tenant path. REQUIRED.
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Record identifier. REQUIRED.
+  string record_id = 2 [(buf.validate.field).string.min_len = 1];
+
+  // Updated record fields. REQUIRED.
+  Record record = 3 [(buf.validate.field).required = true];
+
+  // Field mask. REQUIRED.
+  google.protobuf.FieldMask update_mask = 4 [(buf.validate.field).required = true];
+
+  // Current version for optimistic locking. REQUIRED.
+  int64 version = 5 [(buf.validate.field).int64.gte = 0];
+}
+
+// DeleteRecordRequest soft-deletes a record.
+// AUTHENTICATION: Required - valid bearer token
+// AUTHORIZATION: Requires 'dns:records:delete' permission
+// RATE LIMIT: 100/min per tenant
+message DeleteRecordRequest {
+  // Hierarchical tenant path. REQUIRED.
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Record identifier. REQUIRED.
+  string record_id = 2 [(buf.validate.field).string.min_len = 1];
+
+  // Current version for optimistic locking. REQUIRED.
+  int64 version = 3 [(buf.validate.field).int64.gte = 0];
+}
+
+// ResolveRecordRequest resolves DNS name to records.
+// AUTHENTICATION: Required - valid bearer token
+// AUTHORIZATION: Requires 'dns:records:resolve' permission
+// RATE LIMIT: 1000/min per tenant
+message ResolveRecordRequest {
+  // Hierarchical tenant path. REQUIRED.
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Fully qualified domain name to resolve. REQUIRED.
+  string fqdn = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 253
+    pattern: "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$"
+  }];
+
+  // Record type to resolve. OPTIONAL.
+  // If omitted, returns all record types.
+  RecordType type = 3;
+}
+
+// ResolveRecordResponse returns resolved records.
+message ResolveRecordResponse {
+  // Resolved records matching query.
+  repeated Record records = 1;
+}
+
+// GetRecordResponse returns record entity.
+message GetRecordResponse {
+  // Record entity. REQUIRED.
+  Record record = 1 [(buf.validate.field).required = true];
+}
+
+// UpdateRecordResponse returns updated record entity.
+message UpdateRecordResponse {
+  // Updated record entity. REQUIRED.
+  Record record = 1 [(buf.validate.field).required = true];
+}
+
+// DeleteRecordResponse returns empty on successful deletion.
+message DeleteRecordResponse {
+  // Empty response on success.
+}

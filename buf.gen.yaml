@@ -53,14 +53,14 @@ plugins:
   
   # TypeScript generation (enhanced with gRPC-Web)
   - remote: buf.build/connectrpc/es:v1.6.1
-    out: gen/typescript/connect
+    out: gen/typescript
     opt:
       - target=ts
       - import_extension=none
   - remote: buf.build/protocolbuffers/js:v3.21.2
     out: gen/typescript/js
   - remote: buf.build/grpc/web:v1.5.0
-    out: gen/typescript/grpc-web
+    out: gen/typescript
     opt:
       - import_style=typescript
       - mode=grpcwebtext

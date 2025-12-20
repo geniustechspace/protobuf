@@ -1,0 +1,344 @@
+// DOMAIN: DNS - Record Management Events
+// COMPLIANCE: SOC 2 CC6.3 (Audit trail), RFC 1035
+// SECURITY: Events published to event bus for downstream consumers
+// PII: No - Records do not contain personal data
+
+syntax = "proto3";
+
+package geniustechspace.dns.record.events.v1;
+
+import "buf/validate/validate.proto";
+import "dns/record/v1/enums.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/dns/record/events/v1;dnsrecordevents";
+
+// RecordCreated emitted when DNS record is successfully created.
+// EVENT: Publish to event bus for downstream consumers
+// COMPLIANCE: SOC 2 CC6.3 (Audit trail), RFC 1035
+// USAGE: Triggers DNS propagation monitoring, notifications, audit logging
+message RecordCreated {
+  // Unique event identifier for tracing. REQUIRED.
+  // FORMAT: UUID v4 or ULID
+  // USAGE: Event deduplication and distributed tracing
+  string event_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Event occurrence timestamp. REQUIRED.
+  // COMPLIANCE: SOC 2 CC6.3 (Audit trail)
+  // FORMAT: RFC 3339 timestamp
+  google.protobuf.Timestamp event_timestamp = 2 [(buf.validate.field).required = true];
+
+  // Hierarchical tenant path. REQUIRED.
+  // SECURITY: Enables tenant-specific event routing
+  string tenant_path = 3 [(buf.validate.field).string.max_len = 512];
+
+  // Record identifier. REQUIRED.
+  string record_id = 4 [(buf.validate.field).string.min_len = 1];
+
+  // Domain identifier. REQUIRED.
+  string domain_id = 5 [(buf.validate.field).string.min_len = 1];
+
+  // Record name/label. REQUIRED.
+  // Example: "www", "@", "_dmarc"
+  string name = 6 [(buf.validate.field).string.min_len = 1];
+
+  // Fully qualified domain name. REQUIRED.
+  // Example: "www.example.com", "example.com"
+  string fqdn = 7 [(buf.validate.field).string.min_len = 1];
+
+  // DNS record type. REQUIRED.
+  geniustechspace.dns.record.v1.RecordType type = 8 [(buf.validate.field).enum.defined_only = true];
+
+  // Record value/data. REQUIRED.
+  // FORMAT: Type-specific (IP address, hostname, text, etc.)
+  string value = 9 [(buf.validate.field).string.min_len = 1];
+
+  // Time to live in seconds. REQUIRED.
+  int32 ttl = 10;
+
+  // Priority (for MX/SRV records). OPTIONAL.
+  uint32 priority = 11;
+
+  // Actor who created the record. REQUIRED.
+  // FORMAT: User ID or system identifier
+  // AUDIT: For compliance and accountability
+  string created_by = 12 [(buf.validate.field).string.min_len = 1];
+
+  // Correlation ID for distributed tracing. OPTIONAL.
+  // USAGE: Link related events across services
+  string correlation_id = 13;
+
+  // Event metadata for additional context. OPTIONAL.
+  map<string, string> metadata = 14;
+}
+
+// RecordUpdated emitted when DNS record configuration is modified.
+// EVENT: Publish to event bus for downstream consumers
+// COMPLIANCE: SOC 2 CC6.3 (Change tracking)
+// USAGE: Triggers DNS propagation monitoring, change notifications
+message RecordUpdated {
+  // Unique event identifier. REQUIRED.
+  string event_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Event timestamp. REQUIRED.
+  google.protobuf.Timestamp event_timestamp = 2 [(buf.validate.field).required = true];
+
+  // Hierarchical tenant path. REQUIRED.
+  string tenant_path = 3 [(buf.validate.field).string.max_len = 512];
+
+  // Record identifier. REQUIRED.
+  string record_id = 4 [(buf.validate.field).string.min_len = 1];
+
+  // Domain identifier. REQUIRED.
+  string domain_id = 5 [(buf.validate.field).string.min_len = 1];
+
+  // Fully qualified domain name. REQUIRED.
+  string fqdn = 6 [(buf.validate.field).string.min_len = 1];
+
+  // DNS record type. REQUIRED.
+  geniustechspace.dns.record.v1.RecordType type = 7 [(buf.validate.field).enum.defined_only = true];
+
+  // Fields that were updated. REQUIRED.
+  // COMPLIANCE: SOC 2 CC6.3 (Field-level audit)
+  // FORMAT: Field paths per FieldMask convention
+  // Examples: ["value", "ttl", "priority"]
+  repeated string updated_fields = 8;
+
+  // Previous record value (before update). OPTIONAL.
+  // AUDIT: Track what changed for compliance
+  string previous_value = 9;
+
+  // New record value (after update). OPTIONAL.
+  string new_value = 10;
+
+  // Actor who updated the record. REQUIRED.
+  string updated_by = 11 [(buf.validate.field).string.min_len = 1];
+
+  // Previous version number.
+  int64 previous_version = 12;
+
+  // New version number.
+  int64 new_version = 13;
+
+  // Correlation ID for distributed tracing. OPTIONAL.
+  string correlation_id = 14;
+
+  // Event metadata. OPTIONAL.
+  map<string, string> metadata = 15;
+}
+
+// RecordStatusChanged emitted when record status transitions.
+// EVENT: Publish to event bus for downstream consumers
+// COMPLIANCE: SOC 2 CC6.3 (State change tracking), SOC 2 CC7.2 (Monitoring)
+// USAGE: Triggers alerts, notifications, automated remediation
+message RecordStatusChanged {
+  // Unique event identifier. REQUIRED.
+  string event_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Event timestamp. REQUIRED.
+  google.protobuf.Timestamp event_timestamp = 2 [(buf.validate.field).required = true];
+
+  // Hierarchical tenant path. REQUIRED.
+  string tenant_path = 3 [(buf.validate.field).string.max_len = 512];
+
+  // Record identifier. REQUIRED.
+  string record_id = 4 [(buf.validate.field).string.min_len = 1];
+
+  // Domain identifier. REQUIRED.
+  string domain_id = 5 [(buf.validate.field).string.min_len = 1];
+
+  // Fully qualified domain name. REQUIRED.
+  string fqdn = 6 [(buf.validate.field).string.min_len = 1];
+
+  // DNS record type. REQUIRED.
+  geniustechspace.dns.record.v1.RecordType type = 7 [(buf.validate.field).enum.defined_only = true];
+
+  // Previous status. REQUIRED.
+  geniustechspace.dns.record.v1.RecordStatus previous_status = 8 [(buf.validate.field).enum.defined_only = true];
+
+  // New status. REQUIRED.
+  geniustechspace.dns.record.v1.RecordStatus new_status = 9 [(buf.validate.field).enum.defined_only = true];
+
+  // Status change reason. OPTIONAL.
+  // Examples: "DNS propagation completed", "Health check failed", "Admin disabled"
+  string reason = 10;
+
+  // Actor who triggered the change. REQUIRED.
+  // NOTE: May be "system" for automated status changes
+  string changed_by = 11 [(buf.validate.field).string.min_len = 1];
+
+  // Correlation ID for distributed tracing. OPTIONAL.
+  string correlation_id = 12;
+
+  // Event metadata. OPTIONAL.
+  map<string, string> metadata = 13;
+}
+
+// RecordHealthCheckFailed emitted when record health check fails.
+// EVENT: Publish to event bus for downstream consumers
+// COMPLIANCE: SOC 2 CC7.2 (System monitoring)
+// USAGE: Triggers alerts, notifications, automated remediation
+message RecordHealthCheckFailed {
+  // Unique event identifier. REQUIRED.
+  string event_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Event timestamp. REQUIRED.
+  google.protobuf.Timestamp event_timestamp = 2 [(buf.validate.field).required = true];
+
+  // Hierarchical tenant path. REQUIRED.
+  string tenant_path = 3 [(buf.validate.field).string.max_len = 512];
+
+  // Record identifier. REQUIRED.
+  string record_id = 4 [(buf.validate.field).string.min_len = 1];
+
+  // Domain identifier. REQUIRED.
+  string domain_id = 5 [(buf.validate.field).string.min_len = 1];
+
+  // Fully qualified domain name. REQUIRED.
+  string fqdn = 6 [(buf.validate.field).string.min_len = 1];
+
+  // DNS record type. REQUIRED.
+  geniustechspace.dns.record.v1.RecordType type = 7 [(buf.validate.field).enum.defined_only = true];
+
+  // Record value being checked.
+  string value = 8;
+
+  // Health check status. REQUIRED.
+  geniustechspace.dns.record.v1.HealthCheckStatus health_status = 9 [(buf.validate.field).enum.defined_only = true];
+
+  // Failure reason/message. REQUIRED.
+  // USAGE: Diagnostic information for troubleshooting
+  // Examples: "DNS resolution timeout", "Target host unreachable", "TLS certificate invalid"
+  string failure_message = 10 [(buf.validate.field).string.min_len = 1];
+
+  // Number of consecutive failures. REQUIRED.
+  // USAGE: Determine alert severity and escalation
+  uint32 consecutive_failures = 11;
+
+  // Correlation ID for distributed tracing. OPTIONAL.
+  string correlation_id = 12;
+
+  // Event metadata. OPTIONAL.
+  map<string, string> metadata = 13;
+}
+
+// RecordHealthCheckRecovered emitted when record health check recovers.
+// EVENT: Publish to event bus for downstream consumers
+// COMPLIANCE: SOC 2 CC7.2 (System monitoring)
+// USAGE: Triggers recovery notifications, clears alerts
+message RecordHealthCheckRecovered {
+  // Unique event identifier. REQUIRED.
+  string event_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Event timestamp. REQUIRED.
+  google.protobuf.Timestamp event_timestamp = 2 [(buf.validate.field).required = true];
+
+  // Hierarchical tenant path. REQUIRED.
+  string tenant_path = 3 [(buf.validate.field).string.max_len = 512];
+
+  // Record identifier. REQUIRED.
+  string record_id = 4 [(buf.validate.field).string.min_len = 1];
+
+  // Domain identifier. REQUIRED.
+  string domain_id = 5 [(buf.validate.field).string.min_len = 1];
+
+  // Fully qualified domain name. REQUIRED.
+  string fqdn = 6 [(buf.validate.field).string.min_len = 1];
+
+  // DNS record type. REQUIRED.
+  geniustechspace.dns.record.v1.RecordType type = 7 [(buf.validate.field).enum.defined_only = true];
+
+  // Duration of downtime. OPTIONAL.
+  // USAGE: Calculate SLA and service metrics
+  int64 downtime_seconds = 8;
+
+  // Correlation ID for distributed tracing. OPTIONAL.
+  string correlation_id = 9;
+
+  // Event metadata. OPTIONAL.
+  map<string, string> metadata = 10;
+}
+
+// RecordPropagationCompleted emitted when DNS propagation finishes.
+// EVENT: Publish to event bus for downstream consumers
+// COMPLIANCE: SOC 2 CC7.2 (System monitoring)
+// USAGE: Triggers completion notifications, enables production traffic
+message RecordPropagationCompleted {
+  // Unique event identifier. REQUIRED.
+  string event_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Event timestamp. REQUIRED.
+  google.protobuf.Timestamp event_timestamp = 2 [(buf.validate.field).required = true];
+
+  // Hierarchical tenant path. REQUIRED.
+  string tenant_path = 3 [(buf.validate.field).string.max_len = 512];
+
+  // Record identifier. REQUIRED.
+  string record_id = 4 [(buf.validate.field).string.min_len = 1];
+
+  // Domain identifier. REQUIRED.
+  string domain_id = 5 [(buf.validate.field).string.min_len = 1];
+
+  // Fully qualified domain name. REQUIRED.
+  string fqdn = 6 [(buf.validate.field).string.min_len = 1];
+
+  // DNS record type. REQUIRED.
+  geniustechspace.dns.record.v1.RecordType type = 7 [(buf.validate.field).enum.defined_only = true];
+
+  // Propagation duration in seconds. REQUIRED.
+  // USAGE: Track propagation performance metrics
+  int64 propagation_duration_seconds = 8;
+
+  // Percentage of nameservers with propagated record.
+  uint32 propagation_percentage = 9;
+
+  // Correlation ID for distributed tracing. OPTIONAL.
+  string correlation_id = 10;
+
+  // Event metadata. OPTIONAL.
+  map<string, string> metadata = 11;
+}
+
+// RecordDeleted emitted when DNS record is soft-deleted.
+// EVENT: Publish to event bus for downstream consumers
+// COMPLIANCE: SOC 2 CC6.3 (Audit trail)
+// USAGE: Triggers cleanup workflows, notifications
+message RecordDeleted {
+  // Unique event identifier. REQUIRED.
+  string event_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Event timestamp. REQUIRED.
+  google.protobuf.Timestamp event_timestamp = 2 [(buf.validate.field).required = true];
+
+  // Hierarchical tenant path. REQUIRED.
+  string tenant_path = 3 [(buf.validate.field).string.max_len = 512];
+
+  // Record identifier. REQUIRED.
+  string record_id = 4 [(buf.validate.field).string.min_len = 1];
+
+  // Domain identifier. REQUIRED.
+  string domain_id = 5 [(buf.validate.field).string.min_len = 1];
+
+  // Fully qualified domain name. REQUIRED.
+  string fqdn = 6 [(buf.validate.field).string.min_len = 1];
+
+  // DNS record type. REQUIRED.
+  geniustechspace.dns.record.v1.RecordType type = 7 [(buf.validate.field).enum.defined_only = true];
+
+  // Record value at time of deletion. OPTIONAL.
+  // AUDIT: Preserve deleted record data for compliance
+  string value = 8;
+
+  // Actor who deleted the record. REQUIRED.
+  string deleted_by = 9 [(buf.validate.field).string.min_len = 1];
+
+  // Deletion reason. OPTIONAL.
+  // Examples: "User request", "Domain deletion", "Policy cleanup"
+  string reason = 10;
+
+  // Correlation ID for distributed tracing. OPTIONAL.
+  string correlation_id = 11;
+
+  // Event metadata. OPTIONAL.
+  map<string, string> metadata = 12;
+}

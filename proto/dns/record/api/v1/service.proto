@@ -1,0 +1,71 @@
+// API layer for DNS record package (gRPC services + request/response messages)
+syntax = "proto3";
+
+package geniustechspace.dns.record.api.v1;
+
+import "buf/validate/validate.proto";
+import "dns/record/v1/enums.proto";
+import "dns/record/v1/messages.proto";
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/dns/record/api/v1;dnsrecordapiv1";
+
+message CreateRecordRequest {
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+  string domain_id = 2 [(buf.validate.field).string.min_len = 1];
+  string name = 3 [(buf.validate.field).string.min_len = 1];
+  geniustechspace.dns.record.v1.RecordType type = 4;
+  int32 ttl = 5;
+  string value = 6;
+  int32 priority = 7;
+}
+
+message CreateRecordResponse {
+  geniustechspace.dns.record.v1.Record record = 1;
+}
+
+message GetRecordRequest {
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+  string record_id = 2 [(buf.validate.field).string.min_len = 1];
+}
+
+message ListRecordsRequest {
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+  string domain_id = 2;
+  int32 page_size = 3;
+  string page_token = 4;
+}
+
+message ListRecordsResponse {
+  repeated geniustechspace.dns.record.v1.Record records = 1;
+  string next_page_token = 2;
+}
+
+message UpdateRecordRequest {
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+  geniustechspace.dns.record.v1.Record record = 2;
+}
+
+message DeleteRecordRequest {
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+  string record_id = 2 [(buf.validate.field).string.min_len = 1];
+}
+
+message GetRecordResponse {
+  geniustechspace.dns.record.v1.Record record = 1;
+}
+
+message UpdateRecordResponse {
+  geniustechspace.dns.record.v1.Record record = 1;
+}
+
+message DeleteRecordResponse {
+  // Empty response
+}
+
+service RecordService {
+  rpc CreateRecord(CreateRecordRequest) returns (CreateRecordResponse);
+  rpc GetRecord(GetRecordRequest) returns (GetRecordResponse);
+  rpc ListRecords(ListRecordsRequest) returns (ListRecordsResponse);
+  rpc UpdateRecord(UpdateRecordRequest) returns (UpdateRecordResponse);
+  rpc DeleteRecord(DeleteRecordRequest) returns (DeleteRecordResponse);
+}

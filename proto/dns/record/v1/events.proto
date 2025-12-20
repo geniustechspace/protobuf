@@ -1,0 +1,38 @@
+// Events for DNS record package (deprecated - use dns/record/events/v1/)
+// DEPRECATED: This file is maintained for backward compatibility only.
+// Use dns/record/events/v1/events.proto for new implementations.
+syntax = "proto3";
+
+package geniustechspace.dns.record.v1;
+
+import "dns/record/v1/enums.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/dns/record/v1;dnsrecordv1";
+
+message RecordCreated {
+  string event_id = 1;
+  google.protobuf.Timestamp event_timestamp = 2;
+  string tenant_id = 3;
+  string record_id = 4;
+  string domain_id = 5;
+  string name = 6;
+  RecordType type = 7;
+  string created_by = 8;
+}
+
+message RecordUpdated {
+  string event_id = 1;
+  google.protobuf.Timestamp event_timestamp = 2;
+  string tenant_id = 3;
+  string record_id = 4;
+  string updated_by = 5;
+}
+
+message RecordDeleted {
+  string event_id = 1;
+  google.protobuf.Timestamp event_timestamp = 2;
+  string tenant_id = 3;
+  string record_id = 4;
+  string deleted_by = 5;
+}

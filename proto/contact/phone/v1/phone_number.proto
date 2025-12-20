@@ -1,0 +1,77 @@
+// DOMAIN: Contact - Phone Numbers
+// COMPLIANCE: GDPR Article 5, SOC 2 CC6.1
+// SECURITY: PII data - encryption at rest required
+
+syntax = "proto3";
+
+package geniustechspace.contact.phone.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/timestamp.proto";
+import "contact/phone/v1/enums.proto";
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/contact/phone/v1;contactphonev1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.contact.phone.v1";
+
+// PhoneNumber represents a real-world phone number.
+// A number may or may not be owned by a platform user.
+message PhoneNumber {
+  // Phone number ID (PK)
+  string phone_id = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Owner user ID (nullable)
+  // NULL → number not claimed by a platform user
+  string owner_id = 2 [(buf.validate.field).string.max_len = 512];
+
+  // E.164 formatted phone number
+  string number = 3 [
+    (buf.validate.field).string.pattern = "^\\+[1-9]\\d{1,14}$"
+  ];
+
+  // Classification of the number
+  PhoneNumberLabel label = 4 [
+    (buf.validate.field).enum.defined_only = true
+  ];
+
+  // Custom label when label = CUSTOM
+  string custom_label = 5 [
+    (buf.validate.field).string.max_len = 100
+  ];
+
+  // Country code extracted from E.164
+  string country_code = 6 [
+    (buf.validate.field).string.max_len = 5
+  ];
+
+  // Optional extension (business phones)
+  string extension = 7 [
+    (buf.validate.field).string.max_len = 10
+  ];
+
+  // Metadata tags describing the number itself
+  repeated string tags = 8 [(buf.validate.field).repeated = {
+    max_items: 20
+    items: {
+      string: {
+        min_len: 1
+        max_len: 50
+        pattern: "^[a-z0-9-]+$"
+      }
+    }
+  }];
+
+  // Primary number flag (per owner)
+  bool is_primary = 9;
+
+  // Verification timestamp
+  google.protobuf.Timestamp verified_at = 20;
+
+  // Audit fields
+  google.protobuf.Timestamp created_at = 21 [(buf.validate.field).required = true];
+  google.protobuf.Timestamp updated_at = 22;
+  google.protobuf.Timestamp deleted_at = 23;
+
+  // Optimistic locking
+  int64 version = 30 [(buf.validate.field).int64.gte = 1];
+}

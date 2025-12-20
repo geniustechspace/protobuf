@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package geniustechspace.contact.phone.v1;
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/contact/phone/v1;contactphonev1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.contact.phone.v1";
+
+// PhoneNumberLabel - standard phone number classifications.
+enum PhoneNumberLabel {
+  UNSPECIFIED = 0;
+  MOBILE = 1;
+  HOME = 2;
+  WORK = 3;
+  FAX = 4;
+  PAGER = 5;
+  CUSTOM = 6;
+}

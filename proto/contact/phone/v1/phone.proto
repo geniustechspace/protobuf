@@ -25,21 +25,16 @@ enum PhoneNumberLabel {
   CUSTOM = 6; // Custom label (use custom_label field)
 }
 
-// UserPhoneNumber - user's phone numbers.
+// PhoneNumber - user's phone numbers.
 // PII: Yes - GDPR Article 4(1) personal identifier.
 // MULTI-RECORD: Users can have multiple phone numbers (mobile, home, work, fax).
 // USAGE: Contact, 2FA/MFA, SMS notifications, voice calls, verification.
-message UserPhoneNumber {
+message PhoneNumber {
   // Phone number ID. Primary key.
   string phone_id = 1 [(buf.validate.field).string.max_len = 512];
 
   // User ID. Foreign key to identity system.
-  string user_id = 2 [(buf.validate.field).string.max_len = 512];
-
-  // Hierarchical tenant path for nested multi-tenancy.
-  // Examples: "acme-corp", "acme-corp/customer-1", "acme-corp/customer-1/sub-org"
-  // ISOLATION: Supports unlimited nesting levels for complex B2B2B... scenarios.
-  string tenant_path = 3 [(buf.validate.field).string.max_len = 512];
+  string owner_id = 2 [(buf.validate.field).string.max_len = 512];
 
   // Phone number classification label.
   // USAGE: Determines communication context and routing behavior.

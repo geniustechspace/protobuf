@@ -1,0 +1,478 @@
+// DOMAIN: DNS - Domain Management
+// COMPLIANCE: SOC 2 CC6.1 (Access Control), GDPR Article 5 (Data Accuracy), ISO 27001 A.12.1.2
+// SECURITY: Authentication required, tenant isolation enforced
+// PII: Yes - Registrant contact information may contain personal identifiers
+
+syntax = "proto3";
+
+package geniustechspace.dns.domain.v1;
+
+import "buf/validate/validate.proto";
+import "core/api/pagination/v1/messages.proto";
+import "dns/domain/v1/enums.proto";
+import "google/protobuf/field_mask.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/dns/domain/v1;dnsdomainv1";
+
+// Domain represents a registered domain name with full registrar metadata.
+// COMPLIANCE: SOC 2 CC6.1 (Domain ownership), ICANN requirements
+// SECURITY: Tenant isolation enforced via tenant_path
+// PII: Yes - Contact information contains personal identifiers
+message Domain {
+  // Unique domain identifier. IMMUTABLE.
+  // FORMAT: UUID v4 or ULID
+  // VALIDATION: Must be valid UUID or ULID format
+  // Example: "01HQZX123456789ABCDEFGHJKM"
+  string domain_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Hierarchical tenant path for multi-tenancy isolation. REQUIRED.
+  // SECURITY: Enforces tenant isolation at application layer
+  // COMPLIANCE: SOC 2 CC6.1 (Logical access controls)
+  // FORMAT: Hierarchical path with forward slashes
+  // VALIDATION: Maximum 512 characters
+  // Examples: "acme-corp", "acme-corp/customer-1", "acme-corp/customer-1/project-alpha"
+  string tenant_path = 2 [(buf.validate.field).string.max_len = 512];
+
+  // Fully qualified domain name. REQUIRED.
+  // FORMAT: Valid DNS domain name (RFC 1035)
+  // VALIDATION: Lowercase alphanumeric with dots and hyphens
+  // NORMALIZATION: Always stored in lowercase
+  // Examples: "example.com", "sub.example.co.uk"
+  string name = 3 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 253
+    pattern: "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$"
+  }];
+
+  // Current lifecycle status of the domain. REQUIRED.
+  // COMPLIANCE: SOC 2 CC6.3 (Change tracking)
+  // DEFAULT: DOMAIN_STATUS_PENDING for new registrations
+  DomainStatus status = 4 [(buf.validate.field).enum.defined_only = true];
+
+  // Registrar provider managing this domain. REQUIRED.
+  // COMPLIANCE: SOC 2 CC9.2 (Vendor management)
+  // USAGE: Determines which API to use for domain operations
+  RegistrarProvider registrar = 5 [(buf.validate.field).enum.defined_only = true];
+
+  // Registrant owner identifier. REQUIRED.
+  // PII: Yes - May link to personal account
+  // COMPLIANCE: GDPR Article 4(1) (Personal identifier)
+  // FORMAT: Account ID, user ID, or organization ID
+  // Example: "usr_01HQZX123456789ABCDEFGHJKM"
+  string registrant_id = 6 [(buf.validate.field).string.min_len = 1];
+
+  // Registrant contact information.
+  // PII: Yes - Contains name, email, phone, address
+  // COMPLIANCE: GDPR Article 5, ICANN WHOIS requirements
+  // ENCRYPTION: Required at rest
+  Contact registrant_contact = 7;
+
+  // Administrative contact information.
+  // PII: Yes - Contains name, email, phone, address
+  // COMPLIANCE: GDPR Article 5, ICANN WHOIS requirements
+  Contact admin_contact = 8;
+
+  // Technical contact information.
+  // PII: Yes - Contains name, email, phone, address
+  // COMPLIANCE: GDPR Article 5, ICANN WHOIS requirements
+  Contact technical_contact = 9;
+
+  // Billing contact information.
+  // PII: Yes - Contains name, email, phone, address
+  // COMPLIANCE: GDPR Article 5, PCI-DSS if payment info included
+  Contact billing_contact = 10;
+
+  // Authoritative nameservers for this domain.
+  // COMPLIANCE: SOC 2 CC7.2 (System monitoring)
+  // VALIDATION: Maximum 13 nameservers per RFC 1035
+  // FORMAT: Fully qualified nameserver hostnames
+  // Examples: ["ns1.example.com", "ns2.example.com"]
+  repeated Nameserver nameservers = 11 [(buf.validate.field).repeated = {max_items: 13}];
+
+  // Nameserver configuration status. REQUIRED.
+  // COMPLIANCE: SOC 2 CC7.2 (System monitoring)
+  NameserverStatus nameserver_status = 12 [(buf.validate.field).enum.defined_only = true];
+
+  // DNSSEC signing status. REQUIRED.
+  // COMPLIANCE: NIST SP 800-81-2, SOC 2 CC6.6
+  // SECURITY: Protects against DNS spoofing and cache poisoning
+  DNSSECStatus dnssec_status = 13 [(buf.validate.field).enum.defined_only = true];
+
+  // DNSSEC DS (Delegation Signer) records.
+  // SECURITY: Published in parent zone for chain of trust
+  // FORMAT: DS record specification per RFC 4034
+  repeated DSRecord ds_records = 14;
+
+  // Auto-renewal status. REQUIRED.
+  // COMPLIANCE: Consumer protection, SOC 2 CC6.1
+  // DEFAULT: ENABLED for new registrations
+  AutoRenewStatus auto_renew_status = 15 [(buf.validate.field).enum.defined_only = true];
+
+  // Transfer lock status. REQUIRED.
+  // COMPLIANCE: ICANN Transfer Policy, SOC 2 CC6.1
+  // SECURITY: Prevents unauthorized transfers
+  // DEFAULT: LOCKED for new registrations
+  TransferLockStatus transfer_lock_status = 16 [(buf.validate.field).enum.defined_only = true];
+
+  // WHOIS privacy protection status. REQUIRED.
+  // COMPLIANCE: GDPR Article 5 (Privacy by design)
+  // PII: When enabled, masks registrant info in public WHOIS
+  PrivacyProtectionStatus privacy_protection_status = 17 [(buf.validate.field).enum.defined_only = true];
+
+  // Domain registration date. IMMUTABLE.
+  // COMPLIANCE: ICANN requirements, SOC 2 CC6.3
+  // FORMAT: RFC 3339 timestamp
+  google.protobuf.Timestamp registered_at = 18;
+
+  // Domain expiration date.
+  // COMPLIANCE: ICANN requirements, consumer protection
+  // ALERT: Monitor for approaching expiration
+  // FORMAT: RFC 3339 timestamp
+  google.protobuf.Timestamp expires_at = 19;
+
+  // Domain renewal date (last renewed).
+  // COMPLIANCE: SOC 2 CC6.3 (Audit trail)
+  // FORMAT: RFC 3339 timestamp
+  google.protobuf.Timestamp renewed_at = 20;
+
+  // Authorization code for domain transfers.
+  // SECURITY: Required for domain transfer between registrars
+  // COMPLIANCE: ICANN Transfer Policy
+  // ENCRYPTION: Must be encrypted at rest and in transit
+  // SENSITIVE: Should only be returned to authorized users
+  // FORMAT: Registrar-specific format, typically 8-16 characters
+  string auth_code = 21;
+
+  // Additional metadata and tags for organization.
+  // USAGE: Custom categorization, billing codes, project IDs
+  // Examples: {"project": "website-redesign", "cost-center": "IT-001"}
+  map<string, string> metadata = 22;
+
+  // Record timestamp when entity was created. IMMUTABLE.
+  // COMPLIANCE: SOC 2 CC6.3, GDPR Article 30 (audit trail)
+  // VALIDATION: Required for all persisted entities
+  google.protobuf.Timestamp created_at = 23 [(buf.validate.field).required = true];
+
+  // Record timestamp when entity was last updated.
+  // COMPLIANCE: SOC 2 CC6.3 (change tracking)
+  google.protobuf.Timestamp updated_at = 24;
+
+  // Soft deletion timestamp. If set, entity is considered deleted.
+  // COMPLIANCE: GDPR Article 17 (Right to erasure), SOC 2 CC6.3 (audit trail)
+  // QUERY: Use "WHERE deleted_at IS NULL" for active records
+  // USAGE: Enables audit trail while removing from active queries
+  google.protobuf.Timestamp deleted_at = 25;
+
+  // Optimistic locking version counter. Incremented on each update.
+  // COMPLIANCE: SOC 2 CC6.1 (Data integrity, concurrent modification protection)
+  // USAGE: Prevents lost updates in concurrent modification scenarios
+  // CLIENT: Include current version in update requests
+  int64 version = 26;
+}
+
+// Contact represents domain contact information.
+// PII: Yes - Contains personal identifiable information
+// COMPLIANCE: GDPR Article 5, ICANN WHOIS requirements
+// ENCRYPTION: Required at rest
+message Contact {
+  // Contact full name. REQUIRED.
+  // PII: Yes - GDPR Article 4(1) personal identifier
+  // VALIDATION: 1-255 characters
+  // Example: "John Smith"
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 255
+  }];
+
+  // Organization name. Optional.
+  // VALIDATION: Maximum 255 characters
+  // Example: "Acme Corporation"
+  string organization = 2 [(buf.validate.field).string.max_len = 255];
+
+  // Email address. REQUIRED.
+  // PII: Yes - GDPR Article 4(1) personal identifier
+  // VALIDATION: RFC 5322 email format
+  // ENCRYPTION: Required at rest
+  // Example: "john.smith@example.com"
+  string email = 3 [(buf.validate.field).string.email = true];
+
+  // Phone number in E.164 format. Optional.
+  // PII: Yes - GDPR Article 4(1) personal identifier
+  // VALIDATION: E.164 international format
+  // FORMAT: +[country][number], no spaces or special chars
+  // Example: "+14155551234"
+  string phone = 4 [(buf.validate.field).string.pattern = "^\\+[1-9]\\d{1,14}$"];
+
+  // Fax number in E.164 format. Optional.
+  // PII: Yes - GDPR Article 4(1) personal identifier
+  // FORMAT: +[country][number]
+  string fax = 5 [(buf.validate.field).string.pattern = "^\\+[1-9]\\d{1,14}$"];
+
+  // Street address. REQUIRED.
+  // PII: Yes - GDPR Article 4(1) location data
+  // VALIDATION: Maximum 255 characters
+  // Example: "123 Main Street"
+  string address = 6 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 255
+  }];
+
+  // City name. REQUIRED.
+  // PII: Yes - GDPR Article 4(1) location data
+  // VALIDATION: Maximum 100 characters
+  // Example: "San Francisco"
+  string city = 7 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 100
+  }];
+
+  // State or province code. Optional.
+  // PII: Yes - GDPR Article 4(1) location data
+  // FORMAT: ISO 3166-2 subdivision code
+  // VALIDATION: Maximum 50 characters
+  // Example: "CA" (for California)
+  string state = 8 [(buf.validate.field).string.max_len = 50];
+
+  // Postal or ZIP code. Optional.
+  // PII: Yes - GDPR Article 4(1) location data
+  // VALIDATION: Maximum 20 characters
+  // Example: "94105"
+  string postal_code = 9 [(buf.validate.field).string.max_len = 20];
+
+  // Country code. REQUIRED.
+  // FORMAT: ISO 3166-1 alpha-2 country code
+  // VALIDATION: Exactly 2 uppercase letters
+  // Example: "US"
+  string country = 10 [(buf.validate.field).string = {
+    len: 2
+    pattern: "^[A-Z]{2}$"
+  }];
+}
+
+// Nameserver represents an authoritative DNS nameserver.
+// COMPLIANCE: RFC 1035, SOC 2 CC7.2
+message Nameserver {
+  // Fully qualified nameserver hostname. REQUIRED.
+  // FORMAT: Valid DNS hostname per RFC 1035
+  // VALIDATION: Maximum 253 characters
+  // Example: "ns1.example.com"
+  string hostname = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 253
+    pattern: "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$"
+  }];
+
+  // IPv4 address of nameserver (glue record). Optional.
+  // FORMAT: IPv4 dotted decimal notation
+  // USAGE: Required for nameservers within the domain being registered
+  // Example: "192.0.2.1"
+  string ipv4_address = 2 [(buf.validate.field).string.ipv4 = true];
+
+  // IPv6 address of nameserver (glue record). Optional.
+  // FORMAT: IPv6 notation per RFC 4291
+  // USAGE: Required for nameservers within the domain being registered
+  // Example: "2001:db8::1"
+  string ipv6_address = 3 [(buf.validate.field).string.ipv6 = true];
+}
+
+// DSRecord represents a DNSSEC Delegation Signer record.
+// COMPLIANCE: RFC 4034, NIST SP 800-81-2
+// SECURITY: Establishes chain of trust in DNSSEC
+message DSRecord {
+  // Key tag for DNSKEY record. REQUIRED.
+  // VALIDATION: 16-bit unsigned integer (0-65535)
+  uint32 key_tag = 1 [(buf.validate.field).uint32.lte = 65535];
+
+  // DNSSEC algorithm number. REQUIRED.
+  // VALIDATION: Per IANA DNSSEC Algorithm Numbers registry
+  // Common values: 8 (RSA/SHA-256), 13 (ECDSA P-256/SHA-256), 15 (Ed25519)
+  uint32 algorithm = 2 [(buf.validate.field).uint32.lte = 255];
+
+  // Digest type. REQUIRED.
+  // VALIDATION: Per IANA DS RR Type Digest Algorithms registry
+  // Common values: 2 (SHA-256), 4 (SHA-384)
+  uint32 digest_type = 3 [(buf.validate.field).uint32.lte = 255];
+
+  // Hexadecimal digest of DNSKEY record. REQUIRED.
+  // FORMAT: Hexadecimal string (uppercase or lowercase)
+  // VALIDATION: Length depends on digest_type (SHA-256: 64 chars, SHA-384: 96 chars)
+  string digest = 4 [(buf.validate.field).string = {
+    min_len: 1
+    pattern: "^[0-9A-Fa-f]+$"
+  }];
+}
+
+// CreateDomainRequest creates a new domain registration.
+// AUTHENTICATION: Required - valid bearer token
+// AUTHORIZATION: Requires 'dns:domains:create' permission
+// COMPLIANCE: SOC 2 CC6.1 (Access control), ICANN registration requirements
+// RATE LIMIT: 10/min per tenant
+message CreateDomainRequest {
+  // Hierarchical tenant path. REQUIRED.
+  // SECURITY: Tenant isolation enforced
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Domain name to register. REQUIRED.
+  // VALIDATION: Valid DNS domain name format
+  string name = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 253
+    pattern: "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$"
+  }];
+
+  // Registrar provider to use. REQUIRED.
+  RegistrarProvider registrar = 3 [(buf.validate.field).enum.defined_only = true];
+
+  // Registrant account ID. REQUIRED.
+  string registrant_id = 4 [(buf.validate.field).string.min_len = 1];
+
+  // Registrant contact. REQUIRED.
+  Contact registrant_contact = 5 [(buf.validate.field).required = true];
+
+  // Administrative contact. Optional, defaults to registrant_contact.
+  Contact admin_contact = 6;
+
+  // Technical contact. Optional, defaults to registrant_contact.
+  Contact technical_contact = 7;
+
+  // Billing contact. Optional, defaults to registrant_contact.
+  Contact billing_contact = 8;
+
+  // Nameservers. Optional, can be configured later.
+  repeated Nameserver nameservers = 9 [(buf.validate.field).repeated.max_items = 13];
+
+  // Enable auto-renewal. Optional, defaults to true.
+  bool enable_auto_renew = 10;
+
+  // Enable transfer lock. Optional, defaults to true.
+  bool enable_transfer_lock = 11;
+
+  // Enable privacy protection. Optional, defaults to true.
+  bool enable_privacy_protection = 12;
+
+  // Registration period in years. REQUIRED.
+  // VALIDATION: 1-10 years
+  uint32 years = 13 [(buf.validate.field).uint32 = {
+    gte: 1
+    lte: 10
+  }];
+
+  // Additional metadata. Optional.
+  map<string, string> metadata = 14;
+}
+
+// CreateDomainResponse returns the created domain.
+message CreateDomainResponse {
+  // Created domain entity. REQUIRED.
+  Domain domain = 1 [(buf.validate.field).required = true];
+}
+
+// GetDomainRequest retrieves a single domain by ID.
+// AUTHENTICATION: Required - valid bearer token
+// AUTHORIZATION: Requires 'dns:domains:read' permission
+// COMPLIANCE: SOC 2 CC6.1
+// RATE LIMIT: 1000/min per tenant
+message GetDomainRequest {
+  // Hierarchical tenant path. REQUIRED.
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Domain identifier. REQUIRED.
+  string domain_id = 2 [(buf.validate.field).string.min_len = 1];
+}
+
+// ListDomainsRequest lists domains with pagination, filtering, and sorting.
+// AUTHENTICATION: Required - valid bearer token
+// AUTHORIZATION: Requires 'dns:domains:list' permission
+// COMPLIANCE: SOC 2 CC6.1
+// RATE LIMIT: 100/min per tenant
+message ListDomainsRequest {
+  // Hierarchical tenant path. REQUIRED.
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Pagination parameters. REQUIRED.
+  geniustechspace.core.api.pagination.v1.PaginationRequest pagination = 2 [(buf.validate.field).required = true];
+
+  // Sorting specification. Optional.
+  // FORMAT: Google AIP-132 standard (e.g., "expires_at desc", "name")
+  // ALLOWED FIELDS: name, status, registered_at, expires_at, created_at
+  // Example: "expires_at desc, name"
+  string order_by = 3;
+
+  // Filter specification. Optional.
+  // FORMAT: Google AIP-160 standard
+  // ALLOWED FIELDS: status, registrar, dnssec_status, auto_renew_status
+  // OPERATORS: =, !=, AND, OR
+  // Examples: "status='DOMAIN_STATUS_ACTIVE'", "expires_at < '2025-12-31T00:00:00Z'"
+  string filter = 4;
+}
+
+// ListDomainsResponse returns paginated domains.
+message ListDomainsResponse {
+  // List of domains matching query.
+  repeated Domain domains = 1;
+
+  // Pagination metadata. REQUIRED.
+  geniustechspace.core.api.pagination.v1.PaginationResponse pagination = 2 [(buf.validate.field).required = true];
+}
+
+// UpdateDomainRequest updates an existing domain.
+// AUTHENTICATION: Required - valid bearer token
+// AUTHORIZATION: Requires 'dns:domains:update' permission
+// COMPLIANCE: SOC 2 CC6.1 (Change management), SOC 2 CC6.3 (Audit trail)
+// RATE LIMIT: 100/min per tenant
+message UpdateDomainRequest {
+  // Hierarchical tenant path. REQUIRED.
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Domain identifier. REQUIRED.
+  string domain_id = 2 [(buf.validate.field).string.min_len = 1];
+
+  // Updated domain fields. REQUIRED.
+  // Only fields specified in update_mask will be updated.
+  Domain domain = 3 [(buf.validate.field).required = true];
+
+  // Field mask specifying which fields to update.
+  // REQUIRED: Prevents accidental overwrites
+  // FORMAT: Google FieldMask standard
+  // Examples: "nameservers", "auto_renew_status,transfer_lock_status"
+  google.protobuf.FieldMask update_mask = 4 [(buf.validate.field).required = true];
+
+  // Current version for optimistic locking. REQUIRED.
+  // COMPLIANCE: SOC 2 CC6.1 (Prevents lost updates)
+  int64 version = 5 [(buf.validate.field).int64.gte = 0];
+}
+
+// DeleteDomainRequest soft-deletes a domain.
+// AUTHENTICATION: Required - valid bearer token
+// AUTHORIZATION: Requires 'dns:domains:delete' permission
+// COMPLIANCE: SOC 2 CC6.1, GDPR Article 17 (Right to erasure)
+// RATE LIMIT: 10/min per tenant
+// NOTE: This is a soft delete (sets deleted_at timestamp)
+message DeleteDomainRequest {
+  // Hierarchical tenant path. REQUIRED.
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Domain identifier. REQUIRED.
+  string domain_id = 2 [(buf.validate.field).string.min_len = 1];
+
+  // Current version for optimistic locking. REQUIRED.
+  int64 version = 3 [(buf.validate.field).int64.gte = 0];
+}
+
+// GetDomainResponse returns domain entity.
+message GetDomainResponse {
+  // Domain entity. REQUIRED.
+  Domain domain = 1 [(buf.validate.field).required = true];
+}
+
+// UpdateDomainResponse returns updated domain entity.
+message UpdateDomainResponse {
+  // Updated domain entity. REQUIRED.
+  Domain domain = 1 [(buf.validate.field).required = true];
+}
+
+// DeleteDomainResponse returns empty on successful deletion.
+message DeleteDomainResponse {
+  // Empty response on success.
+}

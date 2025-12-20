@@ -1,0 +1,178 @@
+// DOMAIN: DNS - Record Management
+// COMPLIANCE: SOC 2 CC6.1, RFC 1035 (DNS Standards), ISO 27001 A.12.1.2
+// SECURITY: Authentication required, tenant isolation enforced
+// PII: No - Enums contain no personal data
+
+syntax = "proto3";
+
+package geniustechspace.dns.record.v1;
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/dns/record/v1;dnsrecordv1";
+
+// RecordType defines DNS record types per IANA DNS Parameters.
+// COMPLIANCE: RFC 1035, RFC 3596, RFC 2782, RFC 7208
+// USAGE: Determines record format and validation rules
+// REFERENCE: https://www.iana.org/assignments/dns-parameters/dns-parameters.xhtml
+enum RecordType {
+  // Default value. MUST NOT be used in stored records.
+  RECORD_TYPE_UNSPECIFIED = 0;
+
+  // A record: IPv4 address mapping. RFC 1035.
+  // FORMAT: IPv4 dotted decimal (e.g., "192.0.2.1")
+  // USAGE: Maps hostname to IPv4 address
+  RECORD_TYPE_A = 1;
+
+  // AAAA record: IPv6 address mapping. RFC 3596.
+  // FORMAT: IPv6 notation (e.g., "2001:db8::1")
+  // USAGE: Maps hostname to IPv6 address
+  RECORD_TYPE_AAAA = 2;
+
+  // CNAME record: Canonical name (alias). RFC 1035.
+  // FORMAT: Fully qualified domain name
+  // USAGE: Creates alias to another domain name
+  // CONSTRAINT: Cannot coexist with other records at same name
+  RECORD_TYPE_CNAME = 3;
+
+  // MX record: Mail exchange server. RFC 1035.
+  // FORMAT: Priority and mail server hostname
+  // USAGE: Specifies mail servers for domain
+  // REQUIRES: priority field
+  RECORD_TYPE_MX = 4;
+
+  // TXT record: Text information. RFC 1035.
+  // FORMAT: Arbitrary text strings (max 255 chars per string)
+  // USAGE: SPF, DKIM, domain verification, arbitrary metadata
+  // COMPLIANCE: RFC 7208 (SPF), RFC 6376 (DKIM)
+  RECORD_TYPE_TXT = 5;
+
+  // NS record: Nameserver delegation. RFC 1035.
+  // FORMAT: Fully qualified nameserver hostname
+  // USAGE: Delegates subdomain to specific nameservers
+  RECORD_TYPE_NS = 6;
+
+  // SOA record: Start of authority. RFC 1035.
+  // FORMAT: Primary nameserver, admin email, serial, timers
+  // USAGE: Defines authoritative information about zone
+  // NOTE: Typically auto-managed by DNS provider
+  RECORD_TYPE_SOA = 7;
+
+  // SRV record: Service locator. RFC 2782.
+  // FORMAT: Priority, weight, port, target hostname
+  // USAGE: Locates services (e.g., _sip._tcp.example.com)
+  // REQUIRES: priority, weight, port fields
+  RECORD_TYPE_SRV = 8;
+
+  // PTR record: Pointer for reverse DNS. RFC 1035.
+  // FORMAT: Fully qualified domain name
+  // USAGE: Maps IP address to hostname (reverse DNS)
+  RECORD_TYPE_PTR = 9;
+
+  // CAA record: Certification Authority Authorization. RFC 8659.
+  // FORMAT: Flags, tag, value
+  // USAGE: Specifies which CAs can issue certificates
+  // COMPLIANCE: Required by many CAs for certificate issuance
+  // SECURITY: Prevents unauthorized certificate issuance
+  RECORD_TYPE_CAA = 10;
+
+  // NAPTR record: Name Authority Pointer. RFC 3403.
+  // FORMAT: Order, preference, flags, service, regexp, replacement
+  // USAGE: URI/URN resolution, ENUM, dynamic delegation
+  RECORD_TYPE_NAPTR = 11;
+
+  // TLSA record: TLS Authentication. RFC 6698.
+  // FORMAT: Usage, selector, matching type, certificate data
+  // USAGE: DANE (DNS-based Authentication of Named Entities)
+  // SECURITY: Binds TLS certificates to DNS names
+  RECORD_TYPE_TLSA = 12;
+
+  // SSHFP record: SSH fingerprint. RFC 4255.
+  // FORMAT: Algorithm, fingerprint type, fingerprint
+  // USAGE: Publishes SSH host key fingerprints
+  // SECURITY: Validates SSH connections via DNSSEC
+  RECORD_TYPE_SSHFP = 13;
+
+  // DNSKEY record: DNSSEC public key. RFC 4034.
+  // FORMAT: Flags, protocol, algorithm, public key
+  // USAGE: DNSSEC zone signing keys
+  // SECURITY: Part of DNSSEC chain of trust
+  RECORD_TYPE_DNSKEY = 14;
+
+  // DS record: Delegation Signer. RFC 4034.
+  // FORMAT: Key tag, algorithm, digest type, digest
+  // USAGE: DNSSEC delegation from parent zone
+  // SECURITY: Part of DNSSEC chain of trust
+  RECORD_TYPE_DS = 15;
+}
+
+// RecordStatus represents the lifecycle and health state of a DNS record.
+// COMPLIANCE: SOC 2 CC6.3 (Change tracking), SOC 2 CC7.2 (System monitoring)
+// USAGE: Track record state through creation, propagation, and deletion
+enum RecordStatus {
+  // Default value. MUST NOT be used in stored records.
+  RECORD_STATUS_UNSPECIFIED = 0;
+
+  // Record is active and serving queries.
+  // DNS resolution is working normally.
+  RECORD_STATUS_ACTIVE = 1;
+
+  // Record is pending DNS propagation.
+  // Created or updated but not yet propagated globally.
+  // TIMING: Typically takes 5 minutes to 48 hours
+  RECORD_STATUS_PENDING_PROPAGATION = 2;
+
+  // Record validation or health check failed.
+  // May indicate configuration errors or upstream issues.
+  // ALERT: Requires investigation
+  RECORD_STATUS_FAILED = 3;
+
+  // Record is disabled by admin or policy.
+  // Not serving queries but not deleted.
+  // USAGE: Temporary suspension without deletion
+  RECORD_STATUS_DISABLED = 4;
+
+  // Record has been soft-deleted (deleted_at is set).
+  // COMPLIANCE: GDPR Article 17, SOC 2 CC6.3 (Audit trail)
+  // QUERY: Use "WHERE deleted_at IS NULL" for active records
+  RECORD_STATUS_DELETED = 5;
+}
+
+// HealthCheckStatus indicates DNS record health check result.
+// COMPLIANCE: SOC 2 CC7.2 (System monitoring)
+// USAGE: Monitor record resolution and target availability
+enum HealthCheckStatus {
+  // Default value. Health check not performed yet.
+  HEALTH_CHECK_STATUS_UNSPECIFIED = 0;
+
+  // Health check passed. Record is resolving correctly.
+  HEALTH_CHECK_STATUS_HEALTHY = 1;
+
+  // Health check failed. Record or target not responding.
+  // ALERT: Immediate attention required
+  HEALTH_CHECK_STATUS_UNHEALTHY = 2;
+
+  // Health check is degraded. Partial failures or warnings.
+  // ALERT: Monitor for escalation
+  HEALTH_CHECK_STATUS_DEGRADED = 3;
+
+  // Health check not applicable for this record type.
+  // Example: TXT records don't have target health checks
+  HEALTH_CHECK_STATUS_NOT_APPLICABLE = 4;
+}
+
+// RecordClass represents DNS record class per RFC 1035.
+// COMPLIANCE: RFC 1035 Section 3.2.4
+// NOTE: In practice, only IN (Internet) class is widely used
+enum RecordClass {
+  // Default value. MUST NOT be used in stored records.
+  RECORD_CLASS_UNSPECIFIED = 0;
+
+  // Internet class. Standard for internet DNS.
+  // USAGE: Default for all modern DNS records
+  RECORD_CLASS_IN = 1;
+
+  // Chaos class. Rarely used, historical.
+  RECORD_CLASS_CH = 2;
+
+  // Hesiod class. Rarely used, historical.
+  RECORD_CLASS_HS = 3;
+}

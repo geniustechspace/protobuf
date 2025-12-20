@@ -66,7 +66,7 @@ package geniustechspace.users.v1;  // Format: geniustechspace.domain.version
 ### Field Numbering Rules
 
 - Start at 1 (field 0 is invalid in proto3)
-- tenant_id always field 1 or 2 (field 2 if entity_id is field 1)
+- tenant_path always field 1 or 2 (field 2 if entity_id is field 1). Use hierarchical tenant paths (e.g., "acme-corp", "acme-corp/customer-1") and prefer a max length of 512.
 - NEVER reuse field numbers - use `reserved` instead
 
 ### Go Package Options
@@ -121,8 +121,8 @@ rpc CreateUser(CreateUserRequest) returns (CreateUserResponse);
 import "core/api/pagination/v1/messages.proto";
 
 message ListUsersRequest {
-  string tenant_id = 1;
-  
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+
   // Pagination (separate concern)
   core.api.pagination.v1.PaginationRequest pagination = 2;
   
@@ -163,7 +163,7 @@ DO NOT use nested `core.metadata.v1.Metadata` message in entities. Use direct fi
 ```protobuf
 message User {
   string user_id = 1;
-  string tenant_id = 2;
+  string tenant_path = 2 [(buf.validate.field).string.max_len = 512];
   // ... domain-specific fields ...
 
   // Created timestamp. IMMUTABLE after creation.
@@ -204,7 +204,7 @@ message User {
 message UserCreated {
   string event_id = 1;  // UUID for event tracing
   google.protobuf.Timestamp event_timestamp = 2;
-  string tenant_id = 3;
+  string tenant_path = 3 [(buf.validate.field).string.max_len = 512];
   string user_id = 4;
   string email = 5;  // Safe for event - no password
   string created_by = 6;
@@ -251,7 +251,7 @@ Before committing:
 2. Create modular files: `messages.proto`, `service.proto`, `events.proto`, `enums.proto`
 3. Add domain README explaining purpose and patterns
 4. Include flattened audit fields in all entities (created_at, updated_at, deleted_at, version)
-5. Include tenant_id in all requests
+5. Include tenant_path in all requests (use hierarchical tenant paths; max_len=512)
 6. Add protovalidate annotations
 7. Document compliance requirements
 8. Update main README.md with domain description

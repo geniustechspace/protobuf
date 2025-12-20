@@ -1,0 +1,66 @@
+// API layer for DNS domain package (gRPC services + request/response messages)
+syntax = "proto3";
+
+package geniustechspace.dns.domain.api.v1;
+
+import "buf/validate/validate.proto";
+import "dns/domain/v1/messages.proto";
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/dns/domain/api/v1;dnsdomainapiv1";
+
+message CreateDomainRequest {
+  // Hierarchical tenant path for multi-tenancy.
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+  string name = 2 [(buf.validate.field).string.pattern = "^[a-z0-9.-]+$"];
+  string registrant = 3 [(buf.validate.field).string.min_len = 1];
+}
+
+message CreateDomainResponse {
+  geniustechspace.dns.domain.v1.Domain domain = 1;
+}
+
+message GetDomainRequest {
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+  string domain_id = 2 [(buf.validate.field).string.min_len = 1];
+}
+
+message ListDomainsRequest {
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+  int32 page_size = 2;
+  string page_token = 3;
+}
+
+message ListDomainsResponse {
+  repeated geniustechspace.dns.domain.v1.Domain domains = 1;
+  string next_page_token = 2;
+}
+
+message UpdateDomainRequest {
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+  geniustechspace.dns.domain.v1.Domain domain = 2;
+}
+
+message DeleteDomainRequest {
+  string tenant_path = 1 [(buf.validate.field).string.max_len = 512];
+  string domain_id = 2 [(buf.validate.field).string.min_len = 1];
+}
+
+message GetDomainResponse {
+  geniustechspace.dns.domain.v1.Domain domain = 1;
+}
+
+message UpdateDomainResponse {
+  geniustechspace.dns.domain.v1.Domain domain = 1;
+}
+
+message DeleteDomainResponse {
+  // Empty response
+}
+
+service DomainService {
+  rpc CreateDomain(CreateDomainRequest) returns (CreateDomainResponse);
+  rpc GetDomain(GetDomainRequest) returns (GetDomainResponse);
+  rpc ListDomains(ListDomainsRequest) returns (ListDomainsResponse);
+  rpc UpdateDomain(UpdateDomainRequest) returns (UpdateDomainResponse);
+  rpc DeleteDomain(DeleteDomainRequest) returns (DeleteDomainResponse);
+}

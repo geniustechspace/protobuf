@@ -8,7 +8,6 @@ syntax = "proto3";
 package geniustechspace.idp.identity.organization.v1;
 
 import "buf/validate/validate.proto";
-import "core/metadata/v1/metadata.proto";
 import "google/protobuf/timestamp.proto";
 
 option csharp_namespace = "GeniusTechSpace.Protobuf.Idp.Identity.Organization.V1";
@@ -136,10 +135,10 @@ enum OrganizationSize {
   SIZE_ENTERPRISE = 4;
 
   // Large Enterprise: 1001-5000 employees.
-  SIZE_LARGE_ENTERPRISE = 5;
+  LARGE_ENTERPRISE = 5;
 
   // Mega Enterprise: 5000+ employees.
-  SIZE_MEGA_ENTERPRISE = 6;
+  MEGA_ENTERPRISE = 6;
 }
 
 // OrganizationStatus - organization lifecycle states.

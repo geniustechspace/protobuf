@@ -1,0 +1,341 @@
+// DOMAIN: DNS - Domain Management Events
+// COMPLIANCE: SOC 2 CC6.3 (Audit trail), GDPR Article 30 (Record of processing)
+// SECURITY: Events published to event bus for downstream consumers
+// PII: Yes - May contain registrant information (exclude sensitive fields)
+
+syntax = "proto3";
+
+package geniustechspace.dns.domain.events.v1;
+
+import "buf/validate/validate.proto";
+import "dns/domain/v1/enums.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/dns/domain/events/v1;dnsdomainevents";
+
+// DomainCreated emitted when domain registration is successfully created.
+// EVENT: Publish to event bus for downstream consumers
+// COMPLIANCE: SOC 2 CC6.3 (Audit trail), ICANN requirements
+// PII: Limited - Excludes contact details for privacy
+// USAGE: Triggers downstream provisioning, notifications, billing
+message DomainCreated {
+  // Unique event identifier for tracing. REQUIRED.
+  // FORMAT: UUID v4 or ULID
+  // USAGE: Event deduplication and distributed tracing
+  string event_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Event occurrence timestamp. REQUIRED.
+  // COMPLIANCE: SOC 2 CC6.3 (Audit trail)
+  // FORMAT: RFC 3339 timestamp
+  google.protobuf.Timestamp event_timestamp = 2 [(buf.validate.field).required = true];
+
+  // Hierarchical tenant path. REQUIRED.
+  // SECURITY: Enables tenant-specific event routing
+  string tenant_path = 3 [(buf.validate.field).string.max_len = 512];
+
+  // Domain identifier. REQUIRED.
+  string domain_id = 4 [(buf.validate.field).string.min_len = 1];
+
+  // Domain name registered. REQUIRED.
+  // Example: "example.com"
+  string name = 5 [(buf.validate.field).string.min_len = 1];
+
+  // Registrar provider used. REQUIRED.
+  geniustechspace.dns.domain.v1.RegistrarProvider registrar = 6 [(buf.validate.field).enum.defined_only = true];
+
+  // Registrant account ID. REQUIRED.
+  // PII: May link to personal account
+  string registrant_id = 7 [(buf.validate.field).string.min_len = 1];
+
+  // Domain expiration date. REQUIRED.
+  // USAGE: Trigger renewal notifications
+  google.protobuf.Timestamp expires_at = 8 [(buf.validate.field).required = true];
+
+  // Auto-renewal enabled status.
+  bool auto_renew_enabled = 9;
+
+  // DNSSEC enabled status.
+  bool dnssec_enabled = 10;
+
+  // Actor who created the domain. REQUIRED.
+  // FORMAT: User ID or system identifier
+  // AUDIT: For compliance and accountability
+  string created_by = 11 [(buf.validate.field).string.min_len = 1];
+
+  // Correlation ID for distributed tracing. OPTIONAL.
+  // USAGE: Link related events across services
+  // FORMAT: UUID or trace ID
+  string correlation_id = 12;
+
+  // Event metadata for additional context. OPTIONAL.
+  map<string, string> metadata = 13;
+}
+
+// DomainUpdated emitted when domain configuration is modified.
+// EVENT: Publish to event bus for downstream consumers
+// COMPLIANCE: SOC 2 CC6.3 (Change tracking)
+// USAGE: Triggers change notifications, audit logging
+message DomainUpdated {
+  // Unique event identifier. REQUIRED.
+  string event_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Event timestamp. REQUIRED.
+  google.protobuf.Timestamp event_timestamp = 2 [(buf.validate.field).required = true];
+
+  // Hierarchical tenant path. REQUIRED.
+  string tenant_path = 3 [(buf.validate.field).string.max_len = 512];
+
+  // Domain identifier. REQUIRED.
+  string domain_id = 4 [(buf.validate.field).string.min_len = 1];
+
+  // Domain name. REQUIRED.
+  string name = 5 [(buf.validate.field).string.min_len = 1];
+
+  // Fields that were updated. REQUIRED.
+  // COMPLIANCE: SOC 2 CC6.3 (Field-level audit)
+  // FORMAT: Field paths per FieldMask convention
+  // Examples: ["nameservers", "auto_renew_status", "dnssec_status"]
+  repeated string updated_fields = 6;
+
+  // Actor who updated the domain. REQUIRED.
+  string updated_by = 7 [(buf.validate.field).string.min_len = 1];
+
+  // Previous version number.
+  int64 previous_version = 8;
+
+  // New version number.
+  int64 new_version = 9;
+
+  // Correlation ID for distributed tracing. OPTIONAL.
+  string correlation_id = 10;
+
+  // Event metadata. OPTIONAL.
+  map<string, string> metadata = 11;
+}
+
+// DomainStatusChanged emitted when domain status transitions.
+// EVENT: Publish to event bus for downstream consumers
+// COMPLIANCE: SOC 2 CC6.3 (State change tracking)
+// USAGE: Triggers alerts, notifications, automated workflows
+message DomainStatusChanged {
+  // Unique event identifier. REQUIRED.
+  string event_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Event timestamp. REQUIRED.
+  google.protobuf.Timestamp event_timestamp = 2 [(buf.validate.field).required = true];
+
+  // Hierarchical tenant path. REQUIRED.
+  string tenant_path = 3 [(buf.validate.field).string.max_len = 512];
+
+  // Domain identifier. REQUIRED.
+  string domain_id = 4 [(buf.validate.field).string.min_len = 1];
+
+  // Domain name. REQUIRED.
+  string name = 5 [(buf.validate.field).string.min_len = 1];
+
+  // Previous status. REQUIRED.
+  geniustechspace.dns.domain.v1.DomainStatus previous_status = 6 [(buf.validate.field).enum.defined_only = true];
+
+  // New status. REQUIRED.
+  geniustechspace.dns.domain.v1.DomainStatus new_status = 7 [(buf.validate.field).enum.defined_only = true];
+
+  // Status change reason. OPTIONAL.
+  // Examples: "Payment failure", "Admin suspension", "Expiration"
+  string reason = 8;
+
+  // Actor who triggered the change. REQUIRED.
+  string changed_by = 9 [(buf.validate.field).string.min_len = 1];
+
+  // Correlation ID for distributed tracing. OPTIONAL.
+  string correlation_id = 10;
+
+  // Event metadata. OPTIONAL.
+  map<string, string> metadata = 11;
+}
+
+// DomainExpiring emitted when domain is approaching expiration.
+// EVENT: Publish to event bus for downstream consumers
+// COMPLIANCE: Consumer protection, SOC 2 CC7.2 (Monitoring)
+// USAGE: Triggers renewal notifications and alerts
+message DomainExpiring {
+  // Unique event identifier. REQUIRED.
+  string event_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Event timestamp. REQUIRED.
+  google.protobuf.Timestamp event_timestamp = 2 [(buf.validate.field).required = true];
+
+  // Hierarchical tenant path. REQUIRED.
+  string tenant_path = 3 [(buf.validate.field).string.max_len = 512];
+
+  // Domain identifier. REQUIRED.
+  string domain_id = 4 [(buf.validate.field).string.min_len = 1];
+
+  // Domain name. REQUIRED.
+  string name = 5 [(buf.validate.field).string.min_len = 1];
+
+  // Domain expiration date. REQUIRED.
+  google.protobuf.Timestamp expires_at = 6 [(buf.validate.field).required = true];
+
+  // Days until expiration. REQUIRED.
+  // USAGE: Determines urgency level for notifications
+  int32 days_until_expiration = 7;
+
+  // Auto-renewal enabled status.
+  bool auto_renew_enabled = 8;
+
+  // Registrant account ID. REQUIRED.
+  string registrant_id = 9 [(buf.validate.field).string.min_len = 1];
+
+  // Correlation ID for distributed tracing. OPTIONAL.
+  string correlation_id = 10;
+
+  // Event metadata. OPTIONAL.
+  map<string, string> metadata = 11;
+}
+
+// DomainRenewed emitted when domain registration is renewed.
+// EVENT: Publish to event bus for downstream consumers
+// COMPLIANCE: SOC 2 CC6.3 (Audit trail)
+// USAGE: Triggers billing, notifications, audit logging
+message DomainRenewed {
+  // Unique event identifier. REQUIRED.
+  string event_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Event timestamp. REQUIRED.
+  google.protobuf.Timestamp event_timestamp = 2 [(buf.validate.field).required = true];
+
+  // Hierarchical tenant path. REQUIRED.
+  string tenant_path = 3 [(buf.validate.field).string.max_len = 512];
+
+  // Domain identifier. REQUIRED.
+  string domain_id = 4 [(buf.validate.field).string.min_len = 1];
+
+  // Domain name. REQUIRED.
+  string name = 5 [(buf.validate.field).string.min_len = 1];
+
+  // Previous expiration date. REQUIRED.
+  google.protobuf.Timestamp previous_expires_at = 6 [(buf.validate.field).required = true];
+
+  // New expiration date after renewal. REQUIRED.
+  google.protobuf.Timestamp new_expires_at = 7 [(buf.validate.field).required = true];
+
+  // Renewal period in years.
+  int32 years_renewed = 8;
+
+  // Was renewal automatic or manual.
+  bool auto_renewed = 9;
+
+  // Actor who triggered renewal. REQUIRED.
+  string renewed_by = 10 [(buf.validate.field).string.min_len = 1];
+
+  // Correlation ID for distributed tracing. OPTIONAL.
+  string correlation_id = 11;
+
+  // Event metadata. OPTIONAL.
+  map<string, string> metadata = 12;
+}
+
+// DomainTransferInitiated emitted when domain transfer begins.
+// EVENT: Publish to event bus for downstream consumers
+// COMPLIANCE: ICANN Transfer Policy, SOC 2 CC6.3
+// USAGE: Triggers transfer workflow, notifications
+message DomainTransferInitiated {
+  // Unique event identifier. REQUIRED.
+  string event_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Event timestamp. REQUIRED.
+  google.protobuf.Timestamp event_timestamp = 2 [(buf.validate.field).required = true];
+
+  // Hierarchical tenant path. REQUIRED.
+  string tenant_path = 3 [(buf.validate.field).string.max_len = 512];
+
+  // Domain identifier. REQUIRED.
+  string domain_id = 4 [(buf.validate.field).string.min_len = 1];
+
+  // Domain name. REQUIRED.
+  string name = 5 [(buf.validate.field).string.min_len = 1];
+
+  // Source registrar. REQUIRED.
+  geniustechspace.dns.domain.v1.RegistrarProvider from_registrar = 6 [(buf.validate.field).enum.defined_only = true];
+
+  // Destination registrar. REQUIRED.
+  geniustechspace.dns.domain.v1.RegistrarProvider to_registrar = 7 [(buf.validate.field).enum.defined_only = true];
+
+  // Actor who initiated transfer. REQUIRED.
+  string initiated_by = 8 [(buf.validate.field).string.min_len = 1];
+
+  // Correlation ID for distributed tracing. OPTIONAL.
+  string correlation_id = 9;
+
+  // Event metadata. OPTIONAL.
+  map<string, string> metadata = 10;
+}
+
+// DomainTransferCompleted emitted when domain transfer succeeds.
+// EVENT: Publish to event bus for downstream consumers
+// COMPLIANCE: ICANN Transfer Policy, SOC 2 CC6.3
+message DomainTransferCompleted {
+  // Unique event identifier. REQUIRED.
+  string event_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Event timestamp. REQUIRED.
+  google.protobuf.Timestamp event_timestamp = 2 [(buf.validate.field).required = true];
+
+  // Hierarchical tenant path. REQUIRED.
+  string tenant_path = 3 [(buf.validate.field).string.max_len = 512];
+
+  // Domain identifier. REQUIRED.
+  string domain_id = 4 [(buf.validate.field).string.min_len = 1];
+
+  // Domain name. REQUIRED.
+  string name = 5 [(buf.validate.field).string.min_len = 1];
+
+  // Source registrar. REQUIRED.
+  geniustechspace.dns.domain.v1.RegistrarProvider from_registrar = 6 [(buf.validate.field).enum.defined_only = true];
+
+  // Destination registrar. REQUIRED.
+  geniustechspace.dns.domain.v1.RegistrarProvider to_registrar = 7 [(buf.validate.field).enum.defined_only = true];
+
+  // Transfer completion timestamp. REQUIRED.
+  google.protobuf.Timestamp completed_at = 8 [(buf.validate.field).required = true];
+
+  // Correlation ID for distributed tracing. OPTIONAL.
+  string correlation_id = 9;
+
+  // Event metadata. OPTIONAL.
+  map<string, string> metadata = 10;
+}
+
+// DomainDeleted emitted when domain is soft-deleted.
+// EVENT: Publish to event bus for downstream consumers
+// COMPLIANCE: SOC 2 CC6.3 (Audit trail), GDPR Article 17
+// USAGE: Triggers cleanup workflows, notifications
+message DomainDeleted {
+  // Unique event identifier. REQUIRED.
+  string event_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Event timestamp. REQUIRED.
+  google.protobuf.Timestamp event_timestamp = 2 [(buf.validate.field).required = true];
+
+  // Hierarchical tenant path. REQUIRED.
+  string tenant_path = 3 [(buf.validate.field).string.max_len = 512];
+
+  // Domain identifier. REQUIRED.
+  string domain_id = 4 [(buf.validate.field).string.min_len = 1];
+
+  // Domain name. REQUIRED.
+  string name = 5 [(buf.validate.field).string.min_len = 1];
+
+  // Actor who deleted the domain. REQUIRED.
+  string deleted_by = 6 [(buf.validate.field).string.min_len = 1];
+
+  // Deletion reason. OPTIONAL.
+  // Examples: "User request", "Expiration", "Policy violation"
+  string reason = 7;
+
+  // Correlation ID for distributed tracing. OPTIONAL.
+  string correlation_id = 8;
+
+  // Event metadata. OPTIONAL.
+  map<string, string> metadata = 9;
+}

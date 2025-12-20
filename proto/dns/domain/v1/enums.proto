@@ -1,0 +1,178 @@
+// DOMAIN: DNS - Domain Management
+// COMPLIANCE: SOC 2 CC6.1 (Access Control), GDPR Article 5 (Data Accuracy), ISO 27001 A.12.1.2
+// SECURITY: Authentication required, tenant isolation enforced
+// PII: No - Enums contain no personal data
+
+syntax = "proto3";
+
+package geniustechspace.dns.domain.v1;
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/dns/domain/v1;dnsdomainv1";
+
+// DomainStatus represents the lifecycle state of a domain registration.
+// COMPLIANCE: SOC 2 CC6.3 (Change tracking), GDPR Article 5 (Accuracy)
+// USAGE: Primary status field for domain entity
+enum DomainStatus {
+  // Default value. MUST NOT be used in stored records.
+  DOMAIN_STATUS_UNSPECIFIED = 0;
+
+  // Domain is active and operational with all services functioning.
+  // DNS resolution is active, records can be modified.
+  DOMAIN_STATUS_ACTIVE = 1;
+
+  // Domain registration is pending initial setup or verification.
+  // DNS may not be fully propagated yet.
+  DOMAIN_STATUS_PENDING = 2;
+
+  // Domain transfer is in progress between registrars.
+  // COMPLIANCE: ICANN Transfer Policy requirements
+  DOMAIN_STATUS_TRANSFER_IN_PROGRESS = 3;
+
+  // Domain is suspended due to policy violations or payment issues.
+  // DNS resolution may be blocked or redirected.
+  // COMPLIANCE: Registrar dispute resolution requirements
+  DOMAIN_STATUS_SUSPENDED = 4;
+
+  // Domain registration has expired but within grace/redemption period.
+  // Owner may still be able to renew without additional fees.
+  DOMAIN_STATUS_EXPIRED = 5;
+
+  // Domain is scheduled for deletion or in pending delete status.
+  // After deletion, domain may enter redemption grace period.
+  DOMAIN_STATUS_PENDING_DELETE = 6;
+
+  // Domain has been soft-deleted (deleted_at is set).
+  // COMPLIANCE: GDPR Article 17 (Right to erasure), SOC 2 CC6.3 (Audit trail)
+  DOMAIN_STATUS_DELETED = 7;
+}
+
+// RegistrarProvider identifies the domain registrar/provider.
+// COMPLIANCE: SOC 2 CC9.2 (Vendor management), ISO 27001 A.15.1.1
+// USAGE: Track which registrar manages the domain for API integration
+enum RegistrarProvider {
+  // Default value. MUST NOT be used in stored records.
+  REGISTRAR_PROVIDER_UNSPECIFIED = 0;
+
+  // Internal/self-managed registration system
+  REGISTRAR_PROVIDER_INTERNAL = 1;
+
+  // GoDaddy registrar
+  REGISTRAR_PROVIDER_GODADDY = 2;
+
+  // Namecheap registrar
+  REGISTRAR_PROVIDER_NAMECHEAP = 3;
+
+  // Google Domains (now Squarespace)
+  REGISTRAR_PROVIDER_GOOGLE_DOMAINS = 4;
+
+  // Cloudflare Registrar
+  REGISTRAR_PROVIDER_CLOUDFLARE = 5;
+
+  // Amazon Route 53 Registrar
+  REGISTRAR_PROVIDER_AWS_ROUTE53 = 6;
+
+  // Azure DNS Registrar
+  REGISTRAR_PROVIDER_AZURE_DNS = 7;
+
+  // Name.com registrar
+  REGISTRAR_PROVIDER_NAME_COM = 8;
+
+  // Other/custom registrar
+  REGISTRAR_PROVIDER_OTHER = 99;
+}
+
+// DNSSECStatus represents the DNSSEC (Domain Name System Security Extensions) status.
+// COMPLIANCE: NIST SP 800-81-2 (DNSSEC deployment), SOC 2 CC6.6 (Encryption)
+// SECURITY: DNSSEC protects against DNS spoofing and cache poisoning
+// USAGE: Track DNSSEC signing status for security compliance
+enum DNSSECStatus {
+  // Default value. MUST NOT be used in stored records.
+  DNSSEC_STATUS_UNSPECIFIED = 0;
+
+  // DNSSEC is not enabled for this domain.
+  DNSSEC_STATUS_DISABLED = 1;
+
+  // DNSSEC is being enabled or updated.
+  DNSSEC_STATUS_PENDING = 2;
+
+  // DNSSEC is enabled and signatures are valid.
+  // DS records are published in parent zone.
+  DNSSEC_STATUS_ENABLED = 3;
+
+  // DNSSEC signatures have validation errors.
+  // SECURITY: DNS resolution may fail for validating resolvers
+  DNSSEC_STATUS_ERROR = 4;
+}
+
+// AutoRenewStatus indicates whether domain auto-renewal is enabled.
+// COMPLIANCE: SOC 2 CC6.1 (Automated controls), Consumer protection requirements
+// USAGE: Prevent accidental domain expiration
+enum AutoRenewStatus {
+  // Default value. MUST NOT be used in stored records.
+  AUTO_RENEW_STATUS_UNSPECIFIED = 0;
+
+  // Auto-renewal is disabled. Domain will expire unless manually renewed.
+  AUTO_RENEW_STATUS_DISABLED = 1;
+
+  // Auto-renewal is enabled. Domain will renew automatically before expiration.
+  AUTO_RENEW_STATUS_ENABLED = 2;
+
+  // Auto-renewal failed (e.g., payment issues).
+  // ALERT: Requires immediate attention to prevent expiration
+  AUTO_RENEW_STATUS_FAILED = 3;
+}
+
+// TransferLockStatus indicates whether domain transfer lock is enabled.
+// COMPLIANCE: ICANN Transfer Policy, SOC 2 CC6.1 (Unauthorized transfer prevention)
+// SECURITY: Prevents unauthorized domain transfers
+enum TransferLockStatus {
+  // Default value. MUST NOT be used in stored records.
+  TRANSFER_LOCK_STATUS_UNSPECIFIED = 0;
+
+  // Transfer lock is disabled. Domain can be transferred.
+  // SECURITY: Only disable when intentionally transferring domain
+  TRANSFER_LOCK_STATUS_UNLOCKED = 1;
+
+  // Transfer lock is enabled. Domain cannot be transferred.
+  // SECURITY: Recommended default state for protection
+  TRANSFER_LOCK_STATUS_LOCKED = 2;
+}
+
+// PrivacyProtectionStatus indicates WHOIS privacy protection status.
+// COMPLIANCE: GDPR Article 5 (Privacy by design), ICANN GDPR requirements
+// PII: Protects registrant contact information from public WHOIS
+enum PrivacyProtectionStatus {
+  // Default value. MUST NOT be used in stored records.
+  PRIVACY_PROTECTION_STATUS_UNSPECIFIED = 0;
+
+  // Privacy protection is disabled. Registrant info is public in WHOIS.
+  // PII: Personal contact information publicly visible
+  PRIVACY_PROTECTION_STATUS_DISABLED = 1;
+
+  // Privacy protection is enabled. Registrant info is masked in WHOIS.
+  // PII: Proxy contact information shown instead of real data
+  // COMPLIANCE: GDPR Article 5(1)(f) (Privacy protection)
+  PRIVACY_PROTECTION_STATUS_ENABLED = 2;
+}
+
+// NameserverStatus indicates the status of domain nameserver configuration.
+// COMPLIANCE: SOC 2 CC7.2 (System monitoring)
+// USAGE: Monitor DNS infrastructure health
+enum NameserverStatus {
+  // Default value. MUST NOT be used in stored records.
+  NAMESERVER_STATUS_UNSPECIFIED = 0;
+
+  // Nameservers are not configured. Domain will not resolve.
+  NAMESERVER_STATUS_NOT_CONFIGURED = 1;
+
+  // Nameservers are configured and pending propagation.
+  // DNS changes typically take 24-48 hours to propagate globally.
+  NAMESERVER_STATUS_PENDING_PROPAGATION = 2;
+
+  // Nameservers are active and responding to queries.
+  NAMESERVER_STATUS_ACTIVE = 3;
+
+  // Nameservers are failing health checks or returning errors.
+  // ALERT: DNS resolution may be impacted
+  NAMESERVER_STATUS_ERROR = 4;
+}

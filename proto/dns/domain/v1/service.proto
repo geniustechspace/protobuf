@@ -1,0 +1,182 @@
+// DOMAIN: DNS - Domain Management Service
+// COMPLIANCE: SOC 2 CC6.1 (Access Control), GDPR Article 5, ISO 27001 A.12.1.2
+// SECURITY: All RPCs require authentication and tenant isolation
+// PII: Yes - Contact information in domain entities
+
+syntax = "proto3";
+
+package geniustechspace.dns.domain.v1;
+
+import "dns/domain/v1/messages.proto";
+
+option go_package = "github.com/geniustechspace/protobuf/gen/go/dns/domain/v1;dnsdomainv1";
+
+// DomainService manages domain registrations and metadata.
+// COMPLIANCE: SOC 2 CC6.1, ICANN registration requirements
+// SECURITY: All methods require authentication and enforce tenant isolation
+// AUDIT: All mutating operations are logged for compliance
+service DomainService {
+  // CreateDomain registers a new domain name.
+  // AUTHENTICATION: Required - valid bearer token with identity verification
+  // AUTHORIZATION: Requires 'dns:domains:create' permission
+  // COMPLIANCE: SOC 2 CC6.1 (Domain provisioning), ICANN registration policy
+  // RATE LIMIT: 10 requests/minute per tenant
+  // IDEMPOTENCY: Safe to retry with same domain name within tenant
+  // AUDIT: Logs domain creation with registrant details
+  //
+  // Request validation:
+  // - tenant_path: Required, max 512 chars
+  // - name: Valid DNS domain format, must be available
+  // - registrant_contact: All required fields must be present
+  //
+  // Business rules:
+  // - Domain availability checked before creation
+  // - Default settings: auto_renew=true, transfer_lock=true, privacy=true
+  // - Nameservers optional at creation, can be configured later
+  //
+  // Error codes:
+  // - INVALID_ARGUMENT: Invalid domain name or contact information
+  // - ALREADY_EXISTS: Domain already registered in tenant
+  // - PERMISSION_DENIED: Insufficient permissions or authentication failed
+  // - RESOURCE_EXHAUSTED: Rate limit exceeded
+  // - UNAVAILABLE: Domain not available for registration
+  rpc CreateDomain(CreateDomainRequest) returns (CreateDomainResponse);
+
+  // GetDomain retrieves a single domain by ID.
+  // AUTHENTICATION: Required - valid bearer token
+  // AUTHORIZATION: Requires 'dns:domains:read' permission
+  // COMPLIANCE: SOC 2 CC6.1 (Data access control)
+  // RATE LIMIT: 1000 requests/minute per tenant
+  // CACHE: Response cacheable for 60 seconds
+  // PII: Returns contact information (encrypted fields)
+  //
+  // Request validation:
+  // - tenant_path: Required
+  // - domain_id: Required, valid UUID/ULID
+  //
+  // Response:
+  // - Returns full Domain entity including PII
+  // - Soft-deleted domains not returned (404 error)
+  //
+  // Error codes:
+  // - INVALID_ARGUMENT: Invalid domain_id format
+  // - NOT_FOUND: Domain not found or deleted
+  // - PERMISSION_DENIED: Insufficient permissions or wrong tenant
+  rpc GetDomain(GetDomainRequest) returns (GetDomainResponse);
+
+  // ListDomains retrieves domains with pagination, filtering, and sorting.
+  // AUTHENTICATION: Required - valid bearer token
+  // AUTHORIZATION: Requires 'dns:domains:list' permission
+  // COMPLIANCE: SOC 2 CC6.1 (Data access control), GDPR Article 15 (Right of access)
+  // RATE LIMIT: 100 requests/minute per tenant
+  // CACHE: Response cacheable for 30 seconds
+  //
+  // Pagination:
+  // - Cursor-based for optimal performance (O(log n))
+  // - Default page_size: 20, max: 100
+  // - See PaginationRequest for details
+  //
+  // Sorting (order_by):
+  // - Allowed fields: name, status, registered_at, expires_at, created_at
+  // - Format: "field_name [asc|desc]"
+  // - Default: "name asc"
+  // - Examples: "expires_at desc", "name asc, created_at desc"
+  //
+  // Filtering (filter):
+  // - Allowed fields: status, registrar, dnssec_status, auto_renew_status
+  // - Operators: =, !=, AND, OR, <, <=, >, >=
+  // - Examples:
+  //   - "status='DOMAIN_STATUS_ACTIVE'"
+  //   - "expires_at < '2026-01-01T00:00:00Z'"
+  //   - "status='DOMAIN_STATUS_ACTIVE' AND registrar='REGISTRAR_PROVIDER_CLOUDFLARE'"
+  //
+  // Response:
+  // - Returns list of domains (soft-deleted excluded)
+  // - Includes pagination metadata
+  //
+  // Error codes:
+  // - INVALID_ARGUMENT: Invalid pagination, order_by, or filter syntax
+  // - PERMISSION_DENIED: Insufficient permissions
+  // - RESOURCE_EXHAUSTED: Rate limit exceeded
+  rpc ListDomains(ListDomainsRequest) returns (ListDomainsResponse);
+
+  // UpdateDomain updates domain configuration and metadata.
+  // AUTHENTICATION: Required - valid bearer token
+  // AUTHORIZATION: Requires 'dns:domains:update' permission
+  // COMPLIANCE: SOC 2 CC6.1 (Change management), SOC 2 CC6.3 (Audit trail)
+  // RATE LIMIT: 100 requests/minute per tenant
+  // CONCURRENCY: Optimistic locking via version field
+  // AUDIT: Logs all changes with field-level audit trail
+  //
+  // Request validation:
+  // - tenant_path: Required
+  // - domain_id: Required
+  // - update_mask: Required (specifies fields to update)
+  // - version: Required (for optimistic locking)
+  //
+  // Updatable fields:
+  // - contacts: registrant_contact, admin_contact, technical_contact, billing_contact
+  // - nameservers: Array of Nameserver objects
+  // - dnssec: dnssec_status, ds_records
+  // - settings: auto_renew_status, transfer_lock_status, privacy_protection_status
+  // - metadata: Custom key-value pairs
+  //
+  // Immutable fields (cannot be updated):
+  // - domain_id, name, tenant_path
+  // - created_at, registered_at
+  //
+  // Business rules:
+  // - Some updates trigger registrar API calls (may be async)
+  // - DNSSEC changes require validation period
+  // - Contact updates may require verification
+  //
+  // Response:
+  // - Returns updated Domain entity
+  // - version field incremented
+  //
+  // Error codes:
+  // - INVALID_ARGUMENT: Invalid field values or update_mask
+  // - NOT_FOUND: Domain not found or deleted
+  // - ABORTED: Version mismatch (concurrent modification detected)
+  // - FAILED_PRECONDITION: Update not allowed in current state
+  // - PERMISSION_DENIED: Insufficient permissions
+  // - RESOURCE_EXHAUSTED: Rate limit exceeded
+  rpc UpdateDomain(UpdateDomainRequest) returns (UpdateDomainResponse);
+
+  // DeleteDomain soft-deletes a domain (sets deleted_at timestamp).
+  // AUTHENTICATION: Required - valid bearer token
+  // AUTHORIZATION: Requires 'dns:domains:delete' permission
+  // COMPLIANCE: SOC 2 CC6.1, SOC 2 CC6.3 (Audit trail), GDPR Article 17
+  // RATE LIMIT: 10 requests/minute per tenant
+  // CONCURRENCY: Optimistic locking via version field
+  // AUDIT: Logs deletion with user identity and timestamp
+  //
+  // Soft delete behavior:
+  // - Sets deleted_at timestamp
+  // - Preserves data for audit compliance
+  // - Excludes from List operations
+  // - Domain name becomes available for re-registration
+  //
+  // Request validation:
+  // - tenant_path: Required
+  // - domain_id: Required
+  // - version: Required (for optimistic locking)
+  //
+  // Side effects:
+  // - Associated DNS records should be deleted or deactivated
+  // - Automatic renewal cancelled
+  // - Domain may enter redemption period at registrar
+  //
+  // Response:
+  // - Empty on success
+  //
+  // Error codes:
+  // - INVALID_ARGUMENT: Invalid domain_id
+  // - NOT_FOUND: Domain not found or already deleted
+  // - ABORTED: Version mismatch (concurrent modification detected)
+  // - PERMISSION_DENIED: Insufficient permissions
+  // - RESOURCE_EXHAUSTED: Rate limit exceeded
+  //
+  // NOTE: For hard deletion (GDPR erasure requests), use separate administrative API
+  rpc DeleteDomain(DeleteDomainRequest) returns (DeleteDomainResponse);
+}
