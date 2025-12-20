@@ -59,7 +59,7 @@ Pure domain entities, enums, and business rules
 - Entity definitions with flattened audit fields (created_at, updated_at, deleted_at, version)
 - Domain enums (UserStatus, CredentialType, etc.)
 - Business invariants and protovalidate constraints
-- Multi-tenant isolation (tenant_id in all entities)
+- **Tenant-agnostic design** - entities have no knowledge of multi-tenancy
 - NO RPC services or request/response messages
 
 ### Layer 2: Events (`events/v1/`)
@@ -125,21 +125,54 @@ gRPC services split into modular files
 - **Session**: Tokens, context, device fingerprinting
 - **Mfa**: Enrollment and verification
 
-### Authorization Domain (authz) (3 subdomains)
+### Authorization Domain (authz) (5 subdomains)
 
-**Subdomains:** permission, role, policy  
+**Subdomains:** permission, role, policy, attribute, evaluation  
 **Status:** Domain models defined, APIs in progress  
+**Architecture:** ABAC-first with RBAC integration  
 **Key Features:**
 
-- RBAC with role inheritance
-- ABAC/PBAC with conditions
-- Resource:action permission format
+- **ABAC-first design** - All authorization goes through ABAC engine
+- RBAC as attribute matching (subject.roles condition)
+- Fine-grained attribute definitions (SRAE model)
+- XACML-aligned policy evaluation with obligations/advice
 
 **Entities:**
 
-- **Permission**: Resource-action pairs
-- **Role**: Permission collections with inheritance
-- **Policy**: ABAC rules with conditions
+- **Permission**: Resource-action pairs for fine-grained access
+- **Role**: Permission collections with inheritance (ABAC attribute bundles)
+- **Policy**: ABAC rules with conditions, priorities, and effects
+- **Attribute**: Subject, Resource, Action, Environment definitions
+- **Evaluation**: Authorization request/response with decision trace
+
+## Multitenancy Architecture
+
+Multi-tenancy is handled by a **dedicated domain** (`proto/multitenancy/`) completely decoupled from domain entities.
+
+**Benefits:**
+
+- Domain entities have no knowledge of multi-tenancy
+- Easy switching between isolation modes (shared, silo, hybrid, pool)
+- Clean separation of concerns following DDD principles
+- Tenant context provided at API layer via TenantContext
+
+**Components:**
+
+- **Tenant**: Aggregate root for tenant lifecycle and settings
+- **TenantContext**: Request-scoped tenant information for API calls
+- **TenantMembership**: Associates subjects with tenants
+- **Events**: Tenant lifecycle events for downstream consumers
+
+**Usage:**
+
+```protobuf
+// API request includes tenant context (not embedded in entity)
+message CreateUserRequest {
+  multitenancy.v1.TenantContext tenant_context = 1;
+  string email = 2;
+  string username = 3;
+}
+```
 
 ## Entity Metadata Pattern
 
@@ -148,7 +181,10 @@ All domain entities include **flattened audit fields** (not nested):
 ```protobuf
 message User {
   string user_id = 1;
-  string tenant_id = 2;
+
+  reserved 2; // tenant_path removed - handled by TenantContext
+  reserved "tenant_path";
+
   // ... domain fields ...
 
   google.protobuf.Timestamp created_at = N;
@@ -217,23 +253,28 @@ buf format -w && buf lint
 4. **Event-Driven**: All state changes publish events for downstream consumers
 5. **Type-Safe**: Generated clients prevent runtime errors
 6. **Compliance-First**: Security and compliance annotations built-in
-7. **Multi-Tenant**: Tenant isolation enforced at entity level
-8. **Modular APIs**: Split files enable better code organization
+7. **Tenant-Agnostic Domains**: Domain entities decoupled from multi-tenancy concerns
+8. **ABAC-First Authorization**: Flexible attribute-based access control with RBAC integration
+9. **Modular APIs**: Split files enable better code organization
 
 ## Status Summary
 
 **Completed:**
 
 - ✅ Identity/User: Full implementation (domain, events, API with 9 RPCs)
-- ✅ Three-layer structure for all 10 subdomains
+- ✅ Three-layer structure for all subdomains
 - ✅ Modular API file splitting (40 API files)
 - ✅ Domain models for all entities
 - ✅ Flattened audit field pattern
+- ✅ Tenant-agnostic domain entities
+- ✅ ABAC attribute and evaluation types
+- ✅ Dedicated multitenancy domain
 
 **In Progress:**
 
 - 🔄 Event implementations for remaining subdomains
 - 🔄 API implementations for authn/authz domains
+- 🔄 Integration with multitenancy TenantContext in API requests
 
 **Planned:**
 
