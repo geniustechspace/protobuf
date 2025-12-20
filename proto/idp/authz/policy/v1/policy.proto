@@ -1,14 +1,14 @@
 // DOMAIN: Authorization - Policy Aggregate Root
-// COMPLIANCE: SOC 2 CC6.2, ISO 27001 A.9.4
-// SECURITY: Attribute-Based Access Control (ABAC), Policy-Based Access Control (PBAC)
+// COMPLIANCE: SOC 2 CC6.2, ISO 27001 A.9.4, NIST SP 800-162
+// SECURITY: ABAC-first access control with RBAC integration
 // DDD: Aggregate Root - controls authorization policy definition
+// ARCHITECTURE: ABAC is the core engine; RBAC operates as attribute constraints
 
 syntax = "proto3";
 
 package geniustechspace.idp.authz.policy.v1;
 
 import "buf/validate/validate.proto";
-import "core/metadata/v1/metadata.proto";
 import "google/protobuf/timestamp.proto";
 import "idp/authz/role/v1/role.proto";
 
@@ -17,21 +17,25 @@ option go_package = "github.com/geniustechspace/protobuf/gen/go/idp/authz/policy
 option java_multiple_files = true;
 option java_package = "com.geniustechspace.protobuf.idp.authz.policy.v1";
 
-// Policy aggregate root - authorization policy.
+// Policy aggregate root - ABAC authorization policy.
+// ARCHITECTURE: ABAC-first design with RBAC as a special case of attribute matching.
+// - RBAC policies use subject.roles as attribute conditions
+// - All policies are evaluated by the ABAC engine
+// - Tenant context is handled separately via TenantContext in requests
 // INVARIANTS:
-// - Policy name unique within tenant
+// - Policy name unique within scope
 // - Effect must be allow or deny
 // - Higher priority policies override lower priority
-// - Explicit deny always wins
+// - Explicit deny always wins (deny-overrides combining algorithm)
+// - RBAC roles are treated as subject.roles attribute values
 message Policy {
   // Policy ID. Immutable.
   string id = 1 [(buf.validate.field).string.max_len = 512];
 
-  // Hierarchical tenant path for nested multi-tenancy. Immutable.
-  // Examples: "acme-corp", "acme-corp/customer-1"
-  string tenant_path = 2 [(buf.validate.field).string.max_len = 512];
+  reserved 2; // Removed: tenant_path - handled by TenantContext in API layer
+  reserved "tenant_path";
 
-  // Policy name. Required. Unique within tenant.
+  // Policy name. Required. Unique within scope.
   string name = 3 [(buf.validate.field).string.max_len = 512];
 
   // Display name (human-readable).
