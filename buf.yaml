@@ -26,5 +26,10 @@ breaking:
   ignore:
     # Ignore breaking changes in v2 (under development)
     - proto/core/v2
+    # Ignore breaking changes for ABAC refactoring (tenant_path removal)
+    # This is an intentional breaking change for decoupled multitenancy design
+    - proto/multitenancy
+    - proto/idp/authz/attribute
+    - proto/idp/authz/evaluation
   # Don't ignore breaking changes in stable packages (v1)
   ignore_unstable_packages: false
