@@ -1,0 +1,209 @@
+// DOMAIN: Multitenancy - Tenant Context
+// COMPLIANCE: SOC 2 CC6.1, ISO 27001 A.9.4
+// SECURITY: Request-scoped tenant isolation context
+// PURPOSE: Provides tenant context for all domain operations without coupling to entities
+
+syntax = "proto3";
+
+package geniustechspace.multitenancy.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/timestamp.proto";
+import "multitenancy/v1/tenant.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Multitenancy.V1";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/multitenancy/v1;multitenancyv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.multitenancy.v1";
+
+// TenantContext - request-scoped tenant isolation context.
+// USAGE: Include in API request messages to scope operations to tenant.
+// SECURITY: Enforced at middleware/interceptor level.
+// COMPLIANCE: SOC 2 CC6.1 (Logical access controls)
+//
+// This decouples tenant context from domain entities, allowing:
+// - Domain entities to be tenant-agnostic
+// - Easy switching between isolation modes
+// - Centralized tenant resolution and validation
+// - Cross-tenant operations for platform admins
+message TenantContext {
+  // Tenant ID for the current request scope. REQUIRED.
+  // Resolved from: authentication token, API key, or request header.
+  // VALIDATION: Must be a valid, active tenant ID.
+  string tenant_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Hierarchical tenant path. Computed from tenant hierarchy.
+  // Used for hierarchical access control and data scoping.
+  // FORMAT: "root-tenant/child-tenant/grandchild-tenant"
+  // Examples: "acme-corp", "acme-corp/customer-1"
+  string tenant_path = 2 [(buf.validate.field).string.max_len = 512];
+
+  // Effective tenant IDs for hierarchical access.
+  // Includes current tenant and all ancestor tenants.
+  // Used for policy inheritance and cross-tenant visibility.
+  repeated string effective_tenant_ids = 3;
+
+  // Isolation mode of the current tenant.
+  // Used by data layer to route to correct storage.
+  TenantIsolationMode isolation_mode = 4;
+
+  // Data residency region for compliance.
+  string data_residency_region = 5;
+}
+
+// TenantResolutionSource - how tenant was resolved.
+enum TenantResolutionSource {
+  // Unspecified - invalid default value.
+  TENANT_RESOLUTION_SOURCE_UNSPECIFIED = 0;
+
+  // Resolved from bearer token claims.
+  TOKEN = 1;
+
+  // Resolved from API key.
+  API_KEY = 2;
+
+  // Resolved from request header (X-Tenant-ID).
+  HEADER = 3;
+
+  // Resolved from URL path parameter.
+  PATH = 4;
+
+  // Resolved from URL subdomain.
+  SUBDOMAIN = 5;
+
+  // System/platform context (no specific tenant).
+  SYSTEM = 6;
+}
+
+// TenantAccessScope - defines the scope of tenant access.
+enum TenantAccessScope {
+  // Unspecified - invalid default value.
+  TENANT_ACCESS_SCOPE_UNSPECIFIED = 0;
+
+  // Access to single specific tenant only.
+  SINGLE = 1;
+
+  // Access to tenant and all descendants.
+  HIERARCHICAL = 2;
+
+  // Access to all tenants (platform admin).
+  GLOBAL = 3;
+
+  // Access to specific set of tenants.
+  EXPLICIT_SET = 4;
+}
+
+// TenantMembership - associates a subject with a tenant.
+// Enables users, groups, and service accounts to belong to tenants.
+message TenantMembership {
+  // Membership ID. Immutable unique identifier.
+  string membership_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Tenant ID.
+  string tenant_id = 2 [(buf.validate.field).string.min_len = 1];
+
+  // Subject ID (user, group, or service account).
+  string subject_id = 3 [(buf.validate.field).string.min_len = 1];
+
+  // Subject type.
+  TenantMemberType member_type = 4 [(buf.validate.field).enum.defined_only = true];
+
+  // Membership status.
+  TenantMembershipStatus status = 5 [(buf.validate.field).enum.defined_only = true];
+
+  // Membership role within tenant (owner, admin, member).
+  TenantMembershipRole role = 6 [(buf.validate.field).enum.defined_only = true];
+
+  // Is primary tenant for this subject.
+  bool is_primary = 7;
+
+  // Invitation details (if invited).
+  TenantInvitation invitation = 8;
+
+  // Created timestamp.
+  google.protobuf.Timestamp created_at = 9 [(buf.validate.field).required = true];
+
+  // Last updated timestamp.
+  google.protobuf.Timestamp updated_at = 10;
+
+  // Deletion timestamp (soft delete).
+  google.protobuf.Timestamp deleted_at = 11;
+
+  // Optimistic locking version.
+  int64 version = 12;
+}
+
+// TenantMemberType - types of tenant members.
+enum TenantMemberType {
+  // Unspecified - invalid default value.
+  TENANT_MEMBER_TYPE_UNSPECIFIED = 0;
+
+  // User member.
+  USER = 1;
+
+  // Group member.
+  GROUP = 2;
+
+  // Service account member.
+  SERVICE_ACCOUNT = 3;
+}
+
+// TenantMembershipStatus - membership lifecycle states.
+enum TenantMembershipStatus {
+  // Unspecified - invalid default value.
+  TENANT_MEMBERSHIP_STATUS_UNSPECIFIED = 0;
+
+  // Active membership.
+  ACTIVE = 1;
+
+  // Pending invitation.
+  PENDING = 2;
+
+  // Suspended membership.
+  SUSPENDED = 3;
+
+  // Revoked membership.
+  REVOKED = 4;
+
+  // Expired membership.
+  EXPIRED = 5;
+}
+
+// TenantMembershipRole - roles within a tenant.
+enum TenantMembershipRole {
+  // Unspecified - invalid default value.
+  TENANT_MEMBERSHIP_ROLE_UNSPECIFIED = 0;
+
+  // Owner - full control, can delete tenant.
+  OWNER = 1;
+
+  // Admin - administrative access.
+  ADMIN = 2;
+
+  // Member - standard access.
+  MEMBER = 3;
+
+  // Guest - limited access.
+  GUEST = 4;
+
+  // External - external collaborator.
+  EXTERNAL = 5;
+}
+
+// TenantInvitation - invitation to join a tenant.
+message TenantInvitation {
+  // Inviter user ID.
+  string invited_by = 1;
+
+  // Invitation timestamp.
+  google.protobuf.Timestamp invited_at = 2;
+
+  // Invitation expiry.
+  google.protobuf.Timestamp expires_at = 3;
+
+  // Invitation email (for pending members).
+  string invitation_email = 4;
+
+  // Invitation token (for verification).
+  string invitation_token = 5;
+}

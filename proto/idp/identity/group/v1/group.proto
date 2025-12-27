@@ -2,13 +2,13 @@
 // COMPLIANCE: ISO 27001 A.9.2, SOC 2 CC6.1
 // SECURITY: Group-based access control
 // PURPOSE: User organization and permission management
+// ARCHITECTURE: Tenant-agnostic domain entity; tenant scoping via TenantContext in API layer
 
 syntax = "proto3";
 
 package geniustechspace.idp.identity.group.v1;
 
 import "buf/validate/validate.proto";
-import "core/metadata/v1/metadata.proto";
 import "google/protobuf/timestamp.proto";
 
 option csharp_namespace = "GeniusTechSpace.Protobuf.Idp.Identity.Group.V1";
@@ -17,22 +17,23 @@ option java_multiple_files = true;
 option java_package = "com.geniustechspace.protobuf.idp.identity.group.v1";
 
 // Group entity - collection of users for organization and access control.
+// ARCHITECTURE: Tenant-agnostic domain entity following DDD principles.
+// - Tenant scoping is handled via TenantContext in the API layer
+// - Group memberships are used as subject.groups attribute in ABAC policies
 // HIERARCHICAL: Groups can have parent/child relationships (max depth: 10).
 // AUTHORIZATION: Groups used for RBAC - roles assigned to groups.
 // INVARIANTS:
-// - Name unique within tenant
+// - Name unique within scope
 // - Circular parent references not allowed
 // - System groups cannot be deleted
 message Group {
   // Group ID. Immutable unique identifier.
   string id = 1 [(buf.validate.field).string.max_len = 512];
 
-  // Hierarchical tenant path for nested multi-tenancy. Immutable.
-  // Examples: "acme-corp", "acme-corp/customer-1", "acme-corp/customer-1/sub-org"
-  // ISOLATION: Supports unlimited nesting levels for complex B2B2B... scenarios.
-  string tenant_path = 2 [(buf.validate.field).string.max_len = 512];
+  reserved 2; // Removed: tenant_path - handled by TenantContext in API layer
+  reserved "tenant_path";
 
-  // Group name. Required. Must be unique within tenant.
+  // Group name. Required. Must be unique within scope.
   string name = 3 [(buf.validate.field).string.max_len = 512];
 
   // Description of group purpose and membership.

@@ -2,13 +2,13 @@
 // COMPLIANCE: SOC 2 CC6.1, NIST 800-63B
 // SECURITY: Session token security, refresh token rotation
 // DDD: Aggregate Root - controls session lifecycle
+// ARCHITECTURE: Tenant-agnostic domain entity; tenant scoping via TenantContext in API layer
 
 syntax = "proto3";
 
 package geniustechspace.idp.authn.session.v1;
 
 import "buf/validate/validate.proto";
-import "core/metadata/v1/metadata.proto";
 import "google/protobuf/timestamp.proto";
 
 option csharp_namespace = "GeniusTechSpace.Protobuf.Idp.Authn.Session.V1";
@@ -17,6 +17,8 @@ option java_multiple_files = true;
 option java_package = "com.geniustechspace.protobuf.idp.authn.session.v1";
 
 // Session aggregate root - represents authenticated session.
+// ARCHITECTURE: Tenant-agnostic domain entity following DDD principles.
+// - Tenant scoping is handled via TenantContext in the API layer
 // INVARIANTS:
 // - One session per device/client
 // - Sessions expire after inactivity
@@ -26,8 +28,8 @@ message Session {
   // Session ID. Immutable.
   string id = 1 [(buf.validate.field).string.max_len = 512];
 
-  // Tenant path. Immutable.
-  string tenant_path = 2 [(buf.validate.field).string.max_len = 512];
+  reserved 2; // Removed: tenant_path - handled by TenantContext in API layer
+  reserved "tenant_path";
 
   // User ID. Immutable.
   string user_id = 3 [(buf.validate.field).string.max_len = 512];

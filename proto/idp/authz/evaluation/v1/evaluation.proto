@@ -1,0 +1,443 @@
+// DOMAIN: Authorization - Policy Evaluation Engine
+// COMPLIANCE: SOC 2 CC6.2, ISO 27001 A.9.4, NIST SP 800-162
+// SECURITY: ABAC policy evaluation with RBAC integration
+// DDD: Domain Service - authorization decision making
+
+syntax = "proto3";
+
+package geniustechspace.idp.authz.evaluation.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/timestamp.proto";
+import "idp/authz/attribute/v1/attribute.proto";
+import "idp/authz/policy/v1/policy.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Idp.Authz.Evaluation.V1";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/idp/authz/evaluation/v1;idpauthzevaluationv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.idp.authz.evaluation.v1";
+
+// AuthorizationRequest - request for access decision.
+// STANDARD: XACML-aligned request structure
+// USAGE: Submit to policy decision point (PDP) for evaluation
+message AuthorizationRequest {
+  // Request ID for tracing.
+  string request_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Subject attributes (who is requesting).
+  geniustechspace.idp.authz.attribute.v1.SubjectAttributes subject = 2 [(buf.validate.field).required = true];
+
+  // Resource attributes (what is being accessed).
+  geniustechspace.idp.authz.attribute.v1.ResourceAttributes resource = 3 [(buf.validate.field).required = true];
+
+  // Action attributes (what operation is requested).
+  geniustechspace.idp.authz.attribute.v1.ActionAttributes action = 4 [(buf.validate.field).required = true];
+
+  // Environment attributes (context of the request).
+  geniustechspace.idp.authz.attribute.v1.EnvironmentAttributes environment = 5;
+
+  // Tenant context for policy scoping.
+  TenantScope tenant_scope = 6;
+
+  // Evaluation options.
+  EvaluationOptions options = 7;
+}
+
+// TenantScope - tenant context for policy evaluation.
+// NOTE: Intentionally a standalone type (not importing multitenancy types)
+// to keep authz evaluation decoupled from the multitenancy domain.
+// The caller maps from TenantContext to TenantScope.
+message TenantScope {
+  // Tenant ID for the current request.
+  string tenant_id = 1;
+
+  // Hierarchical tenant path.
+  string tenant_path = 2;
+
+  // Effective tenant IDs (includes ancestors for hierarchical access).
+  repeated string effective_tenant_ids = 3;
+}
+
+// EvaluationOptions - options for policy evaluation.
+message EvaluationOptions {
+  // Return detailed evaluation trace (for debugging).
+  bool include_trace = 1;
+
+  // Return all applicable policies (not just deciding policy).
+  bool include_all_policies = 2;
+
+  // Return obligations even if denied.
+  bool include_obligations_on_deny = 3;
+
+  // Maximum policies to evaluate before timeout.
+  int32 max_policies = 4;
+
+  // Evaluation timeout in milliseconds.
+  int32 timeout_ms = 5;
+
+  // Cache key for caching decisions.
+  string cache_key = 6;
+}
+
+// AuthorizationResponse - access decision response.
+// STANDARD: XACML-aligned response structure
+message AuthorizationResponse {
+  // Request ID (matches request).
+  string request_id = 1;
+
+  // Primary decision.
+  Decision decision = 2 [(buf.validate.field).enum.defined_only = true];
+
+  // Decision details.
+  DecisionDetails details = 3;
+
+  // Obligations - actions that MUST be performed by PEP.
+  repeated Obligation obligations = 4;
+
+  // Advice - suggestions (non-mandatory) for PEP.
+  repeated Advice advice = 5;
+
+  // Evaluation metrics.
+  EvaluationMetrics metrics = 6;
+
+  // Evaluation trace (if requested).
+  EvaluationTrace trace = 7;
+}
+
+// Decision - authorization decision result.
+// STANDARD: XACML decision values
+enum Decision {
+  // Unspecified - invalid default value.
+  DECISION_UNSPECIFIED = 0;
+
+  // Permit - access is granted.
+  PERMIT = 1;
+
+  // Deny - access is explicitly denied.
+  DENY = 2;
+
+  // Indeterminate - error in evaluation (cannot determine).
+  INDETERMINATE = 3;
+
+  // Not applicable - no policies apply to the request.
+  NOT_APPLICABLE = 4;
+}
+
+// DecisionDetails - detailed information about the decision.
+message DecisionDetails {
+  // Reason for the decision.
+  string reason = 1;
+
+  // ID of the deciding policy.
+  string deciding_policy_id = 2;
+
+  // Name of the deciding policy.
+  string deciding_policy_name = 3;
+
+  // Effect from the deciding policy.
+  geniustechspace.idp.authz.policy.v1.PolicyEffect applied_effect = 4;
+
+  // All matched policy IDs.
+  repeated string matched_policy_ids = 5;
+
+  // Number of policies evaluated.
+  int32 policies_evaluated = 6;
+
+  // Missing attributes (if indeterminate).
+  repeated string missing_attributes = 7;
+
+  // Errors encountered (if any).
+  repeated string errors = 8;
+}
+
+// Obligation - required action for PEP (Policy Enforcement Point).
+// MUST be fulfilled for decision to be valid.
+message Obligation {
+  // Obligation ID.
+  string obligation_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Obligation type.
+  ObligationType type = 2;
+
+  // Parameters for the obligation.
+  map<string, string> parameters = 3;
+
+  // When obligation should be fulfilled.
+  ObligationFulfillment fulfillment = 4;
+
+  // Description.
+  string description = 5;
+}
+
+// ObligationType - types of obligations.
+enum ObligationType {
+  // Unspecified.
+  OBLIGATION_TYPE_UNSPECIFIED = 0;
+
+  // Log the access attempt.
+  LOG = 1;
+
+  // Notify users/admins.
+  NOTIFY = 2;
+
+  // Require MFA step-up.
+  REQUIRE_MFA = 3;
+
+  // Encrypt data in transit/at rest.
+  ENCRYPT = 4;
+
+  // Mask/redact sensitive fields.
+  MASK_DATA = 5;
+
+  // Rate limit subsequent requests.
+  RATE_LIMIT = 6;
+
+  // Require acknowledgment.
+  REQUIRE_ACKNOWLEDGMENT = 7;
+
+  // Custom obligation (check parameters).
+  CUSTOM = 8;
+}
+
+// ObligationFulfillment - when to fulfill obligation.
+enum ObligationFulfillment {
+  // Unspecified.
+  OBLIGATION_FULFILLMENT_UNSPECIFIED = 0;
+
+  // Before granting access.
+  BEFORE_ACCESS = 1;
+
+  // After access is granted.
+  AFTER_ACCESS = 2;
+
+  // On access completion.
+  ON_COMPLETION = 3;
+}
+
+// Advice - non-mandatory guidance for PEP.
+message Advice {
+  // Advice ID.
+  string advice_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Advice type.
+  AdviceType type = 2;
+
+  // Parameters.
+  map<string, string> parameters = 3;
+
+  // Description.
+  string description = 4;
+}
+
+// AdviceType - types of advice.
+enum AdviceType {
+  // Unspecified.
+  ADVICE_TYPE_UNSPECIFIED = 0;
+
+  // Display warning to user.
+  DISPLAY_WARNING = 1;
+
+  // Suggest alternative action.
+  SUGGEST_ALTERNATIVE = 2;
+
+  // Provide help/documentation link.
+  PROVIDE_HELP = 3;
+
+  // Request justification (optional).
+  REQUEST_JUSTIFICATION = 4;
+
+  // Custom advice.
+  CUSTOM = 5;
+}
+
+// EvaluationMetrics - performance metrics for evaluation.
+message EvaluationMetrics {
+  // Total evaluation time in milliseconds.
+  int32 total_time_ms = 1;
+
+  // Time spent fetching attributes.
+  int32 attribute_fetch_time_ms = 2;
+
+  // Time spent evaluating policies.
+  int32 policy_eval_time_ms = 3;
+
+  // Number of policies evaluated.
+  int32 policies_evaluated = 4;
+
+  // Number of conditions evaluated.
+  int32 conditions_evaluated = 5;
+
+  // Cache hit (if decision was cached).
+  bool cache_hit = 6;
+
+  // Timestamp of evaluation.
+  google.protobuf.Timestamp evaluated_at = 7;
+}
+
+// EvaluationTrace - detailed trace of policy evaluation.
+// For debugging and audit purposes.
+message EvaluationTrace {
+  // Individual policy evaluation results.
+  repeated PolicyEvaluationResult policy_results = 1;
+
+  // Attribute resolution log.
+  repeated AttributeResolution attribute_resolutions = 2;
+
+  // Combining algorithm used.
+  CombiningAlgorithm combining_algorithm = 3;
+
+  // Final decision explanation.
+  string explanation = 4;
+}
+
+// PolicyEvaluationResult - result of evaluating a single policy.
+message PolicyEvaluationResult {
+  // Policy ID.
+  string policy_id = 1;
+
+  // Policy name.
+  string policy_name = 2;
+
+  // Policy effect (allow/deny).
+  geniustechspace.idp.authz.policy.v1.PolicyEffect effect = 3;
+
+  // Whether policy matched (targets matched).
+  bool matched = 4;
+
+  // Individual condition results.
+  repeated ConditionResult condition_results = 5;
+
+  // Evaluation time for this policy.
+  int32 eval_time_ms = 6;
+
+  // Skip reason (if not evaluated).
+  string skip_reason = 7;
+}
+
+// ConditionResult - result of evaluating a policy condition.
+message ConditionResult {
+  // Condition description.
+  string condition = 1;
+
+  // Attribute name being evaluated.
+  string attribute_name = 2;
+
+  // Operator used.
+  string operator = 3;
+
+  // Expected value(s).
+  repeated string expected_values = 4;
+
+  // Actual value.
+  string actual_value = 5;
+
+  // Result (true = condition met).
+  bool result = 6;
+}
+
+// AttributeResolution - log of attribute value resolution.
+message AttributeResolution {
+  // Attribute name.
+  string attribute_name = 1;
+
+  // Source used.
+  geniustechspace.idp.authz.attribute.v1.AttributeSourceType source = 2;
+
+  // Resolved value.
+  string resolved_value = 3;
+
+  // Resolution time in milliseconds.
+  int32 resolution_time_ms = 4;
+
+  // Whether value was cached.
+  bool from_cache = 5;
+
+  // Error if resolution failed.
+  string error = 6;
+}
+
+// CombiningAlgorithm - how multiple policy results are combined.
+// STANDARD: XACML combining algorithms
+enum CombiningAlgorithm {
+  // Unspecified - use default.
+  COMBINING_ALGORITHM_UNSPECIFIED = 0;
+
+  // Deny overrides - any deny wins.
+  DENY_OVERRIDES = 1;
+
+  // Permit overrides - any permit wins.
+  PERMIT_OVERRIDES = 2;
+
+  // First applicable - first matching policy decides.
+  FIRST_APPLICABLE = 3;
+
+  // Only one applicable - error if multiple match.
+  ONLY_ONE_APPLICABLE = 4;
+
+  // Deny unless permit - default deny unless explicit permit.
+  DENY_UNLESS_PERMIT = 5;
+
+  // Permit unless deny - default permit unless explicit deny.
+  PERMIT_UNLESS_DENY = 6;
+
+  // Ordered deny overrides - priority-ordered, deny wins.
+  ORDERED_DENY_OVERRIDES = 7;
+
+  // Ordered permit overrides - priority-ordered, permit wins.
+  ORDERED_PERMIT_OVERRIDES = 8;
+}
+
+// BulkAuthorizationRequest - evaluate multiple authorization requests.
+// For performance when checking multiple resources/actions.
+message BulkAuthorizationRequest {
+  // Bulk request ID for tracing.
+  string request_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Individual authorization requests.
+  repeated AuthorizationRequest requests = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 100
+  }];
+
+  // Stop on first deny (optimization).
+  bool stop_on_first_deny = 3;
+}
+
+// BulkAuthorizationResponse - responses for bulk evaluation.
+message BulkAuthorizationResponse {
+  // Bulk request ID.
+  string request_id = 1;
+
+  // Individual responses (same order as requests).
+  repeated AuthorizationResponse responses = 2;
+
+  // Summary of decisions.
+  BulkDecisionSummary summary = 3;
+
+  // Total evaluation time.
+  int32 total_time_ms = 4;
+}
+
+// BulkDecisionSummary - summary of bulk evaluation.
+message BulkDecisionSummary {
+  // Total requests.
+  int32 total = 1;
+
+  // Number of permits.
+  int32 permits = 2;
+
+  // Number of denies.
+  int32 denies = 3;
+
+  // Number of indeterminate.
+  int32 indeterminate = 4;
+
+  // Number of not applicable.
+  int32 not_applicable = 5;
+
+  // All permits (convenience flag).
+  bool all_permitted = 6;
+
+  // Any deny (convenience flag).
+  bool any_denied = 7;
+}

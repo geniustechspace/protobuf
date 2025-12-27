@@ -1,0 +1,241 @@
+// DOMAIN: Multitenancy - Tenant Events
+// COMPLIANCE: SOC 2 CC6.3 (Audit trail), GDPR Article 30
+// SECURITY: Event-driven audit trail for tenant lifecycle
+// EDA: Domain events for tenant state changes
+
+syntax = "proto3";
+
+package geniustechspace.multitenancy.events.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/timestamp.proto";
+import "multitenancy/v1/tenant.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Multitenancy.Events.V1";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/multitenancy/events/v1;multitenancyeventsv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.multitenancy.events.v1";
+
+// TenantCreated - emitted when a new tenant is created.
+// EVENT: Publish to event bus for provisioning and downstream consumers.
+// COMPLIANCE: SOC 2 CC6.3 (Change management audit trail)
+message TenantCreated {
+  // Event ID (UUID for tracing).
+  string event_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Event timestamp.
+  google.protobuf.Timestamp event_timestamp = 2 [(buf.validate.field).required = true];
+
+  // Tenant ID.
+  string tenant_id = 3 [(buf.validate.field).string.min_len = 1];
+
+  // Tenant slug.
+  string slug = 4;
+
+  // Tenant display name.
+  string display_name = 5;
+
+  // Tenant type.
+  geniustechspace.multitenancy.v1.TenantType type = 6;
+
+  // Parent tenant ID (if nested).
+  string parent_id = 7;
+
+  // Tenant path.
+  string path = 8;
+
+  // Isolation mode.
+  geniustechspace.multitenancy.v1.TenantIsolationMode isolation_mode = 9;
+
+  // Actor who created the tenant.
+  string created_by = 10;
+
+  // Correlation ID for distributed tracing.
+  string correlation_id = 11;
+}
+
+// TenantUpdated - emitted when tenant is updated.
+// EVENT: Publish for configuration propagation.
+// COMPLIANCE: SOC 2 CC6.3 (Change tracking)
+message TenantUpdated {
+  // Event ID.
+  string event_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Event timestamp.
+  google.protobuf.Timestamp event_timestamp = 2 [(buf.validate.field).required = true];
+
+  // Tenant ID.
+  string tenant_id = 3 [(buf.validate.field).string.min_len = 1];
+
+  // Updated fields list.
+  repeated string updated_fields = 4;
+
+  // Actor who updated the tenant.
+  string updated_by = 5;
+
+  // Correlation ID.
+  string correlation_id = 6;
+
+  // Previous version.
+  int64 previous_version = 7;
+
+  // New version.
+  int64 new_version = 8;
+}
+
+// TenantStatusChanged - emitted when tenant status changes.
+// EVENT: Triggers provisioning/deprovisioning workflows.
+// COMPLIANCE: SOC 2 CC6.3 (Status audit trail)
+message TenantStatusChanged {
+  // Event ID.
+  string event_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Event timestamp.
+  google.protobuf.Timestamp event_timestamp = 2 [(buf.validate.field).required = true];
+
+  // Tenant ID.
+  string tenant_id = 3 [(buf.validate.field).string.min_len = 1];
+
+  // Previous status.
+  geniustechspace.multitenancy.v1.TenantStatus previous_status = 4;
+
+  // New status.
+  geniustechspace.multitenancy.v1.TenantStatus new_status = 5;
+
+  // Status change reason.
+  string reason = 6;
+
+  // Actor who changed the status.
+  string changed_by = 7;
+
+  // Correlation ID.
+  string correlation_id = 8;
+}
+
+// TenantDeleted - emitted when tenant is soft-deleted.
+// EVENT: Triggers cleanup and archive workflows.
+// COMPLIANCE: GDPR Article 17 (Right to erasure)
+message TenantDeleted {
+  // Event ID.
+  string event_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Event timestamp.
+  google.protobuf.Timestamp event_timestamp = 2 [(buf.validate.field).required = true];
+
+  // Tenant ID.
+  string tenant_id = 3 [(buf.validate.field).string.min_len = 1];
+
+  // Tenant slug.
+  string slug = 4;
+
+  // Deletion type.
+  TenantDeletionType deletion_type = 5;
+
+  // Scheduled permanent deletion timestamp.
+  google.protobuf.Timestamp permanent_deletion_at = 6;
+
+  // Actor who deleted the tenant.
+  string deleted_by = 7;
+
+  // Deletion reason.
+  string reason = 8;
+
+  // Correlation ID.
+  string correlation_id = 9;
+}
+
+// TenantDeletionType - deletion methods.
+enum TenantDeletionType {
+  // Unspecified.
+  TENANT_DELETION_TYPE_UNSPECIFIED = 0;
+
+  // Soft delete - data retained for grace period.
+  SOFT = 1;
+
+  // Hard delete - immediate permanent deletion.
+  HARD = 2;
+
+  // GDPR erasure request.
+  GDPR_ERASURE = 3;
+}
+
+// TenantMemberAdded - emitted when member joins tenant.
+// EVENT: Triggers access provisioning.
+// COMPLIANCE: SOC 2 CC6.1 (User provisioning)
+message TenantMemberAdded {
+  // Event ID.
+  string event_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Event timestamp.
+  google.protobuf.Timestamp event_timestamp = 2 [(buf.validate.field).required = true];
+
+  // Tenant ID.
+  string tenant_id = 3 [(buf.validate.field).string.min_len = 1];
+
+  // Member ID (user, group, or service account).
+  string member_id = 4 [(buf.validate.field).string.min_len = 1];
+
+  // Member type.
+  geniustechspace.multitenancy.v1.TenantMemberType member_type = 5;
+
+  // Membership role.
+  geniustechspace.multitenancy.v1.TenantMembershipRole role = 6;
+
+  // Actor who added the member.
+  string added_by = 7;
+
+  // Correlation ID.
+  string correlation_id = 8;
+}
+
+// TenantMemberRemoved - emitted when member leaves tenant.
+// EVENT: Triggers access deprovisioning.
+// COMPLIANCE: SOC 2 CC6.1 (User deprovisioning)
+message TenantMemberRemoved {
+  // Event ID.
+  string event_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Event timestamp.
+  google.protobuf.Timestamp event_timestamp = 2 [(buf.validate.field).required = true];
+
+  // Tenant ID.
+  string tenant_id = 3 [(buf.validate.field).string.min_len = 1];
+
+  // Member ID.
+  string member_id = 4 [(buf.validate.field).string.min_len = 1];
+
+  // Member type.
+  geniustechspace.multitenancy.v1.TenantMemberType member_type = 5;
+
+  // Removal reason.
+  string reason = 6;
+
+  // Actor who removed the member.
+  string removed_by = 7;
+
+  // Correlation ID.
+  string correlation_id = 8;
+}
+
+// TenantSettingsChanged - emitted when tenant settings are modified.
+// EVENT: Triggers policy enforcement updates.
+// COMPLIANCE: SOC 2 CC6.3 (Configuration audit)
+message TenantSettingsChanged {
+  // Event ID.
+  string event_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Event timestamp.
+  google.protobuf.Timestamp event_timestamp = 2 [(buf.validate.field).required = true];
+
+  // Tenant ID.
+  string tenant_id = 3 [(buf.validate.field).string.min_len = 1];
+
+  // Changed settings keys.
+  repeated string changed_settings = 4;
+
+  // Actor who changed settings.
+  string changed_by = 5;
+
+  // Correlation ID.
+  string correlation_id = 6;
+}

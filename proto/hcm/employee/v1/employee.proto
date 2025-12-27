@@ -2,6 +2,7 @@
 // COMPLIANCE: ISO 30414 (Human Capital Reporting), SOC 2 CC6.1, Employment Law
 // SECURITY: PII data - employment information is personal data
 // PII: Yes - employment history is personal information
+// ARCHITECTURE: Tenant-agnostic domain entity; tenant scoping via TenantContext in API layer
 
 syntax = "proto3";
 
@@ -16,6 +17,8 @@ option java_multiple_files = true;
 option java_package = "com.geniustechspace.protobuf.hcm.employee.v1";
 
 // Employee - employment record linking user to organization.
+// ARCHITECTURE: Tenant-agnostic domain entity following DDD principles.
+// - Tenant scoping is handled via TenantContext in the API layer
 // PII: Yes - employment information is personal data.
 // MULTI-RECORD: Users can have multiple employment records (current + history).
 // USAGE: HR systems, payroll, org charts, workforce management.
@@ -28,10 +31,8 @@ message Employee {
   // REFERENCE: Links to idp.identity.profile user entity.
   string user_id = 2 [(buf.validate.field).string.max_len = 512];
 
-  // Hierarchical tenant path for nested multi-tenancy.
-  // Examples: "acme-corp", "acme-corp/customer-1", "acme-corp/customer-1/sub-org"
-  // ISOLATION: Supports unlimited nesting levels for complex B2B2B... scenarios.
-  string tenant_path = 3 [(buf.validate.field).string.max_len = 512];
+  reserved 3; // Removed: tenant_path - handled by TenantContext in API layer
+  reserved "tenant_path";
 
   // Company/Organization name.
   string company = 4 [(buf.validate.field).string.max_len = 255];

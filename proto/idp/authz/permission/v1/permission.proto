@@ -1,7 +1,8 @@
 // DOMAIN: Authorization - Permission Value Objects
-// COMPLIANCE: SOC 2 CC6.2, ISO 27001 A.9.4
-// SECURITY: Fine-grained access control
+// COMPLIANCE: SOC 2 CC6.2, ISO 27001 A.9.4, NIST SP 800-162
+// SECURITY: Fine-grained access control permissions
 // DDD: Value Objects - permissions are immutable
+// ARCHITECTURE: Permissions define allowed actions on resources for ABAC evaluation
 
 syntax = "proto3";
 
@@ -18,13 +19,15 @@ option java_package = "com.geniustechspace.protobuf.idp.authz.permission.v1";
 // Permission value object - atomic authorization unit.
 // IMMUTABLE: Permissions cannot be modified, only created/deleted
 // FORMAT: resource:action (e.g., users:read, groups:write)
+// ARCHITECTURE: Permissions are used in ABAC policies as action identifiers
+// and can be assigned to roles for RBAC integration. Tenant context
+// is handled separately via TenantContext in the API layer.
 message Permission {
   // Permission ID.
   string id = 1;
 
-  // Hierarchical tenant path for nested multi-tenancy. Immutable.
-  // Examples: "acme-corp", "acme-corp/customer-1"
-  string tenant_path = 2 [(buf.validate.field).string.max_len = 512];
+  reserved 2; // Removed: tenant_path - handled by TenantContext in API layer
+  reserved "tenant_path";
 
   // Permission name (unique identifier).
   // FORMAT: resource:action
@@ -86,12 +89,13 @@ enum PermissionScope {
 }
 
 // PermissionSet value object - collection of permissions.
+// Tenant scoping handled via TenantContext in API layer.
 message PermissionSet {
   // Set ID.
   string id = 1;
 
-  // Tenant path.
-  string tenant_path = 2;
+  reserved 2; // Removed: tenant_path - handled by TenantContext in API layer
+  reserved "tenant_path";
 
   // Set name.
   string name = 3;

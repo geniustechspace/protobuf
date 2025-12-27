@@ -2,6 +2,7 @@
 // COMPLIANCE: SOC 2 CC6.1 (Access Control), RFC 1035, ISO 27001 A.12.1.2
 // SECURITY: Authentication required, tenant isolation enforced
 // PII: No - Avoid storing secrets or personal data in record values
+// ARCHITECTURE: Tenant-agnostic domain entity; tenant scoping via TenantContext in API layer
 
 syntax = "proto3";
 
@@ -17,8 +18,9 @@ import "google/protobuf/timestamp.proto";
 option go_package = "github.com/geniustechspace/protobuf/gen/go/dns/record/v1;dnsrecordv1";
 
 // Record represents a DNS resource record with full metadata and health tracking.
+// ARCHITECTURE: Tenant-agnostic domain entity following DDD principles.
+// - Tenant scoping is handled via TenantContext in the API layer
 // COMPLIANCE: RFC 1035, SOC 2 CC6.1 (Resource management), SOC 2 CC7.2 (Monitoring)
-// SECURITY: Tenant isolation enforced via tenant_path
 // PII: No - Do not store secrets or personal data in record values
 message Record {
   // Unique record identifier. IMMUTABLE.
@@ -26,12 +28,8 @@ message Record {
   // Example: "01HQZX123456789ABCDEFGHJKM"
   string record_id = 1 [(buf.validate.field).string.min_len = 1];
 
-  // Hierarchical tenant path for multi-tenancy isolation. REQUIRED.
-  // SECURITY: Enforces tenant isolation at application layer
-  // COMPLIANCE: SOC 2 CC6.1 (Logical access controls)
-  // VALIDATION: Maximum 512 characters
-  // Examples: "acme-corp", "acme-corp/customer-1"
-  string tenant_path = 2 [(buf.validate.field).string.max_len = 512];
+  reserved 2; // Removed: tenant_path - handled by TenantContext in API layer
+  reserved "tenant_path";
 
   // Foreign key to Domain.domain_id. REQUIRED.
   // RELATIONSHIP: Each record belongs to exactly one domain

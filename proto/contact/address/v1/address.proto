@@ -2,6 +2,7 @@
 // COMPLIANCE: GDPR Article 5, SOC 2 CC6.1
 // SECURITY: PII data - encryption at rest required
 // PII: Yes - physical address information
+// ARCHITECTURE: Tenant-agnostic domain entity; tenant scoping via TenantContext in API layer
 
 syntax = "proto3";
 
@@ -25,6 +26,8 @@ enum AddressLabel {
 }
 
 // UserAddress - user's physical address.
+// ARCHITECTURE: Tenant-agnostic domain entity following DDD principles.
+// - Tenant scoping is handled via TenantContext in the API layer
 // PII: Yes - GDPR Article 4(1) personal identifier.
 // MULTI-RECORD: Users can have multiple addresses (home, work, billing, shipping).
 // USAGE: Shipping, billing, contact information, location services.
@@ -35,10 +38,8 @@ message UserAddress {
   // User ID. Foreign key to identity system.
   string user_id = 2 [(buf.validate.field).string.max_len = 512];
 
-  // Hierarchical tenant path for nested multi-tenancy.
-  // Examples: "acme-corp", "acme-corp/customer-1", "acme-corp/customer-1/sub-org"
-  // ISOLATION: Supports unlimited nesting levels for complex B2B2B... scenarios.
-  string tenant_path = 3 [(buf.validate.field).string.max_len = 512];
+  reserved 3; // Removed: tenant_path - handled by TenantContext in API layer
+  reserved "tenant_path";
 
   // Address classification label.
   // USAGE: Determines address purpose and routing behavior.

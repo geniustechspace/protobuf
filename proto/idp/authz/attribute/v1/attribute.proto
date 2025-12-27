@@ -1,0 +1,365 @@
+// DOMAIN: Authorization - Attribute Definitions
+// COMPLIANCE: SOC 2 CC6.2, ISO 27001 A.9.4, NIST SP 800-162
+// SECURITY: Attribute-Based Access Control (ABAC) core definitions
+// DDD: Value Objects - attributes are immutable descriptors
+
+syntax = "proto3";
+
+package geniustechspace.idp.authz.attribute.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/timestamp.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Idp.Authz.Attribute.V1";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/idp/authz/attribute/v1;idpauthzattributev1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.idp.authz.attribute.v1";
+
+// AttributeDefinition - defines an attribute for ABAC policies.
+// ABAC attributes are the foundation of policy evaluation.
+// CATEGORIES: Subject, Resource, Action, Environment (SRAE model)
+message AttributeDefinition {
+  // Attribute ID. Immutable unique identifier.
+  string attribute_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Attribute name (unique within category).
+  // FORMAT: lowercase with dots for hierarchy
+  // Examples: "user.department", "resource.classification", "env.time_of_day"
+  string name = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 256
+    pattern: "^[a-z][a-z0-9_.]*$"
+  }];
+
+  // Display name (human-readable).
+  string display_name = 3 [(buf.validate.field).string.max_len = 255];
+
+  // Description of the attribute.
+  string description = 4 [(buf.validate.field).string.max_len = 1000];
+
+  // Attribute category (SRAE model).
+  AttributeCategory category = 5 [(buf.validate.field).enum.defined_only = true];
+
+  // Data type of attribute values.
+  AttributeDataType data_type = 6 [(buf.validate.field).enum.defined_only = true];
+
+  // Whether the attribute can have multiple values.
+  bool is_multi_valued = 7;
+
+  // Allowed values (for enum-like attributes). Optional.
+  repeated string allowed_values = 8;
+
+  // Validation pattern (regex for string values). Optional.
+  string validation_pattern = 9;
+
+  // Value source - where attribute values come from.
+  AttributeSource source = 10;
+
+  // Whether the attribute is required in policies.
+  bool is_required = 11;
+
+  // System attribute (cannot be deleted).
+  bool is_system = 12;
+
+  // Sensitivity level for audit/logging.
+  AttributeSensitivity sensitivity = 13;
+
+  // Created timestamp.
+  google.protobuf.Timestamp created_at = 14 [(buf.validate.field).required = true];
+
+  // Last updated timestamp.
+  google.protobuf.Timestamp updated_at = 15;
+
+  // Deletion timestamp (soft delete).
+  google.protobuf.Timestamp deleted_at = 16;
+
+  // Optimistic locking version.
+  int64 version = 17;
+}
+
+// AttributeCategory - SRAE (Subject, Resource, Action, Environment) model.
+// STANDARD: NIST SP 800-162 ABAC categories
+enum AttributeCategory {
+  // Unspecified - invalid default value.
+  ATTRIBUTE_CATEGORY_UNSPECIFIED = 0;
+
+  // Subject attributes - describe the requester.
+  // Examples: user.id, user.department, user.clearance_level, user.roles
+  SUBJECT = 1;
+
+  // Resource attributes - describe the target resource.
+  // Examples: resource.type, resource.classification, resource.owner
+  RESOURCE = 2;
+
+  // Action attributes - describe the requested operation.
+  // Examples: action.type, action.method
+  ACTION = 3;
+
+  // Environment attributes - describe the context.
+  // Examples: env.time_of_day, env.ip_address, env.geo_location, env.risk_score
+  ENVIRONMENT = 4;
+
+  // Connection attributes - describe the request/session context.
+  // Examples: connection.protocol, connection.encryption, connection.device_type
+  CONNECTION = 5;
+}
+
+// AttributeDataType - supported attribute value types.
+enum AttributeDataType {
+  // Unspecified - invalid default value.
+  ATTRIBUTE_DATA_TYPE_UNSPECIFIED = 0;
+
+  // String value.
+  STRING = 1;
+
+  // Integer value.
+  INTEGER = 2;
+
+  // Boolean value.
+  BOOLEAN = 3;
+
+  // Timestamp value.
+  TIMESTAMP = 4;
+
+  // Duration value (seconds).
+  DURATION = 5;
+
+  // IP address (IPv4 or IPv6).
+  IP_ADDRESS = 6;
+
+  // CIDR network range.
+  CIDR = 7;
+
+  // Email address.
+  EMAIL = 8;
+
+  // URL/URI.
+  URL = 9;
+
+  // JSON object.
+  JSON = 10;
+
+  // Enumeration (use allowed_values).
+  ENUM = 11;
+
+  // Hierarchical path (e.g., org/dept/team).
+  PATH = 12;
+}
+
+// AttributeSource - where attribute values originate.
+message AttributeSource {
+  // Source type.
+  AttributeSourceType type = 1 [(buf.validate.field).enum.defined_only = true];
+
+  // Source identifier (e.g., claim name, header name, API endpoint).
+  string identifier = 2;
+
+  // JSONPath or expression for extracting value.
+  string extraction_path = 3;
+
+  // Default value if source is unavailable.
+  string default_value = 4;
+
+  // Cache TTL in seconds (0 = no caching).
+  int32 cache_ttl_seconds = 5;
+}
+
+// AttributeSourceType - origins of attribute values.
+enum AttributeSourceType {
+  // Unspecified - invalid default value.
+  ATTRIBUTE_SOURCE_TYPE_UNSPECIFIED = 0;
+
+  // From authentication token claims.
+  TOKEN_CLAIM = 1;
+
+  // From request headers.
+  REQUEST_HEADER = 2;
+
+  // From request context/metadata.
+  REQUEST_CONTEXT = 3;
+
+  // From user profile (database lookup).
+  USER_PROFILE = 4;
+
+  // From group membership (database lookup).
+  GROUP_MEMBERSHIP = 5;
+
+  // From external API (PIP - Policy Information Point).
+  EXTERNAL_API = 6;
+
+  // Computed at runtime.
+  COMPUTED = 7;
+
+  // Static/constant value.
+  STATIC = 8;
+}
+
+// AttributeSensitivity - data sensitivity for audit/logging.
+enum AttributeSensitivity {
+  // Unspecified - invalid default value.
+  ATTRIBUTE_SENSITIVITY_UNSPECIFIED = 0;
+
+  // Public - can be logged/displayed freely.
+  PUBLIC = 1;
+
+  // Internal - company internal, not for external exposure.
+  INTERNAL = 2;
+
+  // Confidential - sensitive, mask in logs.
+  CONFIDENTIAL = 3;
+
+  // Restricted - highly sensitive, never log values.
+  RESTRICTED = 4;
+
+  // PII - personally identifiable, GDPR applies.
+  PII = 5;
+}
+
+// AttributeValue - runtime attribute value for policy evaluation.
+message AttributeValue {
+  // Attribute name/key.
+  string name = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Value based on data type.
+  oneof value {
+    string string_value = 2;
+    int64 integer_value = 3;
+    bool boolean_value = 4;
+    google.protobuf.Timestamp timestamp_value = 5;
+    int64 duration_seconds = 6;
+    StringList string_list_value = 7;
+    IntegerList integer_list_value = 8;
+  }
+
+  // Source that provided this value.
+  AttributeSourceType source = 9;
+
+  // When the value was resolved.
+  google.protobuf.Timestamp resolved_at = 10;
+}
+
+// StringList - list of string values.
+message StringList {
+  repeated string values = 1;
+}
+
+// IntegerList - list of integer values.
+message IntegerList {
+  repeated int64 values = 1;
+}
+
+// SubjectAttributes - complete subject attribute set.
+// Used in policy evaluation context.
+message SubjectAttributes {
+  // Subject identifier (user ID, service account ID, etc.).
+  string subject_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Subject type (user, service_account, api_key).
+  string subject_type = 2;
+
+  // All resolved subject attributes.
+  repeated AttributeValue attributes = 3;
+
+  // Role memberships (for RBAC integration).
+  repeated string roles = 4;
+
+  // Group memberships.
+  repeated string groups = 5;
+
+  // Direct permissions.
+  repeated string permissions = 6;
+}
+
+// ResourceAttributes - complete resource attribute set.
+// Used in policy evaluation context.
+message ResourceAttributes {
+  // Resource identifier.
+  string resource_id = 1;
+
+  // Resource type (e.g., "document", "user", "project").
+  string resource_type = 2 [(buf.validate.field).string.min_len = 1];
+
+  // Resource path (hierarchical location).
+  string resource_path = 3;
+
+  // All resolved resource attributes.
+  repeated AttributeValue attributes = 4;
+
+  // Resource owner (subject ID).
+  string owner_id = 5;
+}
+
+// ActionAttributes - action being requested.
+message ActionAttributes {
+  // Action identifier (e.g., "read", "write", "delete", "execute").
+  string action_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Action type/category.
+  string action_type = 2;
+
+  // Additional action attributes.
+  repeated AttributeValue attributes = 3;
+}
+
+// EnvironmentAttributes - request context attributes.
+message EnvironmentAttributes {
+  // Request timestamp.
+  google.protobuf.Timestamp request_time = 1;
+
+  // Client IP address.
+  string ip_address = 2;
+
+  // User agent string.
+  string user_agent = 3;
+
+  // Geographic location (if available).
+  GeoLocation geo_location = 4;
+
+  // Device information.
+  DeviceInfo device_info = 5;
+
+  // Risk score (0-100).
+  int32 risk_score = 6;
+
+  // Additional environment attributes.
+  repeated AttributeValue attributes = 7;
+}
+
+// GeoLocation - geographic location information.
+message GeoLocation {
+  // Country code (ISO 3166-1 alpha-2).
+  string country_code = 1;
+
+  // Region/state.
+  string region = 2;
+
+  // City.
+  string city = 3;
+
+  // Latitude.
+  double latitude = 4;
+
+  // Longitude.
+  double longitude = 5;
+
+  // Timezone.
+  string timezone = 6;
+}
+
+// DeviceInfo - device information for context.
+message DeviceInfo {
+  // Device ID/fingerprint.
+  string device_id = 1;
+
+  // Device type (desktop, mobile, tablet, etc.).
+  string device_type = 2;
+
+  // Operating system.
+  string os = 3;
+
+  // Browser.
+  string browser = 4;
+
+  // Is trusted/enrolled device.
+  bool is_trusted = 5;
+}

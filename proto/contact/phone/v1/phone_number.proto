@@ -7,8 +7,8 @@ syntax = "proto3";
 package geniustechspace.contact.phone.v1;
 
 import "buf/validate/validate.proto";
-import "google/protobuf/timestamp.proto";
 import "contact/phone/v1/enums.proto";
+import "google/protobuf/timestamp.proto";
 
 option go_package = "github.com/geniustechspace/protobuf/gen/go/contact/phone/v1;contactphonev1";
 option java_multiple_files = true;
@@ -25,29 +25,19 @@ message PhoneNumber {
   string owner_id = 2 [(buf.validate.field).string.max_len = 512];
 
   // E.164 formatted phone number
-  string number = 3 [
-    (buf.validate.field).string.pattern = "^\\+[1-9]\\d{1,14}$"
-  ];
+  string number = 3 [(buf.validate.field).string.pattern = "^\\+[1-9]\\d{1,14}$"];
 
   // Classification of the number
-  PhoneNumberLabel label = 4 [
-    (buf.validate.field).enum.defined_only = true
-  ];
+  PhoneNumberLabel label = 4 [(buf.validate.field).enum.defined_only = true];
 
   // Custom label when label = CUSTOM
-  string custom_label = 5 [
-    (buf.validate.field).string.max_len = 100
-  ];
+  string custom_label = 5 [(buf.validate.field).string.max_len = 100];
 
   // Country code extracted from E.164
-  string country_code = 6 [
-    (buf.validate.field).string.max_len = 5
-  ];
+  string country_code = 6 [(buf.validate.field).string.max_len = 5];
 
   // Optional extension (business phones)
-  string extension = 7 [
-    (buf.validate.field).string.max_len = 10
-  ];
+  string extension = 7 [(buf.validate.field).string.max_len = 10];
 
   // Metadata tags describing the number itself
   repeated string tags = 8 [(buf.validate.field).repeated = {

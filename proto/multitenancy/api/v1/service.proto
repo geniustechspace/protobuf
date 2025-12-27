@@ -1,0 +1,342 @@
+// DOMAIN: Multitenancy - Tenant API Service
+// COMPLIANCE: SOC 2 CC6.1 (Access Control), ISO 27001 A.9.4
+// SECURITY: Platform-level tenant management
+// DDD: Application Layer - tenant management use cases
+
+syntax = "proto3";
+
+package geniustechspace.multitenancy.api.v1;
+
+import "buf/validate/validate.proto";
+import "core/api/pagination/v1/messages.proto";
+import "google/protobuf/field_mask.proto";
+import "google/protobuf/timestamp.proto";
+import "multitenancy/v1/context.proto";
+import "multitenancy/v1/tenant.proto";
+
+option csharp_namespace = "GeniusTechSpace.Protobuf.Multitenancy.Api.V1";
+option go_package = "github.com/geniustechspace/protobuf/gen/go/multitenancy/api/v1;multitenancyapiv1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.protobuf.multitenancy.api.v1";
+
+// TenantService - manages tenant lifecycle and configuration.
+// AUTHENTICATION: Required - platform admin or tenant owner
+// AUTHORIZATION: Requires tenant management permissions
+// RATE LIMIT: 100/min per caller
+service TenantService {
+  // CreateTenant creates a new tenant.
+  // AUTHENTICATION: Required - platform admin or parent tenant owner
+  // AUTHORIZATION: Requires 'tenants:create' permission
+  // COMPLIANCE: SOC 2 CC6.1 (Tenant provisioning)
+  rpc CreateTenant(CreateTenantRequest) returns (CreateTenantResponse);
+
+  // GetTenant retrieves a tenant by ID.
+  // AUTHENTICATION: Required - valid bearer token
+  // AUTHORIZATION: Requires 'tenants:read' permission or tenant membership
+  rpc GetTenant(GetTenantRequest) returns (GetTenantResponse);
+
+  // ListTenants lists tenants with pagination and filtering.
+  // AUTHENTICATION: Required - valid bearer token
+  // AUTHORIZATION: Requires 'tenants:list' permission, scoped to accessible tenants
+  rpc ListTenants(ListTenantsRequest) returns (ListTenantsResponse);
+
+  // UpdateTenant updates tenant details.
+  // AUTHENTICATION: Required - platform admin or tenant owner
+  // AUTHORIZATION: Requires 'tenants:update' permission
+  rpc UpdateTenant(UpdateTenantRequest) returns (UpdateTenantResponse);
+
+  // DeleteTenant soft-deletes a tenant.
+  // AUTHENTICATION: Required - platform admin
+  // AUTHORIZATION: Requires 'tenants:delete' permission
+  // COMPLIANCE: GDPR Article 17, SOC 2 CC6.3
+  rpc DeleteTenant(DeleteTenantRequest) returns (DeleteTenantResponse);
+
+  // UpdateTenantStatus changes tenant lifecycle status.
+  // AUTHENTICATION: Required - platform admin
+  // AUTHORIZATION: Requires 'tenants:update_status' permission
+  rpc UpdateTenantStatus(UpdateTenantStatusRequest) returns (UpdateTenantStatusResponse);
+
+  // GetTenantHierarchy retrieves tenant with its hierarchy.
+  // AUTHENTICATION: Required - valid bearer token
+  // AUTHORIZATION: Requires 'tenants:read' permission
+  rpc GetTenantHierarchy(GetTenantHierarchyRequest) returns (GetTenantHierarchyResponse);
+
+  // AddTenantMember adds a member to a tenant.
+  // AUTHENTICATION: Required - tenant admin
+  // AUTHORIZATION: Requires 'tenants:members:add' permission
+  rpc AddTenantMember(AddTenantMemberRequest) returns (AddTenantMemberResponse);
+
+  // RemoveTenantMember removes a member from a tenant.
+  // AUTHENTICATION: Required - tenant admin
+  // AUTHORIZATION: Requires 'tenants:members:remove' permission
+  rpc RemoveTenantMember(RemoveTenantMemberRequest) returns (RemoveTenantMemberResponse);
+
+  // ListTenantMembers lists members of a tenant.
+  // AUTHENTICATION: Required - valid bearer token
+  // AUTHORIZATION: Requires 'tenants:members:list' permission
+  rpc ListTenantMembers(ListTenantMembersRequest) returns (ListTenantMembersResponse);
+
+  // ResolveTenantContext resolves tenant context from various sources.
+  // AUTHENTICATION: Required - valid bearer token
+  // INTERNAL: Used by middleware/gateway for tenant resolution
+  rpc ResolveTenantContext(ResolveTenantContextRequest) returns (ResolveTenantContextResponse);
+}
+
+// CreateTenantRequest - creates a new tenant.
+message CreateTenantRequest {
+  // Human-readable unique slug. REQUIRED.
+  string slug = 1 [(buf.validate.field).string = {
+    min_len: 3
+    max_len: 63
+    pattern: "^[a-z][a-z0-9-]*[a-z0-9]$"
+  }];
+
+  // Display name. REQUIRED.
+  string display_name = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 255
+  }];
+
+  // Description. Optional.
+  string description = 3 [(buf.validate.field).string.max_len = 1000];
+
+  // Tenant type. REQUIRED.
+  geniustechspace.multitenancy.v1.TenantType type = 4 [(buf.validate.field).enum.defined_only = true];
+
+  // Parent tenant ID for nested tenants. Optional.
+  string parent_id = 5;
+
+  // Isolation mode. REQUIRED.
+  geniustechspace.multitenancy.v1.TenantIsolationMode isolation_mode = 6 [(buf.validate.field).enum.defined_only = true];
+
+  // Initial settings. Optional.
+  geniustechspace.multitenancy.v1.TenantSettings settings = 7;
+
+  // Plan tier. Optional.
+  string plan_tier = 8;
+
+  // Initial metadata. Optional.
+  map<string, string> metadata = 9;
+}
+
+// CreateTenantResponse - returns created tenant.
+message CreateTenantResponse {
+  // Created tenant entity.
+  geniustechspace.multitenancy.v1.Tenant tenant = 1 [(buf.validate.field).required = true];
+}
+
+// GetTenantRequest - retrieves a tenant.
+message GetTenantRequest {
+  // Tenant ID. REQUIRED.
+  string tenant_id = 1 [(buf.validate.field).string.min_len = 1];
+}
+
+// GetTenantResponse - returns tenant entity.
+message GetTenantResponse {
+  // Tenant entity.
+  geniustechspace.multitenancy.v1.Tenant tenant = 1 [(buf.validate.field).required = true];
+}
+
+// ListTenantsRequest - lists tenants with pagination.
+message ListTenantsRequest {
+  // Pagination parameters. REQUIRED.
+  geniustechspace.core.api.pagination.v1.PaginationRequest pagination = 1 [(buf.validate.field).required = true];
+
+  // Sorting specification. Optional.
+  // FORMAT: Google AIP-132 standard
+  string order_by = 2;
+
+  // Filter specification. Optional.
+  // FORMAT: Google AIP-160 standard
+  string filter = 3;
+
+  // Parent tenant ID to list children. Optional.
+  // If not provided, lists root tenants (for platform admin)
+  // or user's accessible tenants.
+  string parent_id = 4;
+
+  // Include child tenants in results. Optional.
+  bool include_descendants = 5;
+}
+
+// ListTenantsResponse - returns paginated tenants.
+message ListTenantsResponse {
+  // List of tenants.
+  repeated geniustechspace.multitenancy.v1.Tenant tenants = 1;
+
+  // Pagination metadata.
+  geniustechspace.core.api.pagination.v1.PaginationResponse pagination = 2 [(buf.validate.field).required = true];
+}
+
+// UpdateTenantRequest - updates a tenant.
+message UpdateTenantRequest {
+  // Tenant ID. REQUIRED.
+  string tenant_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Updated tenant fields. REQUIRED.
+  geniustechspace.multitenancy.v1.Tenant tenant = 2 [(buf.validate.field).required = true];
+
+  // Field mask specifying which fields to update. REQUIRED.
+  google.protobuf.FieldMask update_mask = 3 [(buf.validate.field).required = true];
+
+  // Current version for optimistic locking. REQUIRED.
+  int64 version = 4 [(buf.validate.field).int64.gte = 0];
+}
+
+// UpdateTenantResponse - returns updated tenant.
+message UpdateTenantResponse {
+  // Updated tenant entity.
+  geniustechspace.multitenancy.v1.Tenant tenant = 1 [(buf.validate.field).required = true];
+}
+
+// DeleteTenantRequest - soft-deletes a tenant.
+message DeleteTenantRequest {
+  // Tenant ID. REQUIRED.
+  string tenant_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Current version for optimistic locking. REQUIRED.
+  int64 version = 2 [(buf.validate.field).int64.gte = 0];
+
+  // Deletion reason. Optional.
+  string reason = 3;
+
+  // Force delete including all descendants. Optional.
+  // Default: false (fails if tenant has children).
+  bool force = 4;
+}
+
+// DeleteTenantResponse - empty on success.
+message DeleteTenantResponse {}
+
+// UpdateTenantStatusRequest - changes tenant status.
+message UpdateTenantStatusRequest {
+  // Tenant ID. REQUIRED.
+  string tenant_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // New status. REQUIRED.
+  geniustechspace.multitenancy.v1.TenantStatus status = 2 [(buf.validate.field).enum.defined_only = true];
+
+  // Status change reason. REQUIRED.
+  string reason = 3 [(buf.validate.field).string.min_len = 1];
+
+  // Current version for optimistic locking. REQUIRED.
+  int64 version = 4 [(buf.validate.field).int64.gte = 0];
+}
+
+// UpdateTenantStatusResponse - returns updated tenant.
+message UpdateTenantStatusResponse {
+  // Updated tenant entity.
+  geniustechspace.multitenancy.v1.Tenant tenant = 1 [(buf.validate.field).required = true];
+}
+
+// GetTenantHierarchyRequest - retrieves tenant hierarchy.
+message GetTenantHierarchyRequest {
+  // Tenant ID (root of hierarchy to retrieve). REQUIRED.
+  string tenant_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Maximum depth to retrieve. Optional (default: unlimited).
+  int32 max_depth = 2 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 10
+  }];
+
+  // Include ancestors (path to root). Optional.
+  bool include_ancestors = 3;
+}
+
+// GetTenantHierarchyResponse - returns tenant hierarchy.
+message GetTenantHierarchyResponse {
+  // Requested tenant.
+  geniustechspace.multitenancy.v1.Tenant tenant = 1 [(buf.validate.field).required = true];
+
+  // Ancestor tenants (if requested).
+  repeated geniustechspace.multitenancy.v1.Tenant ancestors = 2;
+
+  // Descendant tenants (tree structure flattened).
+  repeated geniustechspace.multitenancy.v1.Tenant descendants = 3;
+}
+
+// AddTenantMemberRequest - adds a member to tenant.
+message AddTenantMemberRequest {
+  // Tenant ID. REQUIRED.
+  string tenant_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Member ID (user, group, or service account). REQUIRED.
+  string member_id = 2 [(buf.validate.field).string.min_len = 1];
+
+  // Member type. REQUIRED.
+  geniustechspace.multitenancy.v1.TenantMemberType member_type = 3 [(buf.validate.field).enum.defined_only = true];
+
+  // Membership role. REQUIRED.
+  geniustechspace.multitenancy.v1.TenantMembershipRole role = 4 [(buf.validate.field).enum.defined_only = true];
+
+  // Set as primary tenant for member. Optional.
+  bool is_primary = 5;
+}
+
+// AddTenantMemberResponse - returns created membership.
+message AddTenantMemberResponse {
+  // Created membership.
+  geniustechspace.multitenancy.v1.TenantMembership membership = 1 [(buf.validate.field).required = true];
+}
+
+// RemoveTenantMemberRequest - removes a member from tenant.
+message RemoveTenantMemberRequest {
+  // Tenant ID. REQUIRED.
+  string tenant_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Member ID. REQUIRED.
+  string member_id = 2 [(buf.validate.field).string.min_len = 1];
+
+  // Removal reason. Optional.
+  string reason = 3;
+}
+
+// RemoveTenantMemberResponse - empty on success.
+message RemoveTenantMemberResponse {}
+
+// ListTenantMembersRequest - lists tenant members.
+message ListTenantMembersRequest {
+  // Tenant ID. REQUIRED.
+  string tenant_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Pagination parameters. REQUIRED.
+  geniustechspace.core.api.pagination.v1.PaginationRequest pagination = 2 [(buf.validate.field).required = true];
+
+  // Filter by member type. Optional.
+  geniustechspace.multitenancy.v1.TenantMemberType member_type = 3;
+
+  // Filter by membership role. Optional.
+  geniustechspace.multitenancy.v1.TenantMembershipRole role = 4;
+}
+
+// ListTenantMembersResponse - returns paginated members.
+message ListTenantMembersResponse {
+  // List of memberships.
+  repeated geniustechspace.multitenancy.v1.TenantMembership memberships = 1;
+
+  // Pagination metadata.
+  geniustechspace.core.api.pagination.v1.PaginationResponse pagination = 2 [(buf.validate.field).required = true];
+}
+
+// ResolveTenantContextRequest - resolves tenant context.
+// INTERNAL: Used by API gateway/middleware.
+message ResolveTenantContextRequest {
+  // Resolution source. REQUIRED.
+  geniustechspace.multitenancy.v1.TenantResolutionSource source = 1 [(buf.validate.field).enum.defined_only = true];
+
+  // Tenant identifier (ID, slug, or subdomain based on source).
+  string identifier = 2;
+
+  // Subject ID for membership validation. Optional.
+  string subject_id = 3;
+}
+
+// ResolveTenantContextResponse - returns resolved context.
+message ResolveTenantContextResponse {
+  // Resolved tenant context.
+  geniustechspace.multitenancy.v1.TenantContext context = 1 [(buf.validate.field).required = true];
+
+  // Tenant entity (for caching).
+  geniustechspace.multitenancy.v1.Tenant tenant = 2;
+}
